@@ -1,0 +1,20 @@
+WET CLEAN (CLEAN) TROUBLESHOOTING GUIDE
+
+This guide lists failure modes observed in the CLEAN step, their causes, and the
+equipment parameter involved in each cause.
+
+Wafer surface scratching
+Wafer surface scratching is a failure mode that occurs in the CLEAN step. It is
+caused by excessive megasonic power, which involves the megasonic_power
+parameter.
+
+Particle residue after clean
+Particle residue after clean is a failure mode that occurs in the CLEAN step. One
+cause of particle residue after clean is low chemical flow rate, which involves
+the flow_rate parameter. Another cause is insufficient rinse time, which involves
+the rinse_time parameter.
+
+Chemical attack of the film
+Chemical attack of the film is a failure mode that occurs in the CLEAN step. It
+is caused by chemical bath temperature drift, which involves the chemical_temp
+parameter.

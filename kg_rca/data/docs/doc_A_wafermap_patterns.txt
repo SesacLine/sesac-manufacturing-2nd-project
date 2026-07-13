@@ -1,0 +1,27 @@
+WAFER MAP DEFECT PATTERNS AND THEIR ASSOCIATED PROCESS STEPS
+
+This note summarizes how the spatial signature of a wafer map defect points to
+the process step most likely responsible. These associations are used as the
+starting point for root cause analysis: the observed pattern narrows down which
+process step to suspect first.
+
+Edge-Ring pattern
+An Edge-Ring pattern appears as a circular ring located along the wafer's edge.
+This pattern is most commonly attributed to problems in the ETCH step. An
+Edge-Ring pattern can also arise from thin-film nonuniformity created in the
+DEPO step. When an Edge-Ring pattern is observed, the ETCH and DEPO steps should
+be investigated first.
+
+Center pattern
+A Center pattern, also called a bulls-eye, is concentrated around the wafer
+center. A Center pattern typically arises in the DEPO step, where deposition
+nonuniformity produces a center-weighted signature. The Center pattern therefore
+points to the DEPO step.
+
+Scratch pattern
+A Scratch pattern appears as an elongated line of failing dies across the wafer.
+A Scratch pattern is frequently associated with the CMP step, where mechanical
+abrasion during polishing gouges the wafer surface. A Scratch pattern can also
+arise in the CLEAN step, where wafer handling and excessive megasonic energy
+damage the surface. When a Scratch pattern is observed, the CMP and CLEAN steps
+should be investigated first.

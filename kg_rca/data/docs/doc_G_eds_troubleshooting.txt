@@ -1,0 +1,13 @@
+ELECTRICAL DIE SORT (EDS) TROUBLESHOOTING GUIDE
+
+This guide lists failure modes observed in the EDS step, their causes, and the
+equipment parameter involved in each cause.
+
+Probe contact failure
+Probe contact failure is a failure mode that occurs in the EDS step. It is caused
+by probe needle contamination, which involves the contact_resistance parameter.
+
+Wafer chucking instability
+Wafer chucking instability is a failure mode that occurs in the EDS step. It is
+caused by prober chuck temperature drift, which involves the chuck_temp
+parameter.

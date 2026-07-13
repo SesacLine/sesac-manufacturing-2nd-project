@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "secsgem": {
+      "command": "python",
+      "args": ["-m", "server.main"],
+      "env": {
+        "PYTHONPATH": ".",
+        "FAB_DB": "datasets/fab.db"
+      }
+    }
+  }
+}

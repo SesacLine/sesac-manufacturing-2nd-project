@@ -1,0 +1,18 @@
+LITHOGRAPHY (LITHO) TROUBLESHOOTING GUIDE
+
+This guide lists failure modes observed in the LITHO step, their causes, and the
+equipment parameter involved in each cause.
+
+Critical dimension variation
+Critical dimension variation is a failure mode that occurs in the LITHO step. One
+cause of critical dimension variation is exposure dose drift, which involves the
+exposure_dose parameter. Another cause is defocus of the projection lens, which
+involves the focus_offset parameter.
+
+Overlay misregistration
+Overlay misregistration is a failure mode that occurs in the LITHO step. It is
+caused by stage alignment error, which involves the alignment_offset parameter.
+
+Resist pattern distortion
+Resist pattern distortion is a failure mode that occurs in the LITHO step. It is
+caused by wafer stage temperature drift, which involves the stage_temp parameter.

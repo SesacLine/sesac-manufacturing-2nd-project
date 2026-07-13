@@ -1,0 +1,18 @@
+CHEMICAL MECHANICAL PLANARIZATION (CMP) TROUBLESHOOTING GUIDE
+
+This guide lists failure modes observed in the CMP step, their causes, and the
+equipment parameter involved in each cause.
+
+Edge over-polish
+Edge over-polish is a failure mode that occurs in the CMP step. It is caused by
+excessive down force, which involves the down_force parameter.
+
+Slurry maldistribution
+Slurry maldistribution is a failure mode that occurs in the CMP step. It is
+caused by low slurry flow, which involves the slurry_flow parameter.
+
+Polish induced surface scratching
+Polish induced surface scratching is a failure mode that occurs in the CMP step.
+One cause of polish induced surface scratching is excessive down force, which
+involves the down_force parameter. Another cause is slurry particle
+agglomeration, which involves the slurry_flow parameter.

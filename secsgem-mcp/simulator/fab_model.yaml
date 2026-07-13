@@ -1,0 +1,66 @@
+timeline_days: 90
+route: [LITHO, ETCH, DEPO, CMP, CLEAN, EDS]   # 전공정~wafer test (§1.2 범위)
+
+equipment:
+  ETCH:                       # 다중화 없으면 commonality 무의미 (§4.3)
+    instances: [ETCH-01, ETCH-02, ETCH-03]
+    chambers_per_instance: 3  # ETCH-01-CH1 ...
+    params:
+      rf_power:         {normal: [1900, 2100], unit: W, drift_models: [linear, step, none]}
+      chamber_pressure: {normal: [8, 12], unit: mTorr}
+      he_flow:          {normal: [18, 22], unit: sccm}
+      temperature:      {normal: [58, 62], unit: C}
+      etch_rate:        {normal: [95, 105], unit: nm/min}
+    maintenance:
+      pm_interval_days: 14
+      bm_rate_per_day: 0.01
+  CMP:
+    instances: [CMP-01, CMP-02]
+    chambers_per_instance: 2
+    params:
+      down_force:  {normal: [4.5, 5.5], unit: psi}
+      slurry_flow: {normal: [180, 220], unit: ml/min}
+    maintenance: {pm_interval_days: 21, bm_rate_per_day: 0.008}
+  DEPO:
+    instances: [DEPO-01, DEPO-02, DEPO-03]
+    chambers_per_instance: 2
+    params:
+      chamber_pressure: {normal: [2.0, 3.0], unit: Torr, drift_models: [step, none]}  # mapping_table의 deposition 단서
+      rf_power:         {normal: [450, 550], unit: W}
+      gas_flow:         {normal: [90, 110], unit: sccm}
+      susceptor_temp:   {normal: [390, 410], unit: C}
+      deposition_rate:  {normal: [48, 52], unit: nm/min}
+    maintenance:
+      pm_interval_days: 14
+      bm_rate_per_day: 0.01
+  CLEAN:
+    instances: [CLEAN-01, CLEAN-02]
+    chambers_per_instance: 2
+    params:
+      flow_rate:       {normal: [950, 1050], unit: ml/min, drift_models: [linear, none]}  # mapping_table의 clean_residue 단서
+      megasonic_power: {normal: [280, 320], unit: W}
+      chemical_temp:   {normal: [23, 27], unit: C}
+      rinse_time:      {normal: [55, 65], unit: s}
+    maintenance:
+      pm_interval_days: 28
+      bm_rate_per_day: 0.005
+  LITHO:
+    instances: [LITHO-01, LITHO-02]
+    chambers_per_instance: 1   # 스캐너는 단일 스테이지
+    params:
+      exposure_dose:    {normal: [29, 31], unit: mJ/cm2}
+      focus_offset:     {normal: [-15, 15], unit: nm}
+      stage_temp:       {normal: [22.9, 23.1], unit: C}
+      alignment_offset: {normal: [-3, 3], unit: nm}
+    maintenance:
+      pm_interval_days: 30
+      bm_rate_per_day: 0.004
+  EDS:                        # wafer test — 여기가 시뮬레이션 종점 (§1.2)
+    instances: [TESTER-01, TESTER-02]
+    chambers_per_instance: 1
+    params:
+      chuck_temp:         {normal: [24, 26], unit: C}
+      contact_resistance: {normal: [0.8, 1.2], unit: ohm}
+    maintenance:
+      pm_interval_days: 30
+      bm_rate_per_day: 0.003

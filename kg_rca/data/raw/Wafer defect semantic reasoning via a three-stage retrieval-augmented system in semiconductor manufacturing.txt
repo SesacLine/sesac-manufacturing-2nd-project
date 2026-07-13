@@ -1,0 +1,28 @@
+Liao, X., Zhang, J., Lyu, Y., & Wang, J. (2026). Wafer defect semantic reasoning via a three-stage retrieval-augmented system in semiconductor manufacturing. Journal of Manufacturing Systems, 85, 269-286.
+
+## Center pattern
+This defect manifests as a concentrated cluster of defective dies located near the wafer's geometric center. Based on the manufacturing process data, Center defects are typically linked to irregularities during thin-film deposition and chemical mechanical polishing (CMP) stages. These process variations can cause uneven film thickness or surface defects specifically in the central wafer region, leading to yield loss in this critical area.
+
+## Center pattern
+Center defects often result from process non-uniformities in the central zone, especially during thin film deposition or planarization steps such as chemical mechanical polishing. These processes may induce thickness gradients or particle accumulations near the chuck center, leading to concentrated die failures in the core region.
+
+## Center pattern — Thin-Film Deposition
+Thin-Film Deposition: Variations or non-uniformities in thin-film deposition can cause material thickness inconsistencies, particularly in the central region of the wafer. This leads to localized defects as observed in the Center pattern.
+
+## Center pattern — Chemical Mechanical Polishing
+Chemical Mechanical Polishing (CMP): Inadequate or uneven CMP can result in surface topography variations and defects concentrated at the wafer's center. CMP process control is critical for maintaining uniform surface planarity, especially in the central area.
+
+## Center pattern — Photolithography Alignment
+Photolithography Alignment: Misalignment during photolithography, especially near the wafer center, can cause pattern distortions or overlay errors, contributing to defect formation in this region.
+
+## Edge-Ring pattern
+The Edge-Ring defect appears as a ring-shaped pattern of defective dies near the wafer's outer edge. It is commonly associated with issues in etching and edge-bead removal processes. Deficiencies or inconsistencies in these process steps often result in contamination or damage along the wafer perimeter, producing the characteristic peripheral defect distribution. This type of defect can significantly reduce the functional yield of edge dies.
+
+## Edge-Ring pattern
+Edge-Ring defects typically arise from etching non-uniformities, edge bead removal failures, or chemical residue accumulation at the wafer periphery. This ring-shaped failure pattern at the outer edge reflects common issues in coating, cleaning, or plasma exposure steps, where equipment tolerances often vary near the boundary.
+
+## Scratch pattern — Chemical Mechanical Polishing
+Chemical Mechanical Polishing: Scratches frequently originate during the chemical mechanical polishing step when the pad condition degrades or abrasive particles accumulate in the slurry. Localized over-pressure or particle agglomeration can cause the polishing pad to introduce directional scratches.
+
+## Scratch pattern — Cleaning
+Contamination during cleaning operations: Residual particles or insufficient rinsing in wet or dry cleaning modules may drag across the wafer surface during spin or drying processes, leaving scratch-like traces. Particle shedding from aging components in the cleaning system is also a known contributor.

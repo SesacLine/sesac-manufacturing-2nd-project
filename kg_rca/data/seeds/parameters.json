@@ -1,0 +1,31 @@
+{
+  "_comment": "(:Parameter) 시드 - fab.md의 장비군별 파라미터 목록에서 도출한 20종. id는 telemetry.param 컬럼과 문자열이 반드시 일치해야 함 (join key). 정상범위/단위는 저장하지 않음 - 조회 시점에 fab SQL이 돌려주며, 정답 누출을 막기 위함. steps는 이 파라미터를 계측하는 장비군이며, 별칭 해석의 스코프로 쓰인다: 'temperature'처럼 여러 공정에 걸친 일반 표현은 steps로만 갈린다(LITHO->stage_temp, ETCH->temperature, DEPO->susceptor_temp, CLEAN->chemical_temp, EDS->chuck_temp). 따라서 한 공정 안에서는 같은 별칭이 두 파라미터에 붙으면 안 된다(5번이 import 시 검사함).",
+  "join_key": "telemetry.param",
+  "nodes": [
+    { "id": "exposure_dose",      "name": "exposure_dose",      "steps": ["LITHO"], "aliases": ["dose", "exposure energy"] },
+    { "id": "focus_offset",       "name": "focus_offset",       "steps": ["LITHO"], "aliases": ["focus", "best focus", "focus position"] },
+    { "id": "stage_temp",         "name": "stage_temp",         "steps": ["LITHO"], "aliases": ["stage temperature", "wafer stage temp", "temperature"] },
+    { "id": "alignment_offset",   "name": "alignment_offset",   "steps": ["LITHO"], "aliases": ["overlay", "overlay error", "registration", "alignment error"] },
+
+    { "id": "rf_power",           "name": "rf_power",           "steps": ["ETCH", "DEPO"], "aliases": ["rf power", "plasma power", "source power"] },
+    { "id": "chamber_pressure",   "name": "chamber_pressure",   "steps": ["ETCH", "DEPO"], "aliases": ["pressure", "process pressure", "system pressure"] },
+    { "id": "he_flow",            "name": "he_flow",            "steps": ["ETCH"], "aliases": ["helium flow", "backside he flow", "backside cooling flow"] },
+    { "id": "temperature",        "name": "temperature",        "steps": ["ETCH"], "aliases": ["wafer temperature", "electrode temperature"] },
+    { "id": "etch_rate",          "name": "etch_rate",          "steps": ["ETCH"], "aliases": ["etch speed", "removal rate"] },
+
+    { "id": "gas_flow",           "name": "gas_flow",           "steps": ["DEPO"], "aliases": ["deposition gas flow", "precursor flow", "source gas flow"] },
+    { "id": "susceptor_temp",     "name": "susceptor_temp",     "steps": ["DEPO"], "aliases": ["susceptor temperature", "heater temp", "temperature", "substrate temperature"] },
+    { "id": "deposition_rate",    "name": "deposition_rate",    "steps": ["DEPO"], "aliases": ["depo rate", "growth rate"] },
+
+    { "id": "down_force",         "name": "down_force",         "steps": ["CMP"], "aliases": ["polish pressure", "polish down force", "head pressure", "pressure"] },
+    { "id": "slurry_flow",        "name": "slurry_flow",        "steps": ["CMP"], "aliases": ["slurry flow rate", "slurry"] },
+
+    { "id": "flow_rate",          "name": "flow_rate",          "steps": ["CLEAN"], "aliases": ["chemical flow rate", "dispense flow"] },
+    { "id": "megasonic_power",    "name": "megasonic_power",    "steps": ["CLEAN"], "aliases": ["megasonic", "megasonic energy", "acoustic power"] },
+    { "id": "chemical_temp",      "name": "chemical_temp",      "steps": ["CLEAN"], "aliases": ["chemical temperature", "bath temperature", "temperature"] },
+    { "id": "rinse_time",         "name": "rinse_time",         "steps": ["CLEAN"], "aliases": ["rinse duration", "di rinse time"] },
+
+    { "id": "chuck_temp",         "name": "chuck_temp",         "steps": ["EDS"], "aliases": ["chuck temperature", "prober chuck temp", "temperature"] },
+    { "id": "contact_resistance", "name": "contact_resistance", "steps": ["EDS"], "aliases": ["probe contact resistance", "contact res"] }
+  ]
+}

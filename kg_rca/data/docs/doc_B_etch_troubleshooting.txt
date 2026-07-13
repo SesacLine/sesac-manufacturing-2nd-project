@@ -1,0 +1,30 @@
+DRY ETCH TROUBLESHOOTING GUIDE
+
+This guide lists common failure modes observed in the ETCH step, their causes,
+and the equipment parameter involved in each cause. It is used to drill down
+from a suspected process step into specific, checkable causes.
+
+Incorrect etch rate
+Incorrect etch rate is a failure mode that occurs in the ETCH step. One cause of
+incorrect etch rate is RF power drift, which involves the rf_power parameter.
+Another cause of incorrect etch rate is chamber pressure deviation, which
+involves the chamber_pressure parameter. Incorrect etch rate is also caused by
+improper maintenance, which is checked by reviewing whether a chamber wet clean
+was performed on schedule. A further cause is an incorrect process recipe, which
+is checked by verifying the process recipe loaded for the wafer.
+
+Plasma damage
+Plasma damage is a failure mode that occurs in the ETCH step. It is caused by
+improper maintenance, which is checked by reviewing whether a chamber wet clean
+was performed on schedule.
+
+Post-etch residue
+Post-etch residue is a failure mode that occurs in the ETCH step. A common cause
+of post-etch residue is an excessively high etch rate, which involves the
+etch_rate parameter.
+
+Inadequate selectivity
+Inadequate selectivity is a failure mode that occurs in the ETCH step. It is
+caused by wafer temperature error, which involves the temperature parameter.
+
+

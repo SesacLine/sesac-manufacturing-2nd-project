@@ -1,0 +1,163 @@
+[
+  {
+    "pattern": "Center",
+    "rank": 59,
+    "route": "direct",
+    "cause": "irregular_rf_operation",
+    "cause_name": "Irregular radio frequency (RF) operation",
+    "cause_description": "무선 주파수 동작이 불규칙한 상태를 의미한다.",
+    "tier": "근거없음",
+    "sentence": "문헌이 Center 패턴의 원인으로 irregular radio frequency(RF) operation을 지목한 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+    "quotes": [
+      "Defects concentrated in the center of the wafer",
+      "Irregular radio frequency (RF) operation, or unusual liquid flow"
+    ]
+  },
+  {
+    "pattern": "Center",
+    "rank": 60,
+    "route": "direct",
+    "cause": "unusual_liquid_flow",
+    "cause_name": "unusual liquid flow",
+    "cause_description": "액체 유동이 비정상적인 상태를 의미한다.",
+    "tier": "근거없음",
+    "sentence": "문헌이 Center 패턴의 원인으로 unusual liquid flow를 지목한 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+    "quotes": [
+      "Defects concentrated in the center of the wafer",
+      "Irregular radio frequency (RF) operation, or unusual liquid flow"
+    ]
+  },
+  {
+    "pattern": "Center",
+    "rank": 61,
+    "route": "direct",
+    "cause": "nonuniformities_created_in_thin_film_deposition_process",
+    "cause_name": "nonuniformities created in the thin film deposition process",
+    "cause_description": "박막 증착 공정에서 생성된 비균일성이 불량의 원인이다.",
+    "tier": "근거없음",
+    "sentence": "Center 패턴은 문헌에서 박막 증착 공정에서 생성된 비균일성으로 인한 불량으로 지목된 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+    "quotes": [
+      "located around the wafer center (bulls eye)",
+      "nonuniformities created in the thin film deposition process"
+    ]
+  },
+  {
+    "pattern": "Center",
+    "rank": 62,
+    "route": "direct",
+    "cause": "uneven_temperature_distribution_during_rapid_thermal_annealing_process",
+    "cause_name": "uneven temperature distribution during the rapid thermal annealing process",
+    "cause_description": "급속 열 어닐링 공정 동안 온도 분포가 균일하지 않은 상태를 의미한다.",
+    "tier": "근거없음",
+    "sentence": "Center 패턴은 문헌에서 급속 열 어닐링 공정 동안의 불균일한 온도 분포로 인한 불량으로 지목된 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+    "quotes": [
+      "located around the wafer center (bulls eye)",
+      "uneven temperature distribution during the rapid thermal annealing process"
+    ]
+  },
+  {
+    "pattern": "Scratch",
+    "rank": 8,
+    "route": "direct",
+    "cause": "scratches_on_wafer_surface_by_transfer_robots",
+    "cause_name": "scratches on the wafer surface by transfer robots",
+    "cause_description": "웨이퍼 핸들링 순서 중 이송 로봇에 의해 웨이퍼 표면에 긁힘이 생기는 원인이다.",
+    "tier": "근거없음",
+    "sentence": "Scratch 패턴은 웨이퍼 핸들링 순서 중 이송 로봇에 의해 웨이퍼 표면에 긁힘이 생기는 원인이 이 패턴의 원인으로 지목된 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+    "quotes": [
+      "Scratches on the wafer surface by transfer robots during the wafer handling sequence"
+    ]
+  },
+  {
+    "pattern": "Scratch",
+    "rank": 9,
+    "route": "direct",
+    "cause": "surface_damage_by_humans",
+    "cause_name": "surface damage by humans",
+    "cause_description": "사람에 의해 웨이퍼 표면 손상이 발생하는 원인이다.",
+    "tier": "근거없음",
+    "sentence": "Scratch 패턴은 사람에 의해 웨이퍼 표면 손상이 발생하는 원인이 이 패턴의 원인으로 지목된 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+    "quotes": [
+      "surface damage by humans"
+    ]
+  },
+  {
+    "pattern": "Scratch",
+    "rank": 10,
+    "route": "direct",
+    "cause": "scratches_caused_by_polishing_during_cmp",
+    "cause_name": "scratches caused by polishing during chemical–mechanical polishing (CMP)",
+    "cause_description": "화학기계연마 공정 중 연마로 인해 긁힘이 발생하는 원인이다.",
+    "tier": "근거없음",
+    "sentence": "Scratch 패턴은 화학기계연마 공정 중 연마로 인해 긁힘이 발생하는 원인이 이 패턴의 원인으로 지목된 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+    "quotes": [
+      "scratches caused by polishing during chemical–mechanical polishing (CMP)"
+    ]
+  },
+  {
+    "pattern": "Edge-Ring",
+    "rank": 49,
+    "route": "direct",
+    "cause": "anomalous_temperature_regulation_during_rapid_thermal_process_rtp",
+    "cause_name": "anomalous temperature regulation during rapid thermal process (RTP)",
+    "cause_description": "급속 열처리 과정에서 온도 조절이 비정상적인 상태이다.",
+    "tier": "근거없음",
+    "sentence": "문헌이 Edge-Ring 패턴의 원인으로 anomalous temperature regulation during rapid thermal process (RTP)를 지목한 가설이며, 급속 열처리 공정에서 온도 조절 비정상이 있었는지 확인해야 하고 fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+    "quotes": [
+      "Anomalous temperature regulation during rapid thermal process (RTP)"
+    ]
+  },
+  {
+    "pattern": "Edge-Ring",
+    "rank": 50,
+    "route": "direct",
+    "cause": "insufficient_heating_due_to_wafer_thickness_variations",
+    "cause_name": "insufficient heating due to wafer thickness variations",
+    "cause_description": "웨이퍼 두께 변동 때문에 가열이 충분하지 않은 상태이다.",
+    "tier": "근거없음",
+    "sentence": "문헌이 Edge-Ring 패턴의 원인으로 insufficient heating due to wafer thickness variations를 지목한 가설이며, 웨이퍼 두께 변동으로 인해 가열이 충분하지 않았는지 확인해야 하고 fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+    "quotes": [
+      "insufficient heating due to wafer thickness variations"
+    ]
+  },
+  {
+    "pattern": "Edge-Ring",
+    "rank": 51,
+    "route": "direct",
+    "cause": "uneven_temperature_distribution_during_rapid_thermal_annealing_process",
+    "cause_name": "uneven temperature distribution during the rapid thermal annealing process",
+    "cause_description": "급속 열 어닐링 공정 동안 온도 분포가 균일하지 않은 상태를 의미한다.",
+    "tier": "근거없음",
+    "sentence": "문헌이 Edge-Ring 패턴의 원인으로 uneven temperature distribution during the rapid thermal annealing process를 지목한 가설이며, 급속 열 어닐링 공정에서 온도 분포가 균일하지 않았는지 확인해야 하고 fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+    "quotes": [
+      "along the wafer's edge (circular ring), this may be a result of ... an uneven temperature distribution during the rapid thermal annealing process"
+    ]
+  },
+  {
+    "pattern": "Edge-Ring",
+    "rank": 52,
+    "route": "direct",
+    "cause": "nonuniform_thin_film_deposition_process",
+    "cause_name": "nonuniformities created in the thin film deposition process",
+    "cause_description": "박막 증착 공정에서 불균일성이 발생한 상태를 의미한다.",
+    "tier": "근거없음",
+    "sentence": "문헌이 Edge-Ring 패턴의 원인으로 nonuniformities created in the thin film deposition process를 지목한 가설이며, 박막 증착 공정에서 불균일성이 발생했는지 확인해야 하고 fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+    "quotes": [
+      "a circular ring is due to problems in the etching step",
+      "along the wafer's edge (circular ring), this may be a result of nonuniformities created in the thin film deposition process"
+    ]
+  },
+  {
+    "pattern": "Edge-Ring",
+    "rank": 53,
+    "route": "direct",
+    "cause": "cold_process",
+    "cause_name": "cold process",
+    "cause_description": "공정 온도가 낮은 상태이다.",
+    "tier": "근거없음",
+    "sentence": "문헌이 Edge-Ring 패턴의 원인으로 cold process를 지목한 가설이며, 공정 온도가 낮았는지 확인해야 하고 fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+    "quotes": [
+      "or cold process"
+    ]
+  }
+]

@@ -1,0 +1,9 @@
+if the pattern is located around the wafer center (bulls eye) ... this may be a result of nonuniformities created in the thin film deposition process or an uneven temperature distribution during the rapid thermal annealing process
+
+The second-source injection sub-system provides a concentration gradient of the control gas relative to the substrate surface coated, and alters the thickness uniformity of the film.
+
+A center often arises due to problems in the thin film deposition, a ring is due to problems in the etching step, a scratch is a result of machine handing problems (Wang and Bensmial, 2006) and particle-type defects can be fixed by cleaning the surface with an air blower (Cheon et al., 2019).
+
+The multiple slurry sources have differing chemical and physical compositions, and are delivered to different locations along the membrane.
+
+Since the centrifugal force acting on deionized water near the center of rotation of the wafer is weaker than that on the periphery of the wafer, deionized water supplied around the center of rotation of the wafer stays on the surface longer than that supplied to the periphery... particles become concentrated around the central portion of the wafer, causing pattern defects

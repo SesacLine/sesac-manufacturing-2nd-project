@@ -1,0 +1,4578 @@
+{
+  "meta": {
+    "generated_at": "2026-07-10T22:22:50+09:00",
+    "model": "gpt-5.4-mini",
+    "neo4j_database": "neo4j",
+    "top_k": null,
+    "question_template": "{pattern} 결함 패턴이 나타나는 근본 원인은 무엇인가요?",
+    "tier_legend": {
+      "자동": "Parameter. telemetry.param과 결정적 조인 + 정상범위 판정. agent가 결론까지.",
+      "반자동": "Maintenance/Recipe. fab 테이블 조회는 되지만 판정은 사람 몫.",
+      "근거없음": "evidence 없는 문헌 서술. fab 데이터로 확인 불가."
+    },
+    "score_note": "score = (tier, occurrence_prior, confidence) 내림차순. tier 외 성분은 LLM 자기평가라 신뢰도 낮음 (STATUS.md P2)."
+  },
+  "questions": [
+    {
+      "pattern": "Center",
+      "question": "Center 결함 패턴이 나타나는 근본 원인은 무엇인가요?",
+      "counts": {
+        "total": 62,
+        "by_tier": {
+          "자동": 14,
+          "반자동": 44,
+          "근거없음": 4
+        },
+        "by_route": {
+          "step": 58,
+          "direct": 4
+        }
+      },
+      "hypotheses": [
+        {
+          "rank": 1,
+          "sentence": "Center 패턴은 DEPO 공정의 cracks in the film surface 결함이 excessive stress 근본원인으로 인해 발생한 것으로 보이며, 자동 계측 변수 susceptor_temp 값이 높은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "cracks_in_film_surface",
+            "cause": "excessive_stress",
+            "evidence": "susceptor_temp",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "high"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "cracks in the film surface",
+            "cause_name": "excessive stress",
+            "cause_description": "필름에 과도한 응력이 발생하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c15"
+            ],
+            "quotes": [
+              "A. Excessive stress leads to: - Cracks in the film surface."
+            ]
+          }
+        },
+        {
+          "rank": 2,
+          "sentence": "Center 패턴은 DEPO 공정의 loss of film adhesion 결함이 excessive stress 근본원인으로 인해 발생한 것으로 보이며, 자동 계측 변수 susceptor_temp 값이 높은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "loss_of_film_adhesion",
+            "cause": "excessive_stress",
+            "evidence": "susceptor_temp",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "high"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "loss of film adhesion",
+            "cause_name": "excessive stress",
+            "cause_description": "필름에 과도한 응력이 발생하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c15"
+            ],
+            "quotes": [
+              "A. Excessive stress leads to: - Loss of film adhesion."
+            ]
+          }
+        },
+        {
+          "rank": 3,
+          "sentence": "Center 패턴은 DEPO 공정의 increased resistivity 결함이 excessive stress 근본원인으로 인해 발생한 것으로 보이며, 자동 계측 변수 susceptor_temp 값이 높은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "increased_resistivity",
+            "cause": "excessive_stress",
+            "evidence": "susceptor_temp",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "high"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "increased resistivity",
+            "cause_name": "excessive stress",
+            "cause_description": "필름에 과도한 응력이 발생하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c15"
+            ],
+            "quotes": [
+              "A. Excessive stress leads to: - Increased resistivity in some materials."
+            ]
+          }
+        },
+        {
+          "rank": 4,
+          "sentence": "Center 패턴은 DEPO 공정의 step_coverage_degradation 결함이 Decrease in substrate temperature 근본원인으로 인해 발생한 것으로 보이며, 자동 계측 변수 susceptor_temp 값이 낮은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "step_coverage_degradation",
+            "cause": "decrease_in_substrate_temperature",
+            "evidence": "susceptor_temp",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "low"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Degradation in step coverage of metal film",
+            "cause_name": "Decrease in substrate temperature",
+            "cause_description": "증착 중 기판 온도가 감소하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c18"
+            ],
+            "quotes": [
+              "A. Decrease in substrate temperature."
+            ]
+          }
+        },
+        {
+          "rank": 5,
+          "sentence": "Center 패턴은 DEPO 공정의 degradation_in_step_coverage_of_metal_film 결함이 increase in deposition rate 근본원인으로 인해 발생한 것으로 보이며, 자동 계측 변수 deposition_rate 값이 높은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "degradation_in_step_coverage_of_metal_film",
+            "cause": "increase_in_deposition_rate",
+            "evidence": "deposition_rate",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "high"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "degradation in step coverage of metal film",
+            "cause_name": "increase in deposition rate",
+            "cause_description": "증착률이 증가한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c19"
+            ],
+            "quotes": [
+              "B. Increase in deposition rate."
+            ]
+          }
+        },
+        {
+          "rank": 6,
+          "sentence": "Center 패턴은 DEPO 공정의 gate_oxide_thickness_outside_specification 결함이 Incorrect process gas flow 근본원인으로 인해 발생한 것으로 보이며, 자동 계측 변수 gas_flow 값이 높은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "gate_oxide_thickness_outside_specification",
+            "cause": "incorrect_process_gas_flow",
+            "evidence": "gas_flow",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "high"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Thickness of gate oxide outside of specification",
+            "cause_name": "Incorrect process gas flow",
+            "cause_description": "공정 가스 유량이 잘못된 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c00"
+            ],
+            "quotes": [
+              "Possible reasons for this problem are:",
+              "Incorrect process gas flow (e.g., MFC calibrated improperly)."
+            ]
+          }
+        },
+        {
+          "rank": 7,
+          "sentence": "Center 패턴은 DEPO 공정의 cracking_and_delamination 결함이 high_film_stress 근본원인으로 인해 발생한 것으로 보이며, 자동 계측 변수 rf_power 값이 높은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "cracking_and_delamination",
+            "cause": "high_film_stress",
+            "evidence": "rf_power",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "high"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "cracking and delamination",
+            "cause_name": "high film stress",
+            "cause_description": "막의 응력이 높은 상태가 결함을 유발하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c08"
+            ],
+            "quotes": [
+              "High film stress leads to cracking and delamination."
+            ]
+          }
+        },
+        {
+          "rank": 8,
+          "sentence": "Center 패턴은 DEPO 공정의 cracking_and_delamination 결함이 high_film_stress 근본원인으로 인해 발생한 것으로 보이며, 자동 계측 변수 chamber_pressure 값이 높은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "cracking_and_delamination",
+            "cause": "high_film_stress",
+            "evidence": "chamber_pressure",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "high"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "cracking and delamination",
+            "cause_name": "high film stress",
+            "cause_description": "막의 응력이 높은 상태가 결함을 유발하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c08"
+            ],
+            "quotes": [
+              "High film stress leads to cracking and delamination."
+            ]
+          }
+        },
+        {
+          "rank": 9,
+          "sentence": "Center 패턴은 DEPO 공정의 cracks in the film surface 결함이 excessive stress 근본원인으로 인해 발생한 것으로 보이며, 자동 계측 변수 deposition_rate 값이 낮은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "cracks_in_film_surface",
+            "cause": "excessive_stress",
+            "evidence": "deposition_rate",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "low"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "cracks in the film surface",
+            "cause_name": "excessive stress",
+            "cause_description": "필름에 과도한 응력이 발생하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c15"
+            ],
+            "quotes": [
+              "A. Excessive stress leads to: - Cracks in the film surface."
+            ]
+          }
+        },
+        {
+          "rank": 10,
+          "sentence": "Center 패턴은 DEPO 공정의 loss of film adhesion 결함이 excessive stress 근본원인으로 인해 발생한 것으로 보이며, 자동 계측 변수 deposition_rate 값이 낮은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "loss_of_film_adhesion",
+            "cause": "excessive_stress",
+            "evidence": "deposition_rate",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "low"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "loss of film adhesion",
+            "cause_name": "excessive stress",
+            "cause_description": "필름에 과도한 응력이 발생하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c15"
+            ],
+            "quotes": [
+              "A. Excessive stress leads to: - Loss of film adhesion."
+            ]
+          }
+        },
+        {
+          "rank": 11,
+          "sentence": "Center 패턴은 DEPO 공정의 increased_resistivity 결함이 excessive stress 근본원인으로 인해 발생한 것으로 보이며, 자동 계측 변수 deposition_rate 값이 낮은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "increased_resistivity",
+            "cause": "excessive_stress",
+            "evidence": "deposition_rate",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "low"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "increased resistivity",
+            "cause_name": "excessive stress",
+            "cause_description": "필름에 과도한 응력이 발생하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c15"
+            ],
+            "quotes": [
+              "A. Excessive stress leads to: - Increased resistivity in some materials."
+            ]
+          }
+        },
+        {
+          "rank": 12,
+          "sentence": "Center 패턴은 DEPO 공정의 particle_contamination_associated_with_film 결함이 gas_phase_nucleation_particles_from_gas_too_rich_in_silane_or_silicon 근본원인으로 인해 발생한 것으로 보이며, 자동 계측 변수 gas_flow 값이 높은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particle_contamination_associated_with_film",
+            "cause": "gas_phase_nucleation_particles_from_gas_too_rich_in_silane_or_silicon",
+            "evidence": "gas_flow",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "high"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Particle contamination associated with film",
+            "cause_name": "Gas-phase nucleation particles from gas too rich in silane or silicon",
+            "cause_description": "실란이나 실리콘이 과도하게 많은 가스 때문에 기상 핵생성 입자가 발생한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c11"
+            ],
+            "quotes": [
+              "B. In film: Gas-phase nucleation particles from gas too rich in silane or silicon."
+            ]
+          }
+        },
+        {
+          "rank": 13,
+          "sentence": "Center 패턴은 DEPO 공정에서 film_thickness_exceeds_requirements가 발생한 것으로 보이며, deposition_time_too_high가 원인일 수 있으므로 계측 변수 susceptor_temp 값이 낮은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "film_thickness_exceeds_requirements",
+            "cause": "deposition_time_too_high",
+            "evidence": "susceptor_temp",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "low"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 3.6666666666666665
+          },
+          "detail": {
+            "failure_mode_name": "Thickness of film exceeds requirements",
+            "cause_name": "deposition time too high",
+            "cause_description": "증착 시간이 너무 길어 박막 두께가 증가하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c09"
+            ],
+            "quotes": [
+              "Thickness of film exceeds requirements.",
+              "Time: reduce deposition time to reduce thickness"
+            ]
+          }
+        },
+        {
+          "rank": 14,
+          "sentence": "Center 패턴은 DEPO 공정에서 film_thickness_exceeds_requirements가 발생한 것으로 보이며, gas_flow_rate_too_high가 원인일 수 있으므로 계측 변수 gas_flow 값이 낮은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "film_thickness_exceeds_requirements",
+            "cause": "gas_flow_rate_too_high",
+            "evidence": "gas_flow",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "low"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 3.6666666666666665
+          },
+          "detail": {
+            "failure_mode_name": "Thickness of film exceeds requirements",
+            "cause_name": "gas-flow rate too high",
+            "cause_description": "가스 유량이 너무 커서 박막 두께가 증가하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c09"
+            ],
+            "quotes": [
+              "Thickness of film exceeds requirements.",
+              "Gas-flow rate: reduce gas flow to reduce thickness"
+            ]
+          }
+        },
+        {
+          "rank": 15,
+          "sentence": "Center 패턴은 DEPO 공정에서 particles_in_oxide_film이 발생한 것으로 보이며, contaminated_quartzware가 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particles_in_oxide_film",
+            "cause": "contaminated_quartzware",
+            "evidence": "check_cleanliness_of_quartzware_and_carrier",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Particles in the oxide film",
+            "cause_name": "Contaminated quartzware",
+            "cause_description": "석영 용기류가 오염된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c02"
+            ],
+            "quotes": [
+              "A. Contaminated quartzware."
+            ]
+          }
+        },
+        {
+          "rank": 16,
+          "sentence": "Center 패턴은 DEPO 공정에서 particles_in_oxide_film이 발생한 것으로 보이며, contaminated_carrier가 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particles_in_oxide_film",
+            "cause": "contaminated_carrier",
+            "evidence": "check_cleanliness_of_quartzware_and_carrier",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Particles in the oxide film",
+            "cause_name": "Contaminated carrier",
+            "cause_description": "캐리어가 오염된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c02"
+            ],
+            "quotes": [
+              "C. Contaminated carrier."
+            ]
+          }
+        },
+        {
+          "rank": 17,
+          "sentence": "Center 패턴은 DEPO 공정에서 particles_in_oxide_film이 발생한 것으로 보이며, contaminated_gas_filter_or_line가 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particles_in_oxide_film",
+            "cause": "contaminated_gas_filter_or_line",
+            "evidence": "check_incoming_gas_filters",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Particles in the oxide film",
+            "cause_name": "Contaminated gas filter or line",
+            "cause_description": "가스 필터 또는 라인이 오염된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c02"
+            ],
+            "quotes": [
+              "D. Contaminated gas filter or line."
+            ]
+          }
+        },
+        {
+          "rank": 18,
+          "sentence": "Center 패턴은 DEPO 공정에서 particles_under_the_oxide_film이 발생한 것으로 보이며, contaminated_preoxidation_clean이 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particles_under_the_oxide_film",
+            "cause": "contaminated_preoxidation_clean",
+            "evidence": "check_cleanliness_of_quartzware_and_carrier",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "particles under the oxide film",
+            "cause_name": "contaminated preoxidation clean",
+            "cause_description": "산화 이전 세정이 오염되어 입자가 발생하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c03"
+            ],
+            "quotes": [
+              "A. Contaminated preoxidation clean."
+            ]
+          }
+        },
+        {
+          "rank": 19,
+          "sentence": "Center 패턴은 DEPO 공정에서 particles_under_the_oxide_film이 발생한 것으로 보이며, contaminated_preoxidation_clean이 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particles_under_the_oxide_film",
+            "cause": "contaminated_preoxidation_clean",
+            "evidence": "preoxidation_clean_steps_properly_set_up_and_performed",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "particles under the oxide film",
+            "cause_name": "contaminated preoxidation clean",
+            "cause_description": "산화 이전 세정이 오염되어 입자가 발생하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c03"
+            ],
+            "quotes": [
+              "A. Contaminated preoxidation clean."
+            ]
+          }
+        },
+        {
+          "rank": 20,
+          "sentence": "Center 패턴은 DEPO 공정에서 incorrect_gas_flow_into_furnace_tube가 발생한 것으로 보이며, incorrect_process_recipe가 원인일 수 있으므로 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "incorrect_gas_flow_into_furnace_tube",
+            "cause": "incorrect_process_recipe",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect gas flow into furnace tube",
+            "cause_name": "Incorrect process recipe",
+            "cause_description": "공정 레시피가 잘못된 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c04"
+            ],
+            "quotes": [
+              "A. Incorrect process recipe."
+            ]
+          }
+        },
+        {
+          "rank": 21,
+          "sentence": "Center 패턴은 DEPO 공정에서 incorrect_temperature_uniformity_in_vertical_furnace_chamber가 발생한 것으로 보이며, wrong_process_recipe_for_product가 원인일 수 있으므로 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "incorrect_temperature_uniformity_in_vertical_furnace_chamber",
+            "cause": "wrong_process_recipe_for_product",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect temperature uniformity in vertical furnace chamber",
+            "cause_name": "Wrong process recipe for product",
+            "cause_description": "제품에 대해 잘못된 공정 레시피가 적용된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c05"
+            ],
+            "quotes": [
+              "A. Wrong process recipe for product."
+            ]
+          }
+        },
+        {
+          "rank": 22,
+          "sentence": "Center 패턴은 DEPO 공정에서 incorrect_temperature_uniformity_in_vertical_furnace_chamber가 발생한 것으로 보이며, incorrect_operation_of_thermocouples가 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "incorrect_temperature_uniformity_in_vertical_furnace_chamber",
+            "cause": "incorrect_operation_of_thermocouples",
+            "evidence": "check_all_thermocouples_for_proper_operation",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect temperature uniformity in vertical furnace chamber",
+            "cause_name": "Incorrect operation of thermocouples",
+            "cause_description": "열전대가 올바르게 동작하지 않는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c05"
+            ],
+            "quotes": [
+              "B. Incorrect operation of thermocouples."
+            ]
+          }
+        },
+        {
+          "rank": 23,
+          "sentence": "Center 패턴은 DEPO 공정에서 incorrect_temperature_uniformity_in_vertical_furnace_chamber가 발생한 것으로 보이며, incorrect_operation_of_thermocouples가 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "incorrect_temperature_uniformity_in_vertical_furnace_chamber",
+            "cause": "incorrect_operation_of_thermocouples",
+            "evidence": "replace_defective_thermocouples",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect temperature uniformity in vertical furnace chamber",
+            "cause_name": "Incorrect operation of thermocouples",
+            "cause_description": "열전대가 올바르게 동작하지 않는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c05"
+            ],
+            "quotes": [
+              "B. Incorrect operation of thermocouples."
+            ]
+          }
+        },
+        {
+          "rank": 24,
+          "sentence": "Center 패턴은 DEPO 공정에서 film_thickness가 발생한 것으로 보이며, system_pressure_too_high_or_low가 원인일 수 있으므로 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "film_thickness",
+            "cause": "system_pressure_too_high_or_low",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Film thickness",
+            "cause_name": "System pressure is too high or low",
+            "cause_description": "시스템 압력이 너무 높거나 낮아 막 두께에 영향을 주는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c12"
+            ],
+            "quotes": [
+              "B. System pressure is too high or low."
+            ]
+          }
+        },
+        {
+          "rank": 25,
+          "sentence": "Center 패턴은 DEPO 공정의 Film thickness 불량이 improper gas flow 때문에 발생한 것으로 보이며, MFC calibration 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "film_thickness",
+            "cause": "improper_gas_flow",
+            "evidence": "mfc_calibration",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Film thickness",
+            "cause_name": "improper gas flow",
+            "cause_description": "가스 유량이 부적절한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c12"
+            ],
+            "quotes": [
+              "D. Improper gas flow."
+            ]
+          }
+        },
+        {
+          "rank": 26,
+          "sentence": "Center 패턴은 DEPO 공정의 Film thickness 불량이 improper gas flow 때문에 발생한 것으로 보이며, check/calibrate gas distribution system 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "film_thickness",
+            "cause": "improper_gas_flow",
+            "evidence": "check_calibrate_gas_distribution_system",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Film thickness",
+            "cause_name": "improper gas flow",
+            "cause_description": "가스 유량이 부적절한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c12"
+            ],
+            "quotes": [
+              "D. Improper gas flow."
+            ]
+          }
+        },
+        {
+          "rank": 27,
+          "sentence": "Center 패턴은 DEPO 공정의 vacuum chamber integrity 불량이 chamber cleanliness or moisture in chamber 때문에 발생한 것으로 보이며, clean chamber 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "vacuum_chamber_integrity",
+            "cause": "chamber_cleanliness_or_moisture_in_chamber",
+            "evidence": "clean_chamber",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "vacuum chamber integrity",
+            "cause_name": "Chamber cleanliness or moisture in chamber",
+            "cause_description": "챔버의 청결 상태가 불량하거나 챔버 내부에 수분이 존재하는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c20"
+            ],
+            "quotes": [
+              "A. Chamber cleanliness or moisture in chamber."
+            ]
+          }
+        },
+        {
+          "rank": 28,
+          "sentence": "Center 패턴은 DEPO 공정의 vacuum chamber integrity 불량이 chamber cleanliness or moisture in chamber 때문에 발생한 것으로 보이며, H₂O bake-out 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "vacuum_chamber_integrity",
+            "cause": "chamber_cleanliness_or_moisture_in_chamber",
+            "evidence": "h2o_bake_out",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "vacuum chamber integrity",
+            "cause_name": "Chamber cleanliness or moisture in chamber",
+            "cause_description": "챔버의 청결 상태가 불량하거나 챔버 내부에 수분이 존재하는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c20"
+            ],
+            "quotes": [
+              "A. Chamber cleanliness or moisture in chamber."
+            ]
+          }
+        },
+        {
+          "rank": 29,
+          "sentence": "Center 패턴은 DEPO 공정의 vacuum chamber integrity 불량이 outgassing or system leaks 때문에 발생한 것으로 보이며, helium leak detection 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "vacuum_chamber_integrity",
+            "cause": "outgassing_or_system_leaks",
+            "evidence": "helium_leak_detection",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "vacuum chamber integrity",
+            "cause_name": "outgassing or system leaks",
+            "cause_description": "아웃가싱 또는 시스템 누설이 발생한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c21"
+            ],
+            "quotes": [
+              "[원인] B. Outgassing or system leaks."
+            ]
+          }
+        },
+        {
+          "rank": 30,
+          "sentence": "Center 패턴은 DEPO 공정의 Particles in the oxide film 불량이 Wafer broken inside furnace 때문에 발생한 것으로 보이며, Verify the alignment of the robotic handling systems 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particles_in_oxide_film",
+            "cause": "wafer_broken_inside_furnace",
+            "evidence": "verify_alignment_of_robotic_handling_systems",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Particles in the oxide film",
+            "cause_name": "Wafer broken inside furnace",
+            "cause_description": "퍼니스 내부에서 웨이퍼가 깨진 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c02"
+            ],
+            "quotes": [
+              "B. Wafer broken inside furnace."
+            ]
+          }
+        },
+        {
+          "rank": 31,
+          "sentence": "Center 패턴은 DEPO 공정의 Incorrect gas flow into furnace tube 불량이 Malfunctioning MFC 때문에 발생한 것으로 보이며, Check process gas MFCs (O₂, N₂, H₂, Cl) 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "incorrect_gas_flow_into_furnace_tube",
+            "cause": "malfunctioning_mfc",
+            "evidence": "check_process_gas_mfcs",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect gas flow into furnace tube",
+            "cause_name": "Malfunctioning MFC",
+            "cause_description": "MFC가 오작동하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c04"
+            ],
+            "quotes": [
+              "B. Malfunctioning MFC."
+            ]
+          }
+        },
+        {
+          "rank": 32,
+          "sentence": "Center 패턴은 DEPO 공정의 Incorrect gas flow into furnace tube 불량이 Incorrect H₂:O₂ ratio for steam process (O₂ starved) 때문에 발생한 것으로 보이며, Verify gas valves are functioning properly 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "incorrect_gas_flow_into_furnace_tube",
+            "cause": "incorrect_h2_o2_ratio_for_steam_process",
+            "evidence": "verify_gas_valves_functioning_properly",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect gas flow into furnace tube",
+            "cause_name": "Incorrect H₂:O₂ ratio for steam process (O₂ starved)",
+            "cause_description": "스팀 공정에서 H₂:O₂ 비율이 잘못되어 산소가 부족한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c04"
+            ],
+            "quotes": [
+              "C. Incorrect H₂:O₂ ratio for steam process (O₂ starved)."
+            ]
+          }
+        },
+        {
+          "rank": 33,
+          "sentence": "Center 패턴은 DEPO 공정의 Inadequate temperature uniformity in rapid thermal processor (RTP) 불량이 Malfunctioning heating system 때문에 발생한 것으로 보이며, verify heating lamps are operating 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "inadequate_temperature_uniformity",
+            "cause": "malfunctioning_heating_system",
+            "evidence": "verify_heating_lamps_operating",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Inadequate temperature uniformity in rapid thermal processor (RTP)",
+            "cause_name": "Malfunctioning heating system",
+            "cause_description": "가열 시스템이 정상적으로 동작하지 않는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c06"
+            ],
+            "quotes": [
+              "A. Malfunctioning heating system (e.g., tungsten halogen lamps)."
+            ]
+          }
+        },
+        {
+          "rank": 34,
+          "sentence": "Center 패턴은 DEPO 공정의 Inadequate temperature uniformity in rapid thermal processor (RTP) 불량이 Malfunctioning heating system 때문에 발생한 것으로 보이며, verify correct lamp intensity 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "inadequate_temperature_uniformity",
+            "cause": "malfunctioning_heating_system",
+            "evidence": "verify_correct_lamp_intensity",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Inadequate temperature uniformity in rapid thermal processor (RTP)",
+            "cause_name": "Malfunctioning heating system",
+            "cause_description": "가열 시스템이 정상적으로 동작하지 않는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c06"
+            ],
+            "quotes": [
+              "A. Malfunctioning heating system (e.g., tungsten halogen lamps)."
+            ]
+          }
+        },
+        {
+          "rank": 35,
+          "sentence": "Center 패턴은 DEPO 공정의 Film thickness 불량이 Incorrect temperature control 때문에 발생한 것으로 보이며, temperature controller calibration 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "film_thickness",
+            "cause": "incorrect_temperature_control",
+            "evidence": "temperature_controller_calibration",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Film thickness",
+            "cause_name": "Incorrect temperature control",
+            "cause_description": "온도 제어가 부정확하여 막 두께에 영향을 주는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c12"
+            ],
+            "quotes": [
+              "Variables affecting thickness are: A. Incorrect temperature control."
+            ]
+          }
+        },
+        {
+          "rank": 36,
+          "sentence": "Center 패턴은 DEPO 공정의 Film thickness 불량이 Incorrect temperature control 때문에 발생한 것으로 보이며, defective thermocouple replacement 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "film_thickness",
+            "cause": "incorrect_temperature_control",
+            "evidence": "defective_thermocouple_replacement",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Film thickness",
+            "cause_name": "Incorrect temperature control",
+            "cause_description": "온도 제어가 부정확하여 막 두께에 영향을 주는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c12"
+            ],
+            "quotes": [
+              "Variables affecting thickness are: A. Incorrect temperature control."
+            ]
+          }
+        },
+        {
+          "rank": 37,
+          "sentence": "Center 패턴은 DEPO 공정의 Film thickness(film_thickness) 불량과 연관되며, 근본 원인은 system pressure is too high or low(system_pressure_too_high_or_low)로 보이므로 vacuum system leak check 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "film_thickness",
+            "cause": "system_pressure_too_high_or_low",
+            "evidence": "vacuum_system_leak_check",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Film thickness",
+            "cause_name": "System pressure is too high or low",
+            "cause_description": "시스템 압력이 너무 높거나 낮아 막 두께에 영향을 주는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c12"
+            ],
+            "quotes": [
+              "B. System pressure is too high or low."
+            ]
+          }
+        },
+        {
+          "rank": 38,
+          "sentence": "Center 패턴은 DEPO 공정의 ESC 상부 dielectric material cracking(cracking_of_dielectric_material_on_top_of_electrostatic_chuck_esc) 불량과 연관되며, 근본 원인은 high thermal load at the ESC(high_thermal_load_at_esc)로 보이므로 ESC backside cooling system 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "cracking_of_dielectric_material_on_top_of_electrostatic_chuck_esc",
+            "cause": "high_thermal_load_at_esc",
+            "evidence": "investigate_esc_backside_cooling_system",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Cracking of dielectric material on top of electrostatic chuck (ESC)",
+            "cause_name": "High thermal load at the ESC",
+            "cause_description": "ESC에 높은 열 부하가 가해진 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c13"
+            ],
+            "quotes": [
+              "High thermal load at the ESC causes the dielectric material to erode or crack."
+            ]
+          }
+        },
+        {
+          "rank": 39,
+          "sentence": "Center 패턴은 DEPO 공정의 ESC 상부 dielectric material cracking(cracking_of_dielectric_material_on_top_of_electrostatic_chuck_esc) 불량과 연관되며, 근본 원인은 high thermal load at the ESC(high_thermal_load_at_esc)로 보이므로 ESC materials 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "cracking_of_dielectric_material_on_top_of_electrostatic_chuck_esc",
+            "cause": "high_thermal_load_at_esc",
+            "evidence": "inspect_esc_materials",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Cracking of dielectric material on top of electrostatic chuck (ESC)",
+            "cause_name": "High thermal load at the ESC",
+            "cause_description": "ESC에 높은 열 부하가 가해진 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c13"
+            ],
+            "quotes": [
+              "High thermal load at the ESC causes the dielectric material to erode or crack."
+            ]
+          }
+        },
+        {
+          "rank": 40,
+          "sentence": "Center 패턴은 DEPO 공정의 nonuniform film thickness(nonuniform_film_thickness) 불량과 연관되며, 근본 원인은 inadequate gap fill and step coverage for high aspect ratio openings(inadequate_gap_fill_and_step_coverage)로 보이므로 depositing a uniform CVD seed layer without voids 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "nonuniform_film_thickness",
+            "cause": "inadequate_gap_fill_and_step_coverage",
+            "evidence": "depositing_a_uniform_cvd_seed_layer_without_voids",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "nonuniform film thickness",
+            "cause_name": "inadequate gap fill and step coverage for high aspect ratio openings",
+            "cause_description": "고종횡비 개구부에서 틈 메움과 스텝 커버리지가 부족한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c17"
+            ],
+            "quotes": [
+              "Inadequate gap fill and step coverage for high aspect ratio openings (nonuniform metal thickness at top and bottom of high aspect ratio holes)."
+            ]
+          }
+        },
+        {
+          "rank": 41,
+          "sentence": "Center 패턴은 DEPO 공정의 nonuniform film thickness(nonuniform_film_thickness) 불량과 연관되며, 근본 원인은 inadequate gap fill and step coverage for high aspect ratio openings(inadequate_gap_fill_and_step_coverage)로 보이므로 maintaining proper electroplating bath chemistry 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "nonuniform_film_thickness",
+            "cause": "inadequate_gap_fill_and_step_coverage",
+            "evidence": "maintaining_proper_electroplating_bath_chemistry",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "nonuniform film thickness",
+            "cause_name": "inadequate gap fill and step coverage for high aspect ratio openings",
+            "cause_description": "고종횡비 개구부에서 틈 메움과 스텝 커버리지가 부족한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c17"
+            ],
+            "quotes": [
+              "Inadequate gap fill and step coverage for high aspect ratio openings (nonuniform metal thickness at top and bottom of high aspect ratio holes)."
+            ]
+          }
+        },
+        {
+          "rank": 42,
+          "sentence": "Center 패턴은 DEPO 공정의 vacuum chamber integrity(vacuum_chamber_integrity) 불량과 연관되며, 근본 원인은 outgassing or system leaks(outgassing_or_system_leaks)로 보이므로 residual gas analyzer assessment 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "vacuum_chamber_integrity",
+            "cause": "outgassing_or_system_leaks",
+            "evidence": "residual_gas_analyzer_assessment",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "vacuum chamber integrity",
+            "cause_name": "outgassing or system leaks",
+            "cause_description": "아웃가싱 또는 시스템 누설이 발생한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c21"
+            ],
+            "quotes": [
+              "[원인] B. Outgassing or system leaks."
+            ]
+          }
+        },
+        {
+          "rank": 43,
+          "sentence": "Center 패턴은 DEPO 공정의 Contamination of metal film(contamination_of_metal_film) 불량과 연관되며, 근본 원인은 Particles on surface of film(particles_on_surface_of_film)로 보이므로 chamber cleaning between runs 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "contamination_of_metal_film",
+            "cause": "particles_on_surface_of_film",
+            "evidence": "chamber_cleaning_between_runs",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Contamination of metal film",
+            "cause_name": "Particles on surface of film",
+            "cause_description": "박막 표면에 입자가 존재하는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c22"
+            ],
+            "quotes": [
+              "A. Particles on surface of film."
+            ]
+          }
+        },
+        {
+          "rank": 44,
+          "sentence": "Center 패턴은 DEPO 공정의 Thickness of gate oxide outside of specification(gate_oxide_thickness_outside_specification) 불량과 연관되며, 근본 원인은 O2 leak integrity issue(o2_leak_integrity_issue)로 보이므로 bare silicon test wafer 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "gate_oxide_thickness_outside_specification",
+            "cause": "o2_leak_integrity_issue",
+            "evidence": "bare_silicon_test_wafer",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Thickness of gate oxide outside of specification",
+            "cause_name": "O2 leak integrity issue",
+            "cause_description": "퍼니스의 산소 누설 건전성이 불량한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c00"
+            ],
+            "quotes": [
+              "Verify O2 leak integrity of the furnace with a bare silicon test wafer."
+            ]
+          }
+        },
+        {
+          "rank": 45,
+          "sentence": "Center 패턴은 DEPO 공정의 Incorrect gas flow into furnace tube(incorrect_gas_flow_into_furnace_tube) 불량과 연관되며, 근본 원인은 Incorrect H₂:O₂ ratio for steam process (O₂ starved)(incorrect_h2_o2_ratio_for_steam_process)로 보이므로 Check process gas MFCs (O₂, N₂, H₂, Cl) 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "incorrect_gas_flow_into_furnace_tube",
+            "cause": "incorrect_h2_o2_ratio_for_steam_process",
+            "evidence": "check_process_gas_mfcs",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect gas flow into furnace tube",
+            "cause_name": "Incorrect H₂:O₂ ratio for steam process (O₂ starved)",
+            "cause_description": "스팀 공정에서 H₂:O₂ 비율이 잘못되어 산소가 부족한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c04"
+            ],
+            "quotes": [
+              "C. Incorrect H₂:O₂ ratio for steam process (O₂ starved)."
+            ]
+          }
+        },
+        {
+          "rank": 46,
+          "sentence": "Center 패턴은 DEPO 공정의 Incorrect gas flow into furnace tube(incorrect_gas_flow_into_furnace_tube) 불량과 연관되며, 근본 원인은 Incorrect H₂:O₂ ratio for steam process (O₂ starved)(incorrect_h2_o2_ratio_for_steam_process)로 보이므로 Check that no room air is leaking into the furnace tube from outside the quartz or furnace door seal 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "incorrect_gas_flow_into_furnace_tube",
+            "cause": "incorrect_h2_o2_ratio_for_steam_process",
+            "evidence": "check_room_air_leak_into_furnace_tube",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect gas flow into furnace tube",
+            "cause_name": "Incorrect H₂:O₂ ratio for steam process (O₂ starved)",
+            "cause_description": "스팀 공정에서 H₂:O₂ 비율이 잘못되어 산소가 부족한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c04"
+            ],
+            "quotes": [
+              "C. Incorrect H₂:O₂ ratio for steam process (O₂ starved)."
+            ]
+          }
+        },
+        {
+          "rank": 47,
+          "sentence": "Center 패턴은 DEPO 공정의 Inadequate temperature uniformity in rapid thermal processor(RTP)(inadequate_temperature_uniformity) 불량과 연관되며, 근본 원인은 Malfunctioning heating system(malfunctioning_heating_system)로 보이므로 verify correct calibration of the optical pyrometer temperature sensor 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "inadequate_temperature_uniformity",
+            "cause": "malfunctioning_heating_system",
+            "evidence": "verify_correct_calibration_of_optical_pyrometer_temperature_sensor",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Inadequate temperature uniformity in rapid thermal processor (RTP)",
+            "cause_name": "Malfunctioning heating system",
+            "cause_description": "가열 시스템이 정상적으로 동작하지 않는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c06"
+            ],
+            "quotes": [
+              "A. Malfunctioning heating system (e.g., tungsten halogen lamps)."
+            ]
+          }
+        },
+        {
+          "rank": 48,
+          "sentence": "Center 패턴은 DEPO 공정의 Inadequate temperature uniformity in rapid thermal processor(RTP)(inadequate_temperature_uniformity) 불량과 연관되며, 근본 원인은 Malfunctioning heating system(malfunctioning_heating_system)로 보이므로 check there is no variation in wafer emissivity by performing reflectivity measurement of the wafer surface 관련 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "inadequate_temperature_uniformity",
+            "cause": "malfunctioning_heating_system",
+            "evidence": "check_no_variation_in_wafer_emissivity_by_reflectivity_measurement",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Inadequate temperature uniformity in rapid thermal processor (RTP)",
+            "cause_name": "Malfunctioning heating system",
+            "cause_description": "가열 시스템이 정상적으로 동작하지 않는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c06"
+            ],
+            "quotes": [
+              "A. Malfunctioning heating system (e.g., tungsten halogen lamps)."
+            ]
+          }
+        },
+        {
+          "rank": 49,
+          "sentence": "Center 패턴은 DEPO 공정에서 film과 연관된 particle contamination이 gas supply contamination으로 인해 발생한 것으로 보이며, Maintenance 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particle_contamination_associated_with_film",
+            "cause": "gas_supply_contamination",
+            "evidence": "more_frequent_wet_cleaning_of_quartzware_and_chamber_surfaces",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Particle contamination associated with film",
+            "cause_name": "Gas supply contamination",
+            "cause_description": "가스 공급계의 오염으로 입자가 발생한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c11"
+            ],
+            "quotes": [
+              "Gas supply contamination causes particles."
+            ]
+          }
+        },
+        {
+          "rank": 50,
+          "sentence": "Center 패턴은 DEPO 공정에서 film과 연관된 particle contamination이 gas supply contamination으로 인해 발생한 것으로 보이며, Maintenance 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particle_contamination_associated_with_film",
+            "cause": "gas_supply_contamination",
+            "evidence": "in_situ_dry_cleaning_process",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Particle contamination associated with film",
+            "cause_name": "Gas supply contamination",
+            "cause_description": "가스 공급계의 오염으로 입자가 발생한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c11"
+            ],
+            "quotes": [
+              "Gas supply contamination causes particles."
+            ]
+          }
+        },
+        {
+          "rank": 51,
+          "sentence": "Center 패턴은 DEPO 공정에서 film과 연관된 particle contamination이 gas supply contamination으로 인해 발생한 것으로 보이며, Maintenance 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particle_contamination_associated_with_film",
+            "cause": "gas_supply_contamination",
+            "evidence": "cleaning_manually_or_in_situ",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Particle contamination associated with film",
+            "cause_name": "Gas supply contamination",
+            "cause_description": "가스 공급계의 오염으로 입자가 발생한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c11"
+            ],
+            "quotes": [
+              "Gas supply contamination causes particles."
+            ]
+          }
+        },
+        {
+          "rank": 52,
+          "sentence": "Center 패턴은 DEPO 공정에서 film과 연관된 particle contamination이 증착 전에 silicon carbide, quartz 또는 reactor walls의 입자가 웨이퍼 위로 떨어져 발생한 것으로 보이며, Maintenance 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particle_contamination_associated_with_film",
+            "cause": "particles_from_silicon_carbide_quartz_or_reactor_walls_fall_on_wafer_before_deposition",
+            "evidence": "wafer_cleaning_process_before_deposition",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Particle contamination associated with film",
+            "cause_name": "Particles from silicon carbide, quartz, or reactor walls fall on wafer before deposition",
+            "cause_description": "실리콘 카바이드, 석영 또는 반응기 벽의 입자가 증착 전에 웨이퍼 위로 떨어지는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c11"
+            ],
+            "quotes": [
+              "C. Under film: Particles from silicon carbide, quartz, or reactor walls fall on wafer before deposition."
+            ]
+          }
+        },
+        {
+          "rank": 53,
+          "sentence": "Center 패턴은 DEPO 공정에서 gate oxide thickness outside of specification이 overexposure to air로 인해 발생한 것으로 보이며, Maintenance 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "gate_oxide_thickness_outside_specification",
+            "cause": "overexposure_to_air",
+            "evidence": "standard_thickness_wafer",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Thickness of gate oxide outside of specification",
+            "cause_name": "overexposure of wafer to air",
+            "cause_description": "웨이퍼가 공기 중에 과도하게 노출된 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c00"
+            ],
+            "quotes": [
+              "Excess native oxide growth due to overexposure of wafer to air either before or after normal furnace oxidation."
+            ]
+          }
+        },
+        {
+          "rank": 54,
+          "sentence": "Center 패턴은 DEPO 공정에서 film과 연관된 particle contamination이 MFC calibration 문제 또는 소프트웨어 프로그램의 process recipe 문제로 인한 improper gas flows 때문에 발생한 것으로 보이며, 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particle_contamination_associated_with_film",
+            "cause": "improper_gas_flows_from_mfc_calibration_or_problem_in_process_recipe_of_software_program",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Particle contamination associated with film",
+            "cause_name": "Improper gas flows from MFC calibration or problem in process recipe of software program",
+            "cause_description": "MFC 보정 문제나 소프트웨어 프로그램의 공정 레시피 문제로 가스 흐름이 부적절한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c11"
+            ],
+            "quotes": [
+              "Improper gas flows from MFC calibration or problem in process recipe of software program."
+            ]
+          }
+        },
+        {
+          "rank": 55,
+          "sentence": "Center 패턴은 DEPO 공정에서 film과 연관된 particle contamination이 MFC calibration 문제 또는 소프트웨어 프로그램의 process recipe 문제로 인한 improper gas flows 때문에 발생한 것으로 보이며, Maintenance 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particle_contamination_associated_with_film",
+            "cause": "improper_gas_flows_from_mfc_calibration_or_problem_in_process_recipe_of_software_program",
+            "evidence": "leaks_in_gas_supply_system_or_o_rings",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Particle contamination associated with film",
+            "cause_name": "Improper gas flows from MFC calibration or problem in process recipe of software program",
+            "cause_description": "MFC 보정 문제나 소프트웨어 프로그램의 공정 레시피 문제로 가스 흐름이 부적절한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c11"
+            ],
+            "quotes": [
+              "Improper gas flows from MFC calibration or problem in process recipe of software program."
+            ]
+          }
+        },
+        {
+          "rank": 56,
+          "sentence": "Center 패턴은 DEPO 공정에서 film과 연관된 particle contamination이 MFC calibration 문제 또는 소프트웨어 프로그램의 process recipe 문제로 인한 improper gas flows 때문에 발생한 것으로 보이며, Maintenance 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "particle_contamination_associated_with_film",
+            "cause": "improper_gas_flows_from_mfc_calibration_or_problem_in_process_recipe_of_software_program",
+            "evidence": "point_of_use_filters",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Particle contamination associated with film",
+            "cause_name": "Improper gas flows from MFC calibration or problem in process recipe of software program",
+            "cause_description": "MFC 보정 문제나 소프트웨어 프로그램의 공정 레시피 문제로 가스 흐름이 부적절한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c11"
+            ],
+            "quotes": [
+              "Improper gas flows from MFC calibration or problem in process recipe of software program."
+            ]
+          }
+        },
+        {
+          "rank": 57,
+          "sentence": "Center 패턴은 DEPO 공정에서 film thickness가 incorrect temperature control로 인해 발생한 것으로 보이며, Maintenance 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "film_thickness",
+            "cause": "incorrect_temperature_control",
+            "evidence": "test_wafer_clean_check",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Film thickness",
+            "cause_name": "Incorrect temperature control",
+            "cause_description": "온도 제어가 부정확하여 막 두께에 영향을 주는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c12"
+            ],
+            "quotes": [
+              "Variables affecting thickness are: A. Incorrect temperature control."
+            ]
+          }
+        },
+        {
+          "rank": 58,
+          "sentence": "Center 패턴은 DEPO 공정에서 film thickness가 incorrect temperature control로 인해 발생한 것으로 보이며, Maintenance 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Center",
+            "step": "DEPO",
+            "failure_mode": "film_thickness",
+            "cause": "incorrect_temperature_control",
+            "evidence": "test_wafer_thickness_variation_check",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Film thickness",
+            "cause_name": "Incorrect temperature control",
+            "cause_description": "온도 제어가 부정확하여 막 두께에 영향을 주는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c12"
+            ],
+            "quotes": [
+              "Variables affecting thickness are: A. Incorrect temperature control."
+            ]
+          }
+        },
+        {
+          "rank": 59,
+          "sentence": "문헌이 Center 패턴의 원인으로 irregular radio frequency(RF) operation을 지목한 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+          "tier": "근거없음",
+          "route": "direct",
+          "path": {
+            "pattern": "Center",
+            "step": null,
+            "failure_mode": null,
+            "cause": "irregular_rf_operation",
+            "evidence": null,
+            "evidence_label": "None"
+          },
+          "verification": {
+            "fab_table": null,
+            "direction": null
+          },
+          "score": {
+            "tier": 0,
+            "occurrence_prior": null,
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "(문헌 직결)",
+            "cause_name": "Irregular radio frequency (RF) operation",
+            "cause_description": "무선 주파수 동작이 불규칙한 상태를 의미한다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "ref56_table1_pattern_causes#c00"
+            ],
+            "quotes": [
+              "Defects concentrated in the center of the wafer",
+              "Irregular radio frequency (RF) operation, or unusual liquid flow"
+            ]
+          }
+        },
+        {
+          "rank": 60,
+          "sentence": "문헌이 Center 패턴의 원인으로 unusual liquid flow를 지목한 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+          "tier": "근거없음",
+          "route": "direct",
+          "path": {
+            "pattern": "Center",
+            "step": null,
+            "failure_mode": null,
+            "cause": "unusual_liquid_flow",
+            "evidence": null,
+            "evidence_label": "None"
+          },
+          "verification": {
+            "fab_table": null,
+            "direction": null
+          },
+          "score": {
+            "tier": 0,
+            "occurrence_prior": null,
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "(문헌 직결)",
+            "cause_name": "unusual liquid flow",
+            "cause_description": "액체 유동이 비정상적인 상태를 의미한다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "ref56_table1_pattern_causes#c00"
+            ],
+            "quotes": [
+              "Defects concentrated in the center of the wafer",
+              "Irregular radio frequency (RF) operation, or unusual liquid flow"
+            ]
+          }
+        },
+        {
+          "rank": 61,
+          "sentence": "Center 패턴은 문헌에서 박막 증착 공정에서 생성된 비균일성으로 인한 불량으로 지목된 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+          "tier": "근거없음",
+          "route": "direct",
+          "path": {
+            "pattern": "Center",
+            "step": null,
+            "failure_mode": null,
+            "cause": "nonuniformities_created_in_thin_film_deposition_process",
+            "evidence": null,
+            "evidence_label": "None"
+          },
+          "verification": {
+            "fab_table": null,
+            "direction": null
+          },
+          "score": {
+            "tier": 0,
+            "occurrence_prior": null,
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "(문헌 직결)",
+            "cause_name": "nonuniformities created in the thin film deposition process",
+            "cause_description": "박막 증착 공정에서 생성된 비균일성이 불량의 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "center_pattern_cause#c00"
+            ],
+            "quotes": [
+              "located around the wafer center (bulls eye)",
+              "nonuniformities created in the thin film deposition process"
+            ]
+          }
+        },
+        {
+          "rank": 62,
+          "sentence": "Center 패턴은 문헌에서 급속 열 어닐링 공정 동안의 불균일한 온도 분포로 인한 불량으로 지목된 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+          "tier": "근거없음",
+          "route": "direct",
+          "path": {
+            "pattern": "Center",
+            "step": null,
+            "failure_mode": null,
+            "cause": "uneven_temperature_distribution_during_rapid_thermal_annealing_process",
+            "evidence": null,
+            "evidence_label": "None"
+          },
+          "verification": {
+            "fab_table": null,
+            "direction": null
+          },
+          "score": {
+            "tier": 0,
+            "occurrence_prior": null,
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "(문헌 직결)",
+            "cause_name": "uneven temperature distribution during the rapid thermal annealing process",
+            "cause_description": "급속 열 어닐링 공정 동안 온도 분포가 균일하지 않은 상태를 의미한다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "center_pattern_cause#c00"
+            ],
+            "quotes": [
+              "located around the wafer center (bulls eye)",
+              "uneven temperature distribution during the rapid thermal annealing process"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "pattern": "Scratch",
+      "question": "Scratch 결함 패턴이 나타나는 근본 원인은 무엇인가요?",
+      "counts": {
+        "total": 10,
+        "by_tier": {
+          "반자동": 7,
+          "근거없음": 3
+        },
+        "by_route": {
+          "step": 7,
+          "direct": 3
+        }
+      },
+      "hypotheses": [
+        {
+          "rank": 1,
+          "sentence": "Scratch 패턴은 CMP 공정의 연마 패드의 윤내기에서 과도하게 닳은 패드가 원인으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Scratch",
+            "step": "CMP",
+            "failure_mode": "pad_polishing",
+            "cause": "worn_pad",
+            "evidence": "replace_polishing_pad",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "high",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "연마 패드의 윤내기",
+            "cause_name": "과도하게 닳은 패드",
+            "cause_description": "패드가 과도하게 닳았다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c81"
+            ],
+            "quotes": [
+              "[원인] B. 과도하게 닳은 패드"
+            ]
+          }
+        },
+        {
+          "rank": 2,
+          "sentence": "Scratch 패턴은 CMP 공정의 구리 CMP 후에 깨끗한 웨이퍼의 입자들에서 유전체 또는 패턴화된 웨이퍼들의 line들 사이로부터 잔여 구리의 제거가 원인으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Scratch",
+            "step": "CMP",
+            "failure_mode": "particles_on_clean_wafer_after_copper_cmp",
+            "cause": "residual_copper_between_lines_on_dielectric_or_patterned_wafers",
+            "evidence": "inspect_whether_residual_copper_cleaning_finished_on_patterned_wafer",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "high",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "구리 CMP 후에 깨끗한 웨이퍼의 입자들",
+            "cause_name": "유전체 또는 패턴화된 웨이퍼들의 line들 사이로부터 잔여 구리의 제거",
+            "cause_description": "유전체 또는 패턴화된 웨이퍼의 선 사이에서 잔여 구리가 제거되지 않는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c80"
+            ],
+            "quotes": [
+              "C. 유전체 또는 패턴화된 웨이퍼들의 line들 사이로부터 잔여 구리의 제거"
+            ]
+          }
+        },
+        {
+          "rank": 3,
+          "sentence": "Scratch 패턴은 CMP 공정의 구리 CMP 후에 깨끗한 웨이퍼의 입자들에서 유전체 또는 패턴화된 웨이퍼들의 line들 사이로부터 잔여 구리의 제거가 원인으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Scratch",
+            "step": "CMP",
+            "failure_mode": "particles_on_clean_wafer_after_copper_cmp",
+            "cause": "residual_copper_between_lines_on_dielectric_or_patterned_wafers",
+            "evidence": "verify_optimized_cleaning_chemical_for_copper_residue",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "high",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "구리 CMP 후에 깨끗한 웨이퍼의 입자들",
+            "cause_name": "유전체 또는 패턴화된 웨이퍼들의 line들 사이로부터 잔여 구리의 제거",
+            "cause_description": "유전체 또는 패턴화된 웨이퍼의 선 사이에서 잔여 구리가 제거되지 않는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c80"
+            ],
+            "quotes": [
+              "C. 유전체 또는 패턴화된 웨이퍼들의 line들 사이로부터 잔여 구리의 제거"
+            ]
+          }
+        },
+        {
+          "rank": 4,
+          "sentence": "Scratch 패턴은 CMP 공정의 연마 패드의 윤내기에서 부적절하게 적용된 검사용 암이 원인으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Scratch",
+            "step": "CMP",
+            "failure_mode": "pad_polishing",
+            "cause": "improperly_applied_inspection_arm",
+            "evidence": "pad_run_in_and_inspection",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "high",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "연마 패드의 윤내기",
+            "cause_name": "부적절하게 적용된 검사용 암",
+            "cause_description": "검사용 암이 부적절하게 적용되었다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c81"
+            ],
+            "quotes": [
+              "[원인] A. 부적절하게 적용된 검사용 암"
+            ]
+          }
+        },
+        {
+          "rank": 5,
+          "sentence": "Scratch 패턴은 CMP 공정의 모서리를 따라서 스트링거의 구성에서의 잔류물에서 다른 물질들에서 발생하는 stringers가 원인으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Scratch",
+            "step": "CMP",
+            "failure_mode": "residue_along_edge_stringers",
+            "cause": "stringers_from_other_materials",
+            "evidence": "maximize_use_of_polishing_pad_and_slurry_chemicals",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "high",
+            "confidence": 3.6666666666666665
+          },
+          "detail": {
+            "failure_mode_name": "모서리를 따라서 스트링거의 구성에서의 잔류물",
+            "cause_name": "다른 물질들에서 발생하는 stringers",
+            "cause_description": "텅스텐과 폴리실리콘 stringer와 같은 다른 물질들에서 스트링거가 발생하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c77"
+            ],
+            "quotes": [
+              "스트링거들은 텅스텐과 폴리실리콘 stringer와 같은 다른 물질들에서 발생한다."
+            ]
+          }
+        },
+        {
+          "rank": 6,
+          "sentence": "Scratch 패턴은 CMP 공정의 구리 CMP 후에 깨끗한 웨이퍼의 입자들에서 웨이퍼에서 과도한 입자들의 발견이 원인으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Scratch",
+            "step": "CMP",
+            "failure_mode": "particles_on_clean_wafer_after_copper_cmp",
+            "cause": "excessive_particles_on_wafer",
+            "evidence": "check_whether_brushes_are_loaded_in_both_brushes",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "high",
+            "confidence": 3.6666666666666665
+          },
+          "detail": {
+            "failure_mode_name": "구리 CMP 후에 깨끗한 웨이퍼의 입자들",
+            "cause_name": "웨이퍼에서 과도한 입자들의 발견",
+            "cause_description": "웨이퍼에서 과도한 입자들이 발견되는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c80"
+            ],
+            "quotes": [
+              "A. 웨이퍼에서 과도한 입자들의 발견"
+            ]
+          }
+        },
+        {
+          "rank": 7,
+          "sentence": "Scratch 패턴은 CMP 공정의 구리 CMP 후에 깨끗한 웨이퍼의 입자들에서 광 직렬 자국들과 bond 패드 지역들과 같이 깊은 특성들 안에서 잔여의 슬러리의 생성이 원인으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Scratch",
+            "step": "CMP",
+            "failure_mode": "particles_on_clean_wafer_after_copper_cmp",
+            "cause": "residual_slurry_in_deep_features",
+            "evidence": "confirm_no_chemical_cross_contamination_between_brush_and_cleaning_chemical",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "high",
+            "confidence": 3.6666666666666665
+          },
+          "detail": {
+            "failure_mode_name": "구리 CMP 후에 깨끗한 웨이퍼의 입자들",
+            "cause_name": "광 직렬 자국들과 bond 패드 지역들과 같이 깊은 특성들 안에서 잔여의 슬러리의 생성",
+            "cause_description": "깊은 특성 내부에 잔여 슬러리가 생성되는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c80"
+            ],
+            "quotes": [
+              "B. 광 직렬 자국들과 bond 패드 지역들과 같이 깊은 특성들 안에서 잔여의 슬러리의 생성"
+            ]
+          }
+        },
+        {
+          "rank": 8,
+          "sentence": "Scratch 패턴은 웨이퍼 핸들링 순서 중 이송 로봇에 의해 웨이퍼 표면에 긁힘이 생기는 원인이 이 패턴의 원인으로 지목된 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+          "tier": "근거없음",
+          "route": "direct",
+          "path": {
+            "pattern": "Scratch",
+            "step": null,
+            "failure_mode": null,
+            "cause": "scratches_on_wafer_surface_by_transfer_robots",
+            "evidence": null,
+            "evidence_label": "None"
+          },
+          "verification": {
+            "fab_table": null,
+            "direction": null
+          },
+          "score": {
+            "tier": 0,
+            "occurrence_prior": null,
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "(문헌 직결)",
+            "cause_name": "scratches on the wafer surface by transfer robots",
+            "cause_description": "웨이퍼 핸들링 순서 중 이송 로봇에 의해 웨이퍼 표면에 긁힘이 생기는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "ref56_table1_pattern_causes#c06"
+            ],
+            "quotes": [
+              "Scratches on the wafer surface by transfer robots during the wafer handling sequence"
+            ]
+          }
+        },
+        {
+          "rank": 9,
+          "sentence": "Scratch 패턴은 사람에 의해 웨이퍼 표면 손상이 발생하는 원인이 이 패턴의 원인으로 지목된 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+          "tier": "근거없음",
+          "route": "direct",
+          "path": {
+            "pattern": "Scratch",
+            "step": null,
+            "failure_mode": null,
+            "cause": "surface_damage_by_humans",
+            "evidence": null,
+            "evidence_label": "None"
+          },
+          "verification": {
+            "fab_table": null,
+            "direction": null
+          },
+          "score": {
+            "tier": 0,
+            "occurrence_prior": null,
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "(문헌 직결)",
+            "cause_name": "surface damage by humans",
+            "cause_description": "사람에 의해 웨이퍼 표면 손상이 발생하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "ref56_table1_pattern_causes#c06"
+            ],
+            "quotes": [
+              "surface damage by humans"
+            ]
+          }
+        },
+        {
+          "rank": 10,
+          "sentence": "Scratch 패턴은 화학기계연마 공정 중 연마로 인해 긁힘이 발생하는 원인이 이 패턴의 원인으로 지목된 것으로 보이며, fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+          "tier": "근거없음",
+          "route": "direct",
+          "path": {
+            "pattern": "Scratch",
+            "step": null,
+            "failure_mode": null,
+            "cause": "scratches_caused_by_polishing_during_cmp",
+            "evidence": null,
+            "evidence_label": "None"
+          },
+          "verification": {
+            "fab_table": null,
+            "direction": null
+          },
+          "score": {
+            "tier": 0,
+            "occurrence_prior": null,
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "(문헌 직결)",
+            "cause_name": "scratches caused by polishing during chemical–mechanical polishing (CMP)",
+            "cause_description": "화학기계연마 공정 중 연마로 인해 긁힘이 발생하는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "ref56_table1_pattern_causes#c06"
+            ],
+            "quotes": [
+              "scratches caused by polishing during chemical–mechanical polishing (CMP)"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "pattern": "Edge-Ring",
+      "question": "Edge-Ring 결함 패턴이 나타나는 근본 원인은 무엇인가요?",
+      "counts": {
+        "total": 53,
+        "by_tier": {
+          "자동": 3,
+          "반자동": 45,
+          "근거없음": 5
+        },
+        "by_route": {
+          "step": 48,
+          "direct": 5
+        }
+      },
+      "hypotheses": [
+        {
+          "rank": 1,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정에서 excessive post-etch residue 고장 모드가 나타난 것으로 보이며, incorrect process parameter such as high etch rate가 근본 원인일 수 있으므로 계측 변수 etch_rate 값이 높은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "excessive_post_etch_residue",
+            "cause": "incorrect_process_parameter_high_etch_rate",
+            "evidence": "etch_rate",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "high"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "excessive post-etch residue",
+            "cause_name": "incorrect process parameter, such as high etch rate",
+            "cause_description": "에칭 속도가 너무 높은 것처럼 공정 변수가 부적절한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c66"
+            ],
+            "quotes": [
+              "Incorrect process parameter, such as high etch rate."
+            ]
+          }
+        },
+        {
+          "rank": 2,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정에서 microscopic nonuniformity of etch process 고장 모드가 나타난 것으로 보이며, small space에서 reactive radicals의 밀도가 감소한 reduced density of reactive radicals in small space가 근본 원인일 수 있으므로 계측 변수 rf_power 값이 낮은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "microscopic_nonuniformity_of_etch_process",
+            "cause": "reduced_density_of_reactive_radicals_in_small_space",
+            "evidence": "rf_power",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "low"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 3.6666666666666665
+          },
+          "detail": {
+            "failure_mode_name": "microscopic nonuniformity of etch process",
+            "cause_name": "reduced density of reactive radicals in small space",
+            "cause_description": "작은 공간에서 반응성 라디칼의 밀도가 감소한 상태가 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c64"
+            ],
+            "quotes": [
+              "Etch rate between narrow openings is slower than open-field areas due to reduced density of reactive radicals in small space."
+            ]
+          }
+        },
+        {
+          "rank": 3,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정에서 microscopic nonuniformity of etch process 고장 모드가 나타난 것으로 보이며, small space에서 reactive radicals의 밀도가 감소한 reduced density of reactive radicals in small space가 근본 원인일 수 있으므로 계측 변수 chamber_pressure 값이 낮은지 확인해야 합니다.",
+          "tier": "자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "microscopic_nonuniformity_of_etch_process",
+            "cause": "reduced_density_of_reactive_radicals_in_small_space",
+            "evidence": "chamber_pressure",
+            "evidence_label": "Parameter"
+          },
+          "verification": {
+            "fab_table": "telemetry",
+            "direction": "low"
+          },
+          "score": {
+            "tier": 2,
+            "occurrence_prior": "mid",
+            "confidence": 3.6666666666666665
+          },
+          "detail": {
+            "failure_mode_name": "microscopic nonuniformity of etch process",
+            "cause_name": "reduced density of reactive radicals in small space",
+            "cause_description": "작은 공간에서 반응성 라디칼의 밀도가 감소한 상태가 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c64"
+            ],
+            "quotes": [
+              "Etch rate between narrow openings is slower than open-field areas due to reduced density of reactive radicals in small space."
+            ]
+          }
+        },
+        {
+          "rank": 4,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정에서 excessive post-etch residue 고장 모드가 나타난 것으로 보이며, contaminants in gas or chamber가 근본 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "excessive_post_etch_residue",
+            "cause": "contaminants_in_gas_or_chamber",
+            "evidence": "check_supply_filters",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "excessive post-etch residue",
+            "cause_name": "contaminants in gas or chamber",
+            "cause_description": "가스 또는 챔버에 오염물이 존재하는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c66"
+            ],
+            "quotes": [
+              "Contaminants in gas or chamber."
+            ]
+          }
+        },
+        {
+          "rank": 5,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정에서 excessive post-etch residue 고장 모드가 나타난 것으로 보이며, contaminants in gas or chamber가 근본 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "excessive_post_etch_residue",
+            "cause": "contaminants_in_gas_or_chamber",
+            "evidence": "clean_system",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "excessive post-etch residue",
+            "cause_name": "contaminants in gas or chamber",
+            "cause_description": "가스 또는 챔버에 오염물이 존재하는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c66"
+            ],
+            "quotes": [
+              "Contaminants in gas or chamber."
+            ]
+          }
+        },
+        {
+          "rank": 6,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정에서 Incorrect etch rate 고장 모드가 나타난 것으로 보이며, Incorrect Process Recipe가 근본 원인일 수 있으므로 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "incorrect_etch_rate",
+            "cause": "incorrect_process_recipe",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect etch rate",
+            "cause_name": "Incorrect process recipe",
+            "cause_description": "공정 레시피가 잘못된 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c67"
+            ],
+            "quotes": [
+              "H. Incorrect process recipe."
+            ]
+          }
+        },
+        {
+          "rank": 7,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정에서 Incorrect etch rate 고장 모드가 나타난 것으로 보이며, Change in RF power가 근본 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "incorrect_etch_rate",
+            "cause": "rf_power_change",
+            "evidence": "rf_generator_and_matching_unit_check_and_troubleshoot",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect etch rate",
+            "cause_name": "Change in RF power",
+            "cause_description": "RF 전력이 변경된 상태를 의미한다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c67"
+            ],
+            "quotes": [
+              "A. Change in RF power."
+            ]
+          }
+        },
+        {
+          "rank": 8,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정에서 Incorrect etch rate 고장 모드가 나타난 것으로 보이며, Incorrect temperature가 근본 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "incorrect_etch_rate",
+            "cause": "incorrect_temperature",
+            "evidence": "backside_wafer_cooling_system_check",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect etch rate",
+            "cause_name": "Incorrect temperature",
+            "cause_description": "온도가 올바르지 않은 상태를 의미한다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c67"
+            ],
+            "quotes": [
+              "B. Incorrect temperature."
+            ]
+          }
+        },
+        {
+          "rank": 9,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정에서 Incorrect etch rate 고장 모드가 나타난 것으로 보이며, Problem with pressure가 근본 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "incorrect_etch_rate",
+            "cause": "pressure_problem",
+            "evidence": "vacuum_gauges_and_pressure_control_system_calibration",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect etch rate",
+            "cause_name": "Problem with pressure",
+            "cause_description": "압력에 문제가 있는 상태를 의미한다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c67"
+            ],
+            "quotes": [
+              "C. Problem with pressure."
+            ]
+          }
+        },
+        {
+          "rank": 10,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정에서 Incorrect etch rate 고장 모드가 나타난 것으로 보이며, Endpoint detection not functioning properly가 근본 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "incorrect_etch_rate",
+            "cause": "endpoint_detection_not_functioning_properly",
+            "evidence": "endpoint_detection_system_check",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect etch rate",
+            "cause_name": "Endpoint detection not functioning properly",
+            "cause_description": "엔드포인트 검출이 제대로 동작하지 않는 상태를 의미한다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c67"
+            ],
+            "quotes": [
+              "D. Endpoint detection not functioning properly."
+            ]
+          }
+        },
+        {
+          "rank": 11,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정에서 Incorrect etch rate 고장 모드가 나타난 것으로 보이며, Improper wafer spacing이 근본 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "incorrect_etch_rate",
+            "cause": "improper_wafer_spacing",
+            "evidence": "wafer_to_electrode_gap_check",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect etch rate",
+            "cause_name": "Improper wafer spacing",
+            "cause_description": "웨이퍼 간격이 부적절한 상태를 의미한다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c67"
+            ],
+            "quotes": [
+              "E. Improper wafer spacing."
+            ]
+          }
+        },
+        {
+          "rank": 12,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정에서 Incorrect etch rate 고장 모드가 나타난 것으로 보이며, Improper gas-flow dynamics가 근본 원인일 수 있으므로 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "incorrect_etch_rate",
+            "cause": "improper_gas_flow_dynamics",
+            "evidence": "gas_distribution_system_check",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect etch rate",
+            "cause_name": "Improper gas-flow dynamics",
+            "cause_description": "가스 흐름 동역학이 부적절한 상태를 의미한다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c67"
+            ],
+            "quotes": [
+              "F. Improper gas-flow dynamics."
+            ]
+          }
+        },
+        {
+          "rank": 13,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Incorrect etch rate 불량 모드가 improper maintenance 때문인 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "incorrect_etch_rate",
+            "cause": "improper_maintenance",
+            "evidence": "chamber_wet_clean",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect etch rate",
+            "cause_name": "Improper maintenance",
+            "cause_description": "정비가 부적절하게 수행된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c67"
+            ],
+            "quotes": [
+              "G. Improper maintenance."
+            ]
+          }
+        },
+        {
+          "rank": 14,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Inadequate selectivity 불량 모드가 incorrect process recipe 때문인 것으로 보이며, 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "inadequate_selectivity",
+            "cause": "incorrect_process_recipe",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Inadequate selectivity",
+            "cause_name": "Incorrect process recipe",
+            "cause_description": "공정 레시피가 잘못된 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c68"
+            ],
+            "quotes": [
+              "E. Incorrect process recipe."
+            ]
+          }
+        },
+        {
+          "rank": 15,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Improper sidewall profile angle 불량 모드가 wafer temperature 때문인 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "improper_sidewall_profile_angle",
+            "cause": "wafer_temperature",
+            "evidence": "check_thermocouples_and_wafer_cooling",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Improper sidewall profile angle",
+            "cause_name": "temperature of wafer",
+            "cause_description": "웨이퍼 온도가 부적절한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c69"
+            ],
+            "quotes": [
+              "B. Temperature of wafer."
+            ]
+          }
+        },
+        {
+          "rank": 16,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Improper sidewall profile angle 불량 모드가 incorrect process recipe misprocess 때문인 것으로 보이며, 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "improper_sidewall_profile_angle",
+            "cause": "incorrect_process_recipe_misprocess",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Improper sidewall profile angle",
+            "cause_name": "Incorrect process recipe (misprocess)",
+            "cause_description": "공정 레시피가 잘못 설정된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c69"
+            ],
+            "quotes": [
+              "D. Incorrect process recipe (misprocess)."
+            ]
+          }
+        },
+        {
+          "rank": 17,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Etch nonuniformity across wafer 불량 모드가 improper gas flow 때문인 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "etch_nonuniformity_across_wafer",
+            "cause": "improper_gas_flow",
+            "evidence": "mfc_calibration",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Etch nonuniformity across wafer",
+            "cause_name": "improper gas flow",
+            "cause_description": "가스 유량이 부적절한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c70"
+            ],
+            "quotes": [
+              "B. Improper gas flow."
+            ]
+          }
+        },
+        {
+          "rank": 18,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Etch nonuniformity across wafer 불량 모드가 improper gas flow 때문인 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "etch_nonuniformity_across_wafer",
+            "cause": "improper_gas_flow",
+            "evidence": "check_calibrate_gas_distribution_system",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Etch nonuniformity across wafer",
+            "cause_name": "improper gas flow",
+            "cause_description": "가스 유량이 부적절한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c70"
+            ],
+            "quotes": [
+              "B. Improper gas flow."
+            ]
+          }
+        },
+        {
+          "rank": 19,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Etch nonuniformity across wafer 불량 모드가 improper maintenance 때문인 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "etch_nonuniformity_across_wafer",
+            "cause": "improper_maintenance",
+            "evidence": "chamber_wet_clean",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Etch nonuniformity across wafer",
+            "cause_name": "Improper maintenance",
+            "cause_description": "정비가 부적절하게 수행된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c70"
+            ],
+            "quotes": [
+              "G. Improper maintenance."
+            ]
+          }
+        },
+        {
+          "rank": 20,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Etch nonuniformity across wafer 불량 모드가 wafer temperature 때문인 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "etch_nonuniformity_across_wafer",
+            "cause": "wafer_temperature",
+            "evidence": "check_thermocouples_and_wafer_cooling",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Etch nonuniformity across wafer",
+            "cause_name": "temperature of wafer",
+            "cause_description": "웨이퍼 온도가 부적절한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c70"
+            ],
+            "quotes": [
+              "C. Temperature of wafer."
+            ]
+          }
+        },
+        {
+          "rank": 21,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Etch nonuniformity across wafer 불량 모드가 depletion of etchant gas concentration due to ARDE 때문인 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "etch_nonuniformity_across_wafer",
+            "cause": "depletion_of_etchant_gas_concentration_due_to_arde",
+            "evidence": "check_calibrate_gas_distribution_system",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Etch nonuniformity across wafer",
+            "cause_name": "depletion of etchant gas concentration due to ARDE",
+            "cause_description": "ARDE로 인해 식각 가스 농도가 고갈되는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c70"
+            ],
+            "quotes": [
+              "A. Depletion of etchant gas concentration due to ARDE."
+            ]
+          }
+        },
+        {
+          "rank": 22,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Etch nonuniformity across wafer 불량 모드가 improperly positioned wafer in chamber 때문인 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "etch_nonuniformity_across_wafer",
+            "cause": "improperly_positioned_wafer_in_chamber",
+            "evidence": "check_robotics_wafer_handling_system_and_vacuum_chuck",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Etch nonuniformity across wafer",
+            "cause_name": "improperly positioned wafer in chamber",
+            "cause_description": "챔버 내에서 웨이퍼 위치가 부적절한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c70"
+            ],
+            "quotes": [
+              "D. Improperly positioned wafer in chamber."
+            ]
+          }
+        },
+        {
+          "rank": 23,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Etch nonuniformity across wafer 불량 모드가 improper film thickness 때문인 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "etch_nonuniformity_across_wafer",
+            "cause": "improper_film_thickness",
+            "evidence": "measure_and_verify_film_thickness",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Etch nonuniformity across wafer",
+            "cause_name": "improper film thickness",
+            "cause_description": "막 두께가 부적절한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c70"
+            ],
+            "quotes": [
+              "F. Improper film thickness."
+            ]
+          }
+        },
+        {
+          "rank": 24,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Particle Contamination 불량 모드가 improper gas chemistry 때문인 것으로 보이며, 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "particle_contamination",
+            "cause": "improper_gas_chemistry",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Particle Contamination",
+            "cause_name": "Improper gas chemistry",
+            "cause_description": "가스 화학 조건이 부적절한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c72"
+            ],
+            "quotes": [
+              "C. Improper gas chemistry."
+            ]
+          }
+        },
+        {
+          "rank": 25,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Metal Corrosion 고장 모드가 Wrong maintenance procedure 근본 원인으로 발생한 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "metal_corrosion",
+            "cause": "wrong_maintenance_procedure",
+            "evidence": "check_maintenance_procedure",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "Metal Corrosion",
+            "cause_name": "Wrong maintenance procedure",
+            "cause_description": "잘못된 정비 절차가 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c73"
+            ],
+            "quotes": [
+              "D. Wrong maintenance procedure."
+            ]
+          }
+        },
+        {
+          "rank": 26,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Inadequate selectivity 고장 모드가 Etch rate too high 근본 원인으로 발생한 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "inadequate_selectivity",
+            "cause": "etch_rate_too_high",
+            "evidence": "verify_etch_rate",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Inadequate selectivity",
+            "cause_name": "Etch rate too high",
+            "cause_description": "식각 속도가 너무 높은 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c68"
+            ],
+            "quotes": [
+              "A. Etch rate too high."
+            ]
+          }
+        },
+        {
+          "rank": 27,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Inadequate selectivity 고장 모드가 Improper gas flow or pressure 근본 원인으로 발생한 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "inadequate_selectivity",
+            "cause": "improper_gas_flow_or_pressure",
+            "evidence": "calibrate_mfcs_and_vacuum_gauges",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Inadequate selectivity",
+            "cause_name": "Improper gas flow or pressure",
+            "cause_description": "가스 유량 또는 압력이 부적절한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c68"
+            ],
+            "quotes": [
+              "B. Improper gas flow or pressure."
+            ]
+          }
+        },
+        {
+          "rank": 28,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Inadequate selectivity 고장 모드가 Endpoint detection problem 근본 원인으로 발생한 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "inadequate_selectivity",
+            "cause": "endpoint_detection_problem",
+            "evidence": "check_calibrate_endpoint_detection",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Inadequate selectivity",
+            "cause_name": "Endpoint detection problem",
+            "cause_description": "엔드포인트 검출에 문제가 있는 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c68"
+            ],
+            "quotes": [
+              "C. Endpoint detection problem."
+            ]
+          }
+        },
+        {
+          "rank": 29,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Inadequate selectivity 고장 모드가 Wrong wafer temperature 근본 원인으로 발생한 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "inadequate_selectivity",
+            "cause": "wrong_wafer_temperature",
+            "evidence": "check_wafer_cooling_system",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Inadequate selectivity",
+            "cause_name": "Wrong wafer temperature",
+            "cause_description": "웨이퍼 온도가 잘못된 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c68"
+            ],
+            "quotes": [
+              "D. Wrong wafer temperature."
+            ]
+          }
+        },
+        {
+          "rank": 30,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Improper sidewall profile angle 고장 모드가 Contamination on sidewall 근본 원인으로 발생한 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "improper_sidewall_profile_angle",
+            "cause": "contamination_on_sidewall",
+            "evidence": "chamber_check_for_polymer_buildup",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Improper sidewall profile angle",
+            "cause_name": "Contamination on sidewall",
+            "cause_description": "측벽에 오염이 존재하는 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c69"
+            ],
+            "quotes": [
+              "A. Contamination on sidewall."
+            ]
+          }
+        },
+        {
+          "rank": 31,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Etch nonuniformity across wafer 고장 모드가 chamber configuration 근본 원인으로 발생한 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "etch_nonuniformity_across_wafer",
+            "cause": "chamber_configuration",
+            "evidence": "check_reactor_plate_spacing",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Etch nonuniformity across wafer",
+            "cause_name": "chamber configuration",
+            "cause_description": "챔버 구성이 부적절한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c70"
+            ],
+            "quotes": [
+              "E. Chamber configuration."
+            ]
+          }
+        },
+        {
+          "rank": 32,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Plasma damage 고장 모드가 Improper maintenance 근본 원인으로 발생한 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "plasma_damage",
+            "cause": "improper_maintenance",
+            "evidence": "chamber_wet_clean",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Plasma damage",
+            "cause_name": "Improper maintenance",
+            "cause_description": "정비가 부적절하게 수행된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c71"
+            ],
+            "quotes": [
+              "D. Improper maintenance."
+            ]
+          }
+        },
+        {
+          "rank": 33,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Particle Contamination 고장 모드가 Leak/contamination from gas lines 근본 원인으로 발생한 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "particle_contamination",
+            "cause": "leak_contamination_from_gas_lines",
+            "evidence": "leaks_or_faulty_mfcs",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.666666666666667
+          },
+          "detail": {
+            "failure_mode_name": "Particle Contamination",
+            "cause_name": "Leak/contamination from gas lines",
+            "cause_description": "가스 라인에서 누설 또는 오염이 발생한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c72"
+            ],
+            "quotes": [
+              "A. Leak/contamination from gas lines."
+            ]
+          }
+        },
+        {
+          "rank": 34,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Incorrect etch rate 고장 모드가 Improper maintenance 근본 원인으로 발생한 것으로 보이며, 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "incorrect_etch_rate",
+            "cause": "improper_maintenance",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect etch rate",
+            "cause_name": "Improper maintenance",
+            "cause_description": "정비가 부적절하게 수행된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c67"
+            ],
+            "quotes": [
+              "G. Improper maintenance."
+            ]
+          }
+        },
+        {
+          "rank": 35,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Incorrect etch rate 고장 모드가 Improper maintenance 근본 원인으로 발생한 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "incorrect_etch_rate",
+            "cause": "improper_maintenance",
+            "evidence": "poorly_designed_or_maintained_plasma_equipment",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect etch rate",
+            "cause_name": "Improper maintenance",
+            "cause_description": "정비가 부적절하게 수행된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c67"
+            ],
+            "quotes": [
+              "G. Improper maintenance."
+            ]
+          }
+        },
+        {
+          "rank": 36,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Improper sidewall profile angle 고장 모드가 System pressure 근본 원인으로 발생한 것으로 보이며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "improper_sidewall_profile_angle",
+            "cause": "system_pressure",
+            "evidence": "calibrate_mfcs",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Improper sidewall profile angle",
+            "cause_name": "System pressure",
+            "cause_description": "시스템 압력이 부적절한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c69"
+            ],
+            "quotes": [
+              "C. System pressure."
+            ]
+          }
+        },
+        {
+          "rank": 37,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Improper sidewall profile angle 불량과 System pressure 근본 원인에 의해 발생했을 가능성이 있으며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "improper_sidewall_profile_angle",
+            "cause": "system_pressure",
+            "evidence": "perform_leak_test",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Improper sidewall profile angle",
+            "cause_name": "System pressure",
+            "cause_description": "시스템 압력이 부적절한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c69"
+            ],
+            "quotes": [
+              "C. System pressure."
+            ]
+          }
+        },
+        {
+          "rank": 38,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Etch nonuniformity across wafer 불량과 Improper maintenance 근본 원인에 의해 발생했을 가능성이 있으며, 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "etch_nonuniformity_across_wafer",
+            "cause": "improper_maintenance",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Etch nonuniformity across wafer",
+            "cause_name": "Improper maintenance",
+            "cause_description": "정비가 부적절하게 수행된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c70"
+            ],
+            "quotes": [
+              "G. Improper maintenance."
+            ]
+          }
+        },
+        {
+          "rank": 39,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Etch nonuniformity across wafer 불량과 Improper maintenance 근본 원인에 의해 발생했을 가능성이 있으며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "etch_nonuniformity_across_wafer",
+            "cause": "improper_maintenance",
+            "evidence": "poorly_designed_or_maintained_plasma_equipment",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Etch nonuniformity across wafer",
+            "cause_name": "Improper maintenance",
+            "cause_description": "정비가 부적절하게 수행된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c70"
+            ],
+            "quotes": [
+              "G. Improper maintenance."
+            ]
+          }
+        },
+        {
+          "rank": 40,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Particle Contamination 불량과 Tool operation 근본 원인에 의해 발생했을 가능성이 있으며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "particle_contamination",
+            "cause": "tool_operation",
+            "evidence": "improper_tool_shutdown_operation_or_maintenance",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Particle Contamination",
+            "cause_name": "Tool operation",
+            "cause_description": "장비 운전과 관련된 문제가 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c72"
+            ],
+            "quotes": [
+              "B. Tool operation."
+            ]
+          }
+        },
+        {
+          "rank": 41,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Particle Contamination 불량과 Improper gas chemistry 근본 원인에 의해 발생했을 가능성이 있으며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "particle_contamination",
+            "cause": "improper_gas_chemistry",
+            "evidence": "perform_wet_clean",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.333333333333333
+          },
+          "detail": {
+            "failure_mode_name": "Particle Contamination",
+            "cause_name": "Improper gas chemistry",
+            "cause_description": "가스 화학 조건이 부적절한 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c72"
+            ],
+            "quotes": [
+              "C. Improper gas chemistry."
+            ]
+          }
+        },
+        {
+          "rank": 42,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Incorrect etch rate 불량과 Improper maintenance 근본 원인에 의해 발생했을 가능성이 있으며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "incorrect_etch_rate",
+            "cause": "improper_maintenance",
+            "evidence": "suboptimum_process_conditions",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Incorrect etch rate",
+            "cause_name": "Improper maintenance",
+            "cause_description": "정비가 부적절하게 수행된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c67"
+            ],
+            "quotes": [
+              "G. Improper maintenance."
+            ]
+          }
+        },
+        {
+          "rank": 43,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Improper sidewall profile angle 불량과 temperature of wafer 근본 원인에 의해 발생했을 가능성이 있으며, 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "improper_sidewall_profile_angle",
+            "cause": "wafer_temperature",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Improper sidewall profile angle",
+            "cause_name": "temperature of wafer",
+            "cause_description": "웨이퍼 온도가 부적절한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c69"
+            ],
+            "quotes": [
+              "B. Temperature of wafer."
+            ]
+          }
+        },
+        {
+          "rank": 44,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Etch nonuniformity across wafer 불량과 Improper maintenance 근본 원인에 의해 발생했을 가능성이 있으며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "etch_nonuniformity_across_wafer",
+            "cause": "improper_maintenance",
+            "evidence": "suboptimum_process_conditions",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Etch nonuniformity across wafer",
+            "cause_name": "Improper maintenance",
+            "cause_description": "정비가 부적절하게 수행된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c70"
+            ],
+            "quotes": [
+              "G. Improper maintenance."
+            ]
+          }
+        },
+        {
+          "rank": 45,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Etch nonuniformity across wafer 불량과 temperature of wafer 근본 원인에 의해 발생했을 가능성이 있으며, 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "etch_nonuniformity_across_wafer",
+            "cause": "wafer_temperature",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Etch nonuniformity across wafer",
+            "cause_name": "temperature of wafer",
+            "cause_description": "웨이퍼 온도가 부적절한 원인이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c70"
+            ],
+            "quotes": [
+              "C. Temperature of wafer."
+            ]
+          }
+        },
+        {
+          "rank": 46,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Plasma damage 불량과 Improper maintenance 근본 원인에 의해 발생했을 가능성이 있으며, 사용된 레시피를 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "plasma_damage",
+            "cause": "improper_maintenance",
+            "evidence": "process_recipe",
+            "evidence_label": "Recipe"
+          },
+          "verification": {
+            "fab_table": "lot_history",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Plasma damage",
+            "cause_name": "Improper maintenance",
+            "cause_description": "정비가 부적절하게 수행된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c71"
+            ],
+            "quotes": [
+              "D. Improper maintenance."
+            ]
+          }
+        },
+        {
+          "rank": 47,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Plasma damage 불량과 Improper maintenance 근본 원인에 의해 발생했을 가능성이 있으며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "plasma_damage",
+            "cause": "improper_maintenance",
+            "evidence": "poorly_designed_or_maintained_plasma_equipment",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "Plasma damage",
+            "cause_name": "Improper maintenance",
+            "cause_description": "정비가 부적절하게 수행된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c71"
+            ],
+            "quotes": [
+              "D. Improper maintenance."
+            ]
+          }
+        },
+        {
+          "rank": 48,
+          "sentence": "Edge-Ring 패턴은 ETCH 공정의 Plasma damage 불량과 Improper maintenance 근본 원인에 의해 발생했을 가능성이 있으며, 정비 이력을 확인해야 합니다.",
+          "tier": "반자동",
+          "route": "step",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": "ETCH",
+            "failure_mode": "plasma_damage",
+            "cause": "improper_maintenance",
+            "evidence": "suboptimum_process_conditions",
+            "evidence_label": "Maintenance"
+          },
+          "verification": {
+            "fab_table": "maintenance",
+            "direction": null
+          },
+          "score": {
+            "tier": 1,
+            "occurrence_prior": "mid",
+            "confidence": 3.6666666666666665
+          },
+          "detail": {
+            "failure_mode_name": "Plasma damage",
+            "cause_name": "Improper maintenance",
+            "cause_description": "정비가 부적절하게 수행된 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "Semiconductor Devices_Physics and Technology3rd Edition_troubleshootingTABLE#c71"
+            ],
+            "quotes": [
+              "D. Improper maintenance."
+            ]
+          }
+        },
+        {
+          "rank": 49,
+          "sentence": "문헌이 Edge-Ring 패턴의 원인으로 anomalous temperature regulation during rapid thermal process (RTP)를 지목한 가설이며, 급속 열처리 공정에서 온도 조절 비정상이 있었는지 확인해야 하고 fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+          "tier": "근거없음",
+          "route": "direct",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": null,
+            "failure_mode": null,
+            "cause": "anomalous_temperature_regulation_during_rapid_thermal_process_rtp",
+            "evidence": null,
+            "evidence_label": "None"
+          },
+          "verification": {
+            "fab_table": null,
+            "direction": null
+          },
+          "score": {
+            "tier": 0,
+            "occurrence_prior": null,
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "(문헌 직결)",
+            "cause_name": "anomalous temperature regulation during rapid thermal process (RTP)",
+            "cause_description": "급속 열처리 과정에서 온도 조절이 비정상적인 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "ref56_table1_pattern_causes#c03"
+            ],
+            "quotes": [
+              "Anomalous temperature regulation during rapid thermal process (RTP)"
+            ]
+          }
+        },
+        {
+          "rank": 50,
+          "sentence": "문헌이 Edge-Ring 패턴의 원인으로 insufficient heating due to wafer thickness variations를 지목한 가설이며, 웨이퍼 두께 변동으로 인해 가열이 충분하지 않았는지 확인해야 하고 fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+          "tier": "근거없음",
+          "route": "direct",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": null,
+            "failure_mode": null,
+            "cause": "insufficient_heating_due_to_wafer_thickness_variations",
+            "evidence": null,
+            "evidence_label": "None"
+          },
+          "verification": {
+            "fab_table": null,
+            "direction": null
+          },
+          "score": {
+            "tier": 0,
+            "occurrence_prior": null,
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "(문헌 직결)",
+            "cause_name": "insufficient heating due to wafer thickness variations",
+            "cause_description": "웨이퍼 두께 변동 때문에 가열이 충분하지 않은 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "ref56_table1_pattern_causes#c03"
+            ],
+            "quotes": [
+              "insufficient heating due to wafer thickness variations"
+            ]
+          }
+        },
+        {
+          "rank": 51,
+          "sentence": "문헌이 Edge-Ring 패턴의 원인으로 uneven temperature distribution during the rapid thermal annealing process를 지목한 가설이며, 급속 열 어닐링 공정에서 온도 분포가 균일하지 않았는지 확인해야 하고 fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+          "tier": "근거없음",
+          "route": "direct",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": null,
+            "failure_mode": null,
+            "cause": "uneven_temperature_distribution_during_rapid_thermal_annealing_process",
+            "evidence": null,
+            "evidence_label": "None"
+          },
+          "verification": {
+            "fab_table": null,
+            "direction": null
+          },
+          "score": {
+            "tier": 0,
+            "occurrence_prior": null,
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "(문헌 직결)",
+            "cause_name": "uneven temperature distribution during the rapid thermal annealing process",
+            "cause_description": "급속 열 어닐링 공정 동안 온도 분포가 균일하지 않은 상태를 의미한다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "pattern_cause#c00"
+            ],
+            "quotes": [
+              "along the wafer's edge (circular ring), this may be a result of ... an uneven temperature distribution during the rapid thermal annealing process"
+            ]
+          }
+        },
+        {
+          "rank": 52,
+          "sentence": "문헌이 Edge-Ring 패턴의 원인으로 nonuniformities created in the thin film deposition process를 지목한 가설이며, 박막 증착 공정에서 불균일성이 발생했는지 확인해야 하고 fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+          "tier": "근거없음",
+          "route": "direct",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": null,
+            "failure_mode": null,
+            "cause": "nonuniform_thin_film_deposition_process",
+            "evidence": null,
+            "evidence_label": "None"
+          },
+          "verification": {
+            "fab_table": null,
+            "direction": null
+          },
+          "score": {
+            "tier": 0,
+            "occurrence_prior": null,
+            "confidence": 5.0
+          },
+          "detail": {
+            "failure_mode_name": "(문헌 직결)",
+            "cause_name": "nonuniformities created in the thin film deposition process",
+            "cause_description": "박막 증착 공정에서 불균일성이 발생한 상태를 의미한다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "pattern_cause#c00"
+            ],
+            "quotes": [
+              "a circular ring is due to problems in the etching step",
+              "along the wafer's edge (circular ring), this may be a result of nonuniformities created in the thin film deposition process"
+            ]
+          }
+        },
+        {
+          "rank": 53,
+          "sentence": "문헌이 Edge-Ring 패턴의 원인으로 cold process를 지목한 가설이며, 공정 온도가 낮았는지 확인해야 하고 fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다.",
+          "tier": "근거없음",
+          "route": "direct",
+          "path": {
+            "pattern": "Edge-Ring",
+            "step": null,
+            "failure_mode": null,
+            "cause": "cold_process",
+            "evidence": null,
+            "evidence_label": "None"
+          },
+          "verification": {
+            "fab_table": null,
+            "direction": null
+          },
+          "score": {
+            "tier": 0,
+            "occurrence_prior": null,
+            "confidence": 4.0
+          },
+          "detail": {
+            "failure_mode_name": "(문헌 직결)",
+            "cause_name": "cold process",
+            "cause_description": "공정 온도가 낮은 상태이다."
+          },
+          "provenance": {
+            "chunk_ids": [
+              "ref56_table1_pattern_causes#c03"
+            ],
+            "quotes": [
+              "or cold process"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

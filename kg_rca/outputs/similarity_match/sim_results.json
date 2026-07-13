@@ -1,0 +1,350 @@
+[
+  {
+    "pattern": "Center",
+    "rank": 59,
+    "cause": "irregular_rf_operation",
+    "cause_name": "Irregular radio frequency (RF) operation",
+    "cause_description": "무선 주파수 동작이 불규칙한 상태를 의미한다.",
+    "scores": [
+      [
+        "cmp_center_overpolish",
+        "CMP",
+        0.2198
+      ],
+      [
+        "clean_nozzle_clog",
+        "CLEAN",
+        0.1658
+      ],
+      [
+        "deposition_center_thickness",
+        "DEPO",
+        0.1574
+      ]
+    ],
+    "best": [
+      "cmp_center_overpolish",
+      "CMP",
+      0.2198
+    ]
+  },
+  {
+    "pattern": "Center",
+    "rank": 60,
+    "cause": "unusual_liquid_flow",
+    "cause_name": "unusual liquid flow",
+    "cause_description": "액체 유동이 비정상적인 상태를 의미한다.",
+    "scores": [
+      [
+        "deposition_center_thickness",
+        "DEPO",
+        0.3567
+      ],
+      [
+        "clean_nozzle_clog",
+        "CLEAN",
+        0.2998
+      ],
+      [
+        "cmp_center_overpolish",
+        "CMP",
+        0.2354
+      ]
+    ],
+    "best": [
+      "deposition_center_thickness",
+      "DEPO",
+      0.3567
+    ]
+  },
+  {
+    "pattern": "Center",
+    "rank": 61,
+    "cause": "nonuniformities_created_in_thin_film_deposition_process",
+    "cause_name": "nonuniformities created in the thin film deposition process",
+    "cause_description": "박막 증착 공정에서 생성된 비균일성이 불량의 원인이다.",
+    "scores": [
+      [
+        "deposition_center_thickness",
+        "DEPO",
+        0.4527
+      ],
+      [
+        "clean_nozzle_clog",
+        "CLEAN",
+        0.3433
+      ],
+      [
+        "cmp_center_overpolish",
+        "CMP",
+        0.2715
+      ]
+    ],
+    "best": [
+      "deposition_center_thickness",
+      "DEPO",
+      0.4527
+    ]
+  },
+  {
+    "pattern": "Center",
+    "rank": 62,
+    "cause": "uneven_temperature_distribution_during_rapid_thermal_annealing_process",
+    "cause_name": "uneven temperature distribution during the rapid thermal annealing process",
+    "cause_description": "급속 열 어닐링 공정 동안 온도 분포가 균일하지 않은 상태를 의미한다.",
+    "scores": [
+      [
+        "deposition_center_thickness",
+        "DEPO",
+        0.2894
+      ],
+      [
+        "clean_nozzle_clog",
+        "CLEAN",
+        0.2314
+      ],
+      [
+        "cmp_center_overpolish",
+        "CMP",
+        0.1907
+      ]
+    ],
+    "best": [
+      "deposition_center_thickness",
+      "DEPO",
+      0.2894
+    ]
+  },
+  {
+    "pattern": "Scratch",
+    "rank": 8,
+    "cause": "scratches_on_wafer_surface_by_transfer_robots",
+    "cause_name": "scratches on the wafer surface by transfer robots",
+    "cause_description": "웨이퍼 핸들링 순서 중 이송 로봇에 의해 웨이퍼 표면에 긁힘이 생기는 원인이다.",
+    "scores": [
+      [
+        "clean_brush_contact",
+        "CLEAN",
+        0.3631
+      ],
+      [
+        "cmp_slurry_particle",
+        "CMP",
+        0.355
+      ],
+      [
+        "cmp_pad_wear",
+        "CMP",
+        0.3186
+      ]
+    ],
+    "best": [
+      "clean_brush_contact",
+      "CLEAN",
+      0.3631
+    ]
+  },
+  {
+    "pattern": "Scratch",
+    "rank": 9,
+    "cause": "surface_damage_by_humans",
+    "cause_name": "surface damage by humans",
+    "cause_description": "사람에 의해 웨이퍼 표면 손상이 발생하는 원인이다.",
+    "scores": [
+      [
+        "cmp_pad_wear",
+        "CMP",
+        0.3006
+      ],
+      [
+        "clean_brush_contact",
+        "CLEAN",
+        0.2569
+      ],
+      [
+        "cmp_slurry_particle",
+        "CMP",
+        0.1708
+      ]
+    ],
+    "best": [
+      "cmp_pad_wear",
+      "CMP",
+      0.3006
+    ]
+  },
+  {
+    "pattern": "Scratch",
+    "rank": 10,
+    "cause": "scratches_caused_by_polishing_during_cmp",
+    "cause_name": "scratches caused by polishing during chemical–mechanical polishing (CMP)",
+    "cause_description": "화학기계연마 공정 중 연마로 인해 긁힘이 발생하는 원인이다.",
+    "scores": [
+      [
+        "cmp_pad_wear",
+        "CMP",
+        0.4862
+      ],
+      [
+        "cmp_slurry_particle",
+        "CMP",
+        0.3968
+      ],
+      [
+        "clean_brush_contact",
+        "CLEAN",
+        0.3796
+      ]
+    ],
+    "best": [
+      "cmp_pad_wear",
+      "CMP",
+      0.4862
+    ]
+  },
+  {
+    "pattern": "Edge-Ring",
+    "rank": 49,
+    "cause": "anomalous_temperature_regulation_during_rapid_thermal_process_rtp",
+    "cause_name": "anomalous temperature regulation during rapid thermal process (RTP)",
+    "cause_description": "급속 열처리 과정에서 온도 조절이 비정상적인 상태이다.",
+    "scores": [
+      [
+        "etch_nonuniformity",
+        "ETCH",
+        0.343
+      ],
+      [
+        "cmp_edge_overpolish",
+        "CMP",
+        0.3391
+      ],
+      [
+        "clean_residue",
+        "CLEAN",
+        0.2092
+      ]
+    ],
+    "best": [
+      "etch_nonuniformity",
+      "ETCH",
+      0.343
+    ]
+  },
+  {
+    "pattern": "Edge-Ring",
+    "rank": 50,
+    "cause": "insufficient_heating_due_to_wafer_thickness_variations",
+    "cause_name": "insufficient heating due to wafer thickness variations",
+    "cause_description": "웨이퍼 두께 변동 때문에 가열이 충분하지 않은 상태이다.",
+    "scores": [
+      [
+        "etch_nonuniformity",
+        "ETCH",
+        0.4447
+      ],
+      [
+        "cmp_edge_overpolish",
+        "CMP",
+        0.2737
+      ],
+      [
+        "clean_residue",
+        "CLEAN",
+        0.1879
+      ]
+    ],
+    "best": [
+      "etch_nonuniformity",
+      "ETCH",
+      0.4447
+    ]
+  },
+  {
+    "pattern": "Edge-Ring",
+    "rank": 51,
+    "cause": "uneven_temperature_distribution_during_rapid_thermal_annealing_process",
+    "cause_name": "uneven temperature distribution during the rapid thermal annealing process",
+    "cause_description": "급속 열 어닐링 공정 동안 온도 분포가 균일하지 않은 상태를 의미한다.",
+    "scores": [
+      [
+        "etch_nonuniformity",
+        "ETCH",
+        0.5135
+      ],
+      [
+        "cmp_edge_overpolish",
+        "CMP",
+        0.2452
+      ],
+      [
+        "clean_residue",
+        "CLEAN",
+        0.1837
+      ]
+    ],
+    "best": [
+      "etch_nonuniformity",
+      "ETCH",
+      0.5135
+    ]
+  },
+  {
+    "pattern": "Edge-Ring",
+    "rank": 52,
+    "cause": "nonuniform_thin_film_deposition_process",
+    "cause_name": "nonuniformities created in the thin film deposition process",
+    "cause_description": "박막 증착 공정에서 불균일성이 발생한 상태를 의미한다.",
+    "scores": [
+      [
+        "etch_nonuniformity",
+        "ETCH",
+        0.5846
+      ],
+      [
+        "clean_residue",
+        "CLEAN",
+        0.3505
+      ],
+      [
+        "cmp_edge_overpolish",
+        "CMP",
+        0.3273
+      ]
+    ],
+    "best": [
+      "etch_nonuniformity",
+      "ETCH",
+      0.5846
+    ]
+  },
+  {
+    "pattern": "Edge-Ring",
+    "rank": 53,
+    "cause": "cold_process",
+    "cause_name": "cold process",
+    "cause_description": "공정 온도가 낮은 상태이다.",
+    "scores": [
+      [
+        "cmp_edge_overpolish",
+        "CMP",
+        0.3534
+      ],
+      [
+        "etch_nonuniformity",
+        "ETCH",
+        0.3137
+      ],
+      [
+        "clean_residue",
+        "CLEAN",
+        0.2591
+      ]
+    ],
+    "best": [
+      "cmp_edge_overpolish",
+      "CMP",
+      0.3534
+    ]
+  }
+]

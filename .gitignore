@@ -1,0 +1,53 @@
+# 비밀값 — 절대 커밋 금지 (.env_example만 추적)
+.env
+.env.*
+!.env_example
+
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# 테스트/린트 캐시
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# 서비스 런타임 상태 — 배치 실행마다 로컬에 새로 생성됨, 커밋 대상 아님
+app_state.db
+*.db-journal
+
+# 데이터/모델 산출물
+*.pkl
+*.npz
+
+# OS/에디터
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/settings.local.json
+
+*.log
+
+# --- secsgem-mcp 전용 ---
+secsgem-mcp/datasets/raw/
+secsgem-mcp/datasets/raw_secs_logs/
+secsgem-mcp/datasets/fab.db
+secsgem-mcp/datasets/ground_truth/
+secsgem-mcp/issue/
+secsgem-mcp/eval/results.json
+# fab.db에서 뽑은 파생 CSV — fab.db 자체가 이미 제외 대상이라 같이 제외 (export_to_csv.py로 재생성 가능)
+secsgem-mcp/datasets/csv_export/
+
+# --- kg_rca 전용 ---
+# 저작권 있는 3자 원문 — 파이프라인은 안 읽음(2_load_txt.py가 .txt/.md/무확장자만, 하위 디렉토리 제외 로드)
+# 커밋하면 안 되는 논문 PDF·교과서 원문 스캔본이라 명시적으로 제외
+kg_rca/data/raw/*.pdf
+kg_rca/data/raw/_reference/

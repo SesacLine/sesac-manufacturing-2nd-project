@@ -1,0 +1,53 @@
+# simulator/mapping_table.yaml  ← 단일 진실원본. generate.py / KG 시드 / eval이 이 파일을 로드
+# 결함 패턴 -> [ {원인 공정, 원인 장비군, 확률, 텔레메트리 단서, 문헌} ]
+Edge-Ring:
+  - cause: etch_nonuniformity      # 식각 불균일
+    process: ETCH
+    equipment_group: ETCH
+    prob: 0.60
+    telemetry_signature: {param: rf_power, drift: step_up}
+    citation: "Wang et al., IEEE TSM 2020; 인터뷰 1-3"
+  - cause: cmp_edge_overpolish     # CMP 에지 과연마
+    process: CMP
+    equipment_group: CMP
+    prob: 0.25
+    telemetry_signature: {param: down_force, drift: linear_up}
+    citation: "TODO(M1 리뷰 게이트): 문헌 확정 필요"
+  - cause: clean_residue           # 세정 문제
+    process: CLEAN
+    equipment_group: CLEAN
+    prob: 0.15
+    telemetry_signature: {param: flow_rate, drift: none}   # 이력에만 단서
+    citation: "TODO(M1 리뷰 게이트): 문헌 확정 필요"
+Center:
+  - cause: deposition_center_thickness  # 증착 중앙부 두께 이상
+    process: DEPO
+    equipment_group: DEPO
+    prob: 0.60
+    telemetry_signature: {param: chamber_pressure, drift: step_up}
+    citation: "Wu et al., IEEE TSM 2015 (WM-811K 원 논문); TODO: 기전 문헌 보강"
+  - cause: cmp_center_overpolish        # CMP 중앙 과연마
+    process: CMP
+    equipment_group: CMP
+    prob: 0.25
+    telemetry_signature: {param: slurry_flow, drift: linear_up}
+    citation: "TODO(M1 리뷰 게이트): 문헌 확정 필요"
+  - cause: clean_nozzle_clog            # 세정 노즐 막힘 → 중앙 잔류
+    process: CLEAN
+    equipment_group: CLEAN
+    prob: 0.15
+    telemetry_signature: {param: flow_rate, drift: linear_down}
+    citation: "TODO(M1 리뷰 게이트): 문헌 확정 필요"
+Scratch:
+  - cause: handling_mechanical          # 반송 로봇/핸들링 기계 손상
+    process: CMP
+    equipment_group: CMP
+    prob: 0.65
+    telemetry_signature: {param: none, drift: none}   # 알람/정비 이력에만 단서
+    citation: "Wu et al., IEEE TSM 2015; 인터뷰 1-3"
+  - cause: cmp_slurry_particle          # 슬러리 대립자 스크래치
+    process: CMP
+    equipment_group: CMP
+    prob: 0.35
+    telemetry_signature: {param: slurry_flow, drift: step_up}
+    citation: "TODO(M1 리뷰 게이트): 문헌 확정 필요"

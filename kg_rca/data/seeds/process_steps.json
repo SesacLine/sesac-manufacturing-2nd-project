@@ -1,0 +1,12 @@
+{
+  "_comment": "(:ProcessStep) 시드 - 6종 고정. id는 fab.db의 lot_history.step 컬럼과 문자열이 반드시 일치해야 함 (join key).",
+  "join_key": "lot_history.step",
+  "nodes": [
+    { "id": "LITHO", "name": "LITHO", "aliases": ["lithography", "photo", "photolithography", "exposure"] },
+    { "id": "ETCH",  "name": "ETCH",  "aliases": ["etching", "plasma etch", "dry etch", "etch chamber", "etch step"] },
+    { "id": "DEPO",  "name": "DEPO",  "aliases": ["deposition", "cvd", "pvd", "film deposition", "thin film deposition"] },
+    { "id": "CMP",   "name": "CMP",   "aliases": ["chemical mechanical polishing", "planarization", "polish"] },
+    { "id": "CLEAN", "name": "CLEAN", "aliases": ["cleaning", "wet clean", "surface clean"] },
+    { "id": "EDS",   "name": "EDS",   "aliases": ["electrical die sort", "wafer sort", "probe test"] }
+  ]
+}

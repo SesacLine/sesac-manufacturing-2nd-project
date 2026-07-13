@@ -1,0 +1,21 @@
+DEPOSITION (DEPO) TROUBLESHOOTING GUIDE
+
+This guide lists failure modes observed in the DEPO step, their causes, and the
+equipment parameter involved in each cause.
+
+Film thickness nonuniformity
+Film thickness nonuniformity is a failure mode that occurs in the DEPO step. One
+cause of film thickness nonuniformity is gas flow imbalance, which involves the
+gas_flow parameter. Another cause is susceptor temperature drift, which involves
+the susceptor_temp parameter.
+
+Low deposition rate
+Low deposition rate is a failure mode that occurs in the DEPO step. It is caused
+by chamber pressure deviation, which involves the chamber_pressure parameter.
+
+Incorrect gas flow into the chamber
+Incorrect gas flow into the chamber is a failure mode that occurs in the DEPO
+step. One cause is an incorrect process recipe, which is checked by verifying the
+process recipe downloaded for the wafer being processed. Another cause is gas
+flow imbalance, which involves the gas_flow parameter.
+
