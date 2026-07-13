@@ -2,10 +2,10 @@
 import yaml, pathlib
 
 def _mapping():
-    return yaml.safe_load(pathlib.Path("simulator/mapping_table.yaml").read_text())
+    return yaml.safe_load(pathlib.Path("simulator/mapping_table.yaml").read_text(encoding="utf-8"))
 
 def test_md_matches_yaml():
-    md = pathlib.Path("simulator/mapping_table.md").read_text()
+    md = pathlib.Path("simulator/mapping_table.md").read_text(encoding="utf-8")
     for pattern, causes in _mapping().items():
         for c in causes:
             assert c["cause"] in md, (

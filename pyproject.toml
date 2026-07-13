@@ -32,6 +32,7 @@ dependencies = [
     # 공통
     "pydantic>=2.6",
     "python-dotenv>=1.2.2",
+    "pytest",
 ]
 
 # flat-layout에 top-level 패키지가 여러 개 → 명시 필수 (auto-discovery 에러 방지)
@@ -51,7 +52,7 @@ eval = "secsgem-mcp/eval"
 
 [tool.pytest.ini_options]
 addopts = "-q"
-testpaths = ["secsgem-mcp/tests"]
+testpaths = ["secsgem-mcp/tests", "backend/tests"]
 markers = ["data: 데이터셋 빌드(fab.db)가 필요한 테스트 — CI에서 제외"]
 
 # 재현성 정책 (원래 secsgem-mcp/pyproject.toml)

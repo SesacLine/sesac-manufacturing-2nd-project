@@ -8,7 +8,7 @@ pytestmark = pytest.mark.data   # fab.db 필요 — CI(-m "not data")에서는 �
 
 
 def _cards():
-    return [json.loads(p.read_text())
+    return [json.loads(p.read_text(encoding="utf-8"))
             for p in sorted(pathlib.Path("datasets/ground_truth").glob("SC-*.json"))]
 
 

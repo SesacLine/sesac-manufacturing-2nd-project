@@ -3,7 +3,7 @@
 import yaml, pathlib
 
 def main():
-    data = yaml.safe_load(pathlib.Path("simulator/mapping_table.yaml").read_text())
+    data = yaml.safe_load(pathlib.Path("simulator/mapping_table.yaml").read_text(encoding="utf-8"))
     lines = [
         "<!-- 자동 생성: python -m simulator.render_mapping_md — 직접 편집 금지 -->",
         "# 결함↔후보 원인 매핑 테이블",

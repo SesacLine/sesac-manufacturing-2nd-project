@@ -1,7 +1,7 @@
 import yaml, pathlib
 
 def _load(p):
-    return yaml.safe_load(pathlib.Path(p).read_text())
+    return yaml.safe_load(pathlib.Path(p).read_text(encoding="utf-8"))
 
 def test_route_steps_have_equipment():
     fab = _load("simulator/fab_model.yaml")

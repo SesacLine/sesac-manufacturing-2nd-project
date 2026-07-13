@@ -3,7 +3,7 @@ import json, pathlib
 
 def load_ground_truth(scenario_id):   # 평가 시점에만 ground_truth 접근
     return json.loads(pathlib.Path(
-        f"datasets/ground_truth/{scenario_id}.json").read_text())
+        f"datasets/ground_truth/{scenario_id}.json").read_text(encoding="utf-8"))
 
 def rca_topk_accuracy(preds, k=1):
     hit = sum(gt_true_cause(p) in p["ranked_causes"][:k] for p in preds)

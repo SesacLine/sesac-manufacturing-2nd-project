@@ -144,8 +144,8 @@ def main():
     (out / "raw_secs_logs").mkdir(parents=True, exist_ok=True)
     (out / "ground_truth").mkdir(parents=True, exist_ok=True)
 
-    fab = yaml.safe_load(pathlib.Path("simulator/fab_model.yaml").read_text())
-    mapping = yaml.safe_load(pathlib.Path("simulator/mapping_table.yaml").read_text())
+    fab = yaml.safe_load(pathlib.Path("simulator/fab_model.yaml").read_text(encoding="utf-8"))
+    mapping = yaml.safe_load(pathlib.Path("simulator/mapping_table.yaml").read_text(encoding="utf-8"))
     eqmap = equipment_instances(fab)
     days = fab["timeline_days"]
 

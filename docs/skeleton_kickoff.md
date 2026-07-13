@@ -245,6 +245,7 @@ fab.db는 실제 공장 데이터가 아니라, 시뮬레이터가 만들어 둔
 - Scratch는 파라미터 어휘 불일치로 `[자동]` 판정 가능한 후보가 원래 적었는데, 위 ⑦의 매핑 완화책 이후 3건→10건으로 늘었다 — 그래도 다른 패턴(Center 36건)보다는 여전히 적다.
 - CLEAN 공정은 KG에 근거 문헌이 없어서 후보 자체가 안 나온다.
 - `Alarm` evidence 노드가 KG에 없어서, 알람 관련 근거는 Critic의 "KG 메커니즘 연결" 체크를 항상 통과 못 한다.
+- **알람 관련 정리(0713 회의에서 나온 질문)**: KG는 Alarm evidence 타입이 없어서 Hypothesis가 알람을 근거로 가설을 만드는 일은 구조적으로 없다. 알람을 쓰려면 Critic 쪽에 로직을 추가하는 게 맞는 방향인데, **`get_lot_timeline`의 알람 통합은 지금 데이터로는 항상 비어있다** — 그 SQL이 `alarm.lot_id = ?`로 조인하는데, 실제 `fab.db`엔 알람 131건 전부 `lot_id`가 `NULL`이다(시뮬레이터의 `alarm_lot_resolver()`가 "장비 유휴 중 알람"으로 전부 분류해버림). 그래서 `get_lot_timeline`으로는 알람을 볼 수 없고, **알람을 실제로 조회하려면 `get_alarm_history(equipment_id, time_range)`가 유일한 통로**다(lot_id가 아니라 equipment_id로 직접 조회하므로). 즉 두 툴은 기능이 안 겹친다 — `get_alarm_history`는 대체 불가.
 - Maintenance id와 fab `parts` 필드(자유 텍스트) 자동 대조 불가 — `[반자동]` 정의와 원래 일치하는 부분이라 문제라기보다는 특성.
 - `hypotheses.json`의 가설마다 `mapping` 필드가 새로 생겼다(위 ⑦ 매핑 완화책의 부산물) — 매칭된 fab 시나리오 정보(점수·확률·인용문헌)가 들어있다. 매칭 안 됐으면 `null`. `kg_client.py`는 아직 이 필드를 안 읽는다 — 나중에 "이 근거가 fab 시나리오와 이만큼 비슷해서 자동 승격됐다"를 화면에 보여주고 싶어지면 그때 `GraphRAGCandidate`에 필드 추가하면 된다. 지금 당장은 불필요.
 
@@ -278,3 +279,66 @@ fab.db는 실제 공장 데이터가 아니라, 시뮬레이터가 만들어 둔
   1. `MultiServerMCPClient.get_tools()`가 **호출마다 새 stdio 서브프로세스를 띄우는 설계**(라이브러리 docstring에 명시)라, 244건 가설 검증 중 타임아웃 발생 → `client.session()`으로 연결을 한 번만 열고 재사용하도록 `mcp_client/client.py` 재구성. 이 수정 하나로 타임아웃이 정상 완료로 바뀜.
   2. `secsgem-mcp/simulator/fab_model.py`가 `fab_model.yaml`을 인코딩 지정 없이 읽어서 Windows(cp949)에서 한글 주석 때문에 `UnicodeDecodeError` — `encoding="utf-8"` 명시로 수정.
   최종 결과: Center 그룹 1개, 후보 244건 → 채택 136건/기각 108건, 그중 fab.db에 실제로 주입된 `Center/DEPO/chamber_pressure` drift를 정확히 잡아낸 것까지 확인(§4 스텝9). 스텝8(UC-2/UC-3 예외 카드)은 코드는 있으나 이번 실행에서 실제로 타보진 못해서 별도 확인이 남아있음.
+
+---
+
+## 8. 컴포넌트별 개선 목록 (Walking Skeleton → 실제 구현)
+
+§5가 "착수 전 결정할 것" 위주였다면, 이 표는 **지금 코드가 정확히 뭘 안 하고 있는지**를 컴포넌트별로 모은 것이다. 팀원과 다시 짤 때 체크리스트로 쓰면 된다.
+
+### 8.1 VLM (① `nodes/vlm.py`)
+
+| # | 지금 상태 | 실제로 필요한 것 |
+|---|---|---|
+| 1 | `pattern="Center"` 완전 하드코딩. 실제 모델 호출 자체가 없음 | Qwen3-VL-4B-Instruct 연동. `semiconductor_proposal.md` §7 결정: **fine-tuning이 목표, few-shot은 차선**(병행) |
+| 2 | `mcp.get_wafer_map(lot_id, wafer_id)`를 아예 안 부르고, fab.db `wafer` 테이블에서 SQL로 `wafer_id` 목록만 직접 읽음 | 실제로는 MCP 도구로 이미지(base64 PNG, 라벨 미포함)를 받아와서 모델에 넣어야 함 — 지금은 이미지 자체를 한 번도 안 읽는다 |
+| 3 | 출력이 `pattern` 하나뿐(나머지 필드는 고정 더미 문자열) | `{pattern, spatial, description, severity, confidence, ambiguity}` 6개 필드를 실제로 생성해야 함. `description`/`confidence`/`ambiguity`는 GraphRAG 매핑 없는 6/9패턴에서 사용자에게 그대로 노출되는 필드라 특히 중요(`qna_0711.md` Q7) |
+| 4 | 프롬프트(system/user 메시지) 없음 | instruction-tuned 모델이라 학습 때 쓴 것과 **정확히 동일한** system/user 문자열이 필요(`qna_0708.md` Q3) — VLM 파인튜닝 담당 팀원에게서 원문 그대로 받아야 함 |
+| 5 | 근거 없음(모델 자체가 없으니) | 왜 사전학습 모델을 그냥 못 쓰는지 정량 근거: Cosmos Reason 리포트(zero-shot 14.37%→SFT 96.8%), WaferSAGE(Qwen3-4B 기준 base 4.0→SFT 6.484, LLM-Judge) — `document/fine-tunning/` 참고 |
+| 6 | 팀원이 이미 실제 VLM 출력 샘플을 만들어 둠(`personalspace/0707 work/qna.md` Q7, `wm811k_929` 예시) — LLaVA류 데이터 포맷 + `<think>` 안에 `radius_mean`/`edge_ratio`/`cluster_count` 등 정밀 수치 | 이 수치가 VLM이 즉흥적으로 낸 게 아니라 별도 결정적 피처 추출 결과일 가능성이 높음 — 그 계산 코드가 있는지, `<think>` 자연어 대신 구조화 `features` 필드로 노출 가능한지 팀원에게 확인 필요. **코드/데이터는 이 저장소엔 없음**, 표준화도 아직 안 끝남 |
+| 7 | 온프레미스 배포 목표만 확정, 인프라(GPU 사양·클라우드 여부) 미문서화 | 배포 환경 결정 필요 |
+
+### 8.2 Hypothesis (④ `nodes/hypothesis.py`)
+
+| # | 지금 상태 | 실제로 필요한 것 |
+|---|---|---|
+| 1 | `verify_cache`가 `(step, evidence_label, evidence)` 키로만 캐싱 — 응급 처치 | 검증 단위를 제대로 설계(§5 ①). Q5(가설 단위 vs 검증 단위)와 직결 |
+| 2 | `_top_equipment`가 commonality 1등을 임계값 없이 무조건 채택 | 비율이 낮으면(예: 30% 미만) "의심 장비 특정 실패"로 처리하는 하한선 필요 |
+| 3 | `_detect_drift`가 `candidate["direction"]`을 아예 무시(§5 ③) | 문헌이 제시한 방향(high/low)과 실제 이탈 방향이 일치하는지까지 봐야 진짜 지지 증거 |
+| 4 | `_group_time_range`가 그룹의 **첫 로트 하나만** 봄 | 그룹 내 모든 로트의 처리 구간을 합쳐서(또는 대표값 선정 기준을 정해서) 시간창을 잡아야 함 |
+| 5 | Maintenance 분기: 시간대 안에 정비 기록이 "있기만 하면" `maintenance_hit=True` — `parts` 텍스트가 candidate의 cause와 관련 있는지 전혀 확인 안 함 | 키워드 매칭이라도 필요(`kg_rca/MCP_KG_정합성검토.md` X7 — Maintenance id ↔ fab `parts` 자동 대조 불가 문제와 같은 이슈) |
+| 6 | Recipe 분기: MCP 호출 자체를 안 하고 `recipe_match=None` 고정 | KG에 기대 레시피가 없다는 스키마 한계는 맞지만, 최소한 `get_lot_history`로 실제 사용된 recipe_id는 조회해서 사람이 볼 수 있게는 해야 함(지금은 그 조회조차 안 함) |
+| 7 | `get_alarm_history` 어디서도 안 씀 | 알람은 Critic 쪽에 추가하는 게 맞다고 결론 냄(8.3 참고) — Hypothesis에서는 손 안 대도 됨 |
+| 8 | `detect_change_points` 안 씀 | 지금은 "정상범위 벗어난 포인트 있음=drift"로 판정. 실제 드리프트 시작점을 잡으려면 이 툴 필요(변화점 탐지) |
+| 9 | `route="direct"` 후보 처리(§5 ②) | 그대로 |
+
+### 8.3 Critic (⑤ `nodes/critic.py`)
+
+| # | 지금 상태 | 실제로 필요한 것 |
+|---|---|---|
+| 1 | **`_check_time_consistency`가 `maintenance_ts`가 있을 때만 작동** — Parameter(`[자동]`) 후보는 `maintenance_ts`가 절대 안 채워지므로 **시간정합 검사를 아예 안 받고 무조건 통과**함(오늘 코드 재검토 중 발견) | "①시간정합" 규칙을 drift(Parameter) 후보에도 적용할 방법 필요 — 예: `query_telemetry`가 이탈을 감지한 첫 시점과 결함 발생 시점 비교(`detect_change_points`와 연결하면 자연스러움) |
+| 2 | `_check_faithfulness`가 사실상 자리표시자 — `[자동]`이고 `drift_detected is None`인 경우만 체크 | 진짜 faithfulness(응답 카드 문장이 실제 조회값과 일치하는지)는 ⑥ 응답생성이 자연어를 실제로 만들기 전까진 의미가 없음 — 8.4와 함께 재설계 |
+| 3 | 그룹의 **첫 로트만** 시간정합 검사에 씀(hypothesis.py와 같은 단순화) | 그룹 전체 로트를 고려하는 기준 필요 |
+| 4 | 알람 기반 체크가 없음 | `get_alarm_history(equipment_id, time_range)`로 "의심 장비에 결함 시점 근처 알람이 있었나" 추가 가능 — 단 fab.db의 알람은 대부분 배경 노이즈로 설계돼 있어(방금 회의에서 확인) 지지 증거보다는 "혹시 이게 교란인지" 걸러내는 회의적 체크로 쓰는 게 맞음 |
+| 5 | 4규칙 다 통과하면 그냥 채택 — 규칙 간 우선순위/점수화 없음 | 지금은 이진 accept/reject뿐이라, 나중에 "얼마나 확실한 가설인가" 랭킹이 필요해지면 규칙별 가중치 설계 필요 |
+
+### 8.4 LLM — 응답생성 (⑥ `nodes/response.py`)
+
+| # | 지금 상태 | 실제로 필요한 것 |
+|---|---|---|
+| 1 | LLM 호출 없음, 결정적 템플릿 문자열(`f"- {cause} (등급: {tier}, 의심 장비: {equipment})"`) | `산출물_mvp설계서.md`상 VLM(Qwen-VL-4B-Instruct)이 응답생성까지 겸용하기로 돼 있음 — 실제 자연어 합성 붙여야 함 |
+| 2 | **KG가 만들어 둔 `sentence`(사람이 읽을 가설 문장)와 `provenance`(인용 근거·문헌)가 파이프라인 중간에서 사라짐** — `state.py`의 `Hypothesis` TypedDict에 `sentence`/`provenance` 필드 자체가 없음(오늘 재확인). `hypothesis.py`가 `GraphRAGCandidate`에서 `cause`/`tier`/`equipment`/`evidence`만 뽑고 `sentence`는 안 옮김 | 응답 카드에 "왜 이 원인이 의심되는지"(KG 문장 + 인용 근거)를 보여주려면 `Hypothesis`에 `sentence`/`provenance` 필드 추가하고 `build_hypotheses`에서 그대로 옮겨야 함 — 지금 구조로는 절대 화면에 못 보여줌 |
+| 3 | UC-1/UC-2/UC-3 카드 문구가 전부 고정 템플릿 1개씩 | 실제 서비스라면 사람이 읽었을 때 자연스러운 문장이 필요 — 이 부분이 LLM이 실제로 필요한 지점 |
+| 4 | `mapping` 필드(kg_rca의 fab 시나리오 매칭 정보, §5 참고)도 응답에 노출 안 됨 | "이 근거가 fab 시나리오와 이만큼 비슷해서 자동 승격됐다" 같은 설명에 쓰면 좋음(선택사항) |
+
+### 8.5 E2E 평가
+
+| # | 지금 상태 | 실제로 필요한 것 |
+|---|---|---|
+| 1 | 수동으로 딱 1번 실행(2026-03-04, Center 그룹)해서 눈으로 결과 확인한 게 전부 | 반복 가능한 평가 스크립트 필요(여러 cursor_date, 3개 매핑 패턴 전부) |
+| 2 | UC-2(판단불가)·UC-3(미매핑 패턴) 카드는 코드는 있으나 한 번도 실제로 안 타봄 | Edge-Ring/Scratch 그룹, 그리고 전부 기각되는 그룹을 별도로 만들어서 확인 |
+| 3 | `secsgem-mcp/eval/metrics.py`의 `rca_topk_accuracy`가 cause 문자열을 직접 비교해서, kg_rca 출력을 그대로 넣으면 0%가 나오는 문제(예전부터 알려진 이슈) — **아직 손 안 댐** | 평가 파이프라인을 실제로 돌리기 전에 반드시 해결 필요. 평가 기준을 cause 문자열이 아니라 `(step, evidence, tier)` 같은 구조화 키로 바꾸는 방향이 유력 |
+| 4 | `secsgem-mcp/datasets/ground_truth/`(정답 카드, 평가 전용)를 우리 파이프라인이 아직 한 번도 참조 안 함 | 배치 실행 결과를 ground truth와 자동 대조하는 평가 스크립트 필요 |
+| 5 | `app_state.db`에 같은 그룹을 재실행하면 어떻게 되는지(멱등성) 테스트 안 함 | `INSERT OR REPLACE`로 짜여 있어 덮어쓰기는 되지만, "어제와 오늘의 같은 가설을 비교"하는 로직은 없음(§5 ④ 참고) |
+| 6 | uvicorn으로 실제 서버 기동 + HTTP 경로(`/batch/run`, `/batch/results`) 확인 안 됨 | `README.md` "남은 일" 참고 — 그래프 직접 호출로만 검증됨 |
+| 7 | 성능(응답 시간) 측정 안 됨 — 세션 재사용 버그 고친 뒤로는 빨라졌지만 정확한 수치 없음 | 그룹당/패턴당 소요 시간 벤치마크 필요, 특히 검증단위 dedup(§5 ①) 전후 비교 |

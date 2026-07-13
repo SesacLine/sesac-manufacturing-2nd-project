@@ -79,10 +79,15 @@ docker run -d --name neo4j-rca \
 
 ### 2. 파이썬 환경
 
+가상환경은 `kg_rca/`가 아니라 저장소 루트(`SesacLine_SemiRCA/`)에서 하나로 관리한다(`pyproject.toml`에
+`kg_rca` 의존성도 포함되어 있음).
+
 ```bash
-python -m venv .venv
-.venv/Scripts/activate          # Windows (macOS/Linux: source .venv/bin/activate)
-pip install -r requirements.txt
+cd ..                    # 저장소 루트로 이동
+pip install uv
+uv venv
+uv sync
+.venv\Scripts\activate   # Windows (macOS/Linux: source .venv/bin/activate)
 ```
 
 ### 3. 환경변수 (`.env`)
