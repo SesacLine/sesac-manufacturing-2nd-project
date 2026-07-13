@@ -13,7 +13,7 @@ YAML_PATH = pathlib.Path(__file__).parent / "fab_model.yaml"
 
 @functools.lru_cache(maxsize=1)
 def load() -> dict:
-    return yaml.safe_load(YAML_PATH.read_text())
+    return yaml.safe_load(YAML_PATH.read_text(encoding="utf-8"))
 
 
 def group_of(equipment_id: str) -> str | None:

@@ -52,5 +52,10 @@ secsgem-mcp/datasets/csv_export/
 kg_rca/data/raw/*.pdf
 kg_rca/data/raw/_reference/
 
+# 파이프라인 중간 산출물 — 2~5번 스크립트로 재생성 가능, 최종 산출물(hypotheses.json)만 추적
+kg_rca/outputs/chunks.jsonl
+kg_rca/outputs/extracted_kg.jsonl
+kg_rca/outputs/parsed_docs.jsonl
+
 # 개인 작업공간
 personalspace/

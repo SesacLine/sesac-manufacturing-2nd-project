@@ -13,7 +13,11 @@ from ..state import RCAState
 def fetch_graphrag_candidates(state: RCAState, kg_client: KGClient) -> dict:
     """groups의 각 pattern으로 kg_client.get_candidates를 호출해 graphrag_candidates를 채운다.
 
-    TODO: group_id별로 KGClient.get_candidates(pattern) 호출 -> GraphRAGResult로 저장.
-          Center/Edge-Ring/Scratch가 아닌 패턴은 candidates=[]로 두고 status만 표시.
+    Center/Edge-Ring/Scratch가 아닌 패턴은 KGClient가 이미 candidates=[]를 돌려준다
+    (kg_client.py 참고) — 여기서 따로 걸러낼 필요 없이 그대로 저장하면 하위 스텝들이
+    빈 리스트를 보고 UC-3(미매핑 패턴) 처리를 한다.
     """
-    raise NotImplementedError
+    graphrag_candidates = {
+        group["group_id"]: kg_client.get_candidates(group["pattern"]) for group in state["groups"]
+    }
+    return {"graphrag_candidates": graphrag_candidates}

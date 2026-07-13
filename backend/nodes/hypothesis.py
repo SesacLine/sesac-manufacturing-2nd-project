@@ -22,31 +22,143 @@ from __future__ import annotations
 from ..mcp_client import MCPClient
 from ..state import EvidenceEntry, GraphRAGCandidate, Hypothesis, RCAState
 
+# --- 0713 Walking Skeleton: 팀 결정 3가지를 전부 "가장 단순한 선택"으로 하드코딩했다.
+# 나중에 팀원과 다시 짤 때 이 세 지점부터 보면 된다(personalspace/0713 work/skeleton_kickoff.md §5).
+#
+# 결정① MCP 호출 단위 — 처음엔 가설 단위(candidate마다 매번 새로 호출)로 짰다가, 실제로
+#        돌려보니 Center 244건 기준 타임아웃이 나서(§5에서 우려했던 게 실측으로 확인됨),
+#        같은 (step, evidence_label, evidence)는 결과를 재사용하는 캐싱만 최소로 넣었다
+#        (아래 verify_cache). "검증 단위로 제대로 설계"까지는 아니고 응급 처치 수준 —
+#        팀원과 다시 짤 때는 여기부터 손보는 게 좋다.
+# 결정② route="direct"(step=null) 후보 — 그냥 step=None으로 commonality를 불러서
+#        전체 공정 뭉뚱그린 결과를 그대로 쓴다(신호가 흐려지는 걸 감수).
+# 결정③ direction=null인 [자동] 후보 — 방향 상관없이 정상범위 이탈이면 drift_detected=True.
+#        (사실 모든 [자동] 후보에 이 규칙을 통일 적용한다 — candidate.direction 자체를 안 본다)
 
-async def build_hypotheses(
-    state: RCAState, group_id: str, mcp: MCPClient
-) -> dict:
-    """group_id의 graphrag_candidates 각각에 증거를 모아 hypotheses[group_id]를 채운다.
 
-    TODO:
-      1. comm = await mcp.run_commonality_analysis(lot_ids)               # 공통, tier 무관
-      2. suspect = top_equipment_for(comm, cand.step)
-      3. neg = await mcp.get_normal_lot_ratio(suspect, time_range=...)    # 공통, tier 무관
-      4. cand.tier로 분기해 _verify_candidate 호출
-      5. Hypothesis 리스트로 조립해 반환
-    """
-    raise NotImplementedError
+async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> dict:
+    """group_id의 graphrag_candidates 각각에 증거를 모아 hypotheses[group_id]를 채운다."""
+    group = next((g for g in state["groups"] if g["group_id"] == group_id), None)
+    if group is None:
+        return {"hypotheses": {group_id: []}}
+    lot_ids = group["lot_ids"]
+
+    graphrag_result = state["graphrag_candidates"].get(group_id)
+    candidates = graphrag_result["candidates"] if graphrag_result else []
+    if not candidates:
+        return {"hypotheses": {group_id: []}}
+
+    time_range = await _group_time_range(lot_ids, mcp)
+
+    # cause는 서로 달라도 (step, evidence_label, evidence)가 같으면 MCP에 던지는 질문이
+    # 완전히 동일하다 — 결정①.
+    verify_cache: dict[tuple, tuple] = {}
+
+    hypotheses: list[Hypothesis] = []
+    for candidate in candidates:
+        key = (candidate["step"], candidate["evidence_label"], candidate["evidence"])
+        if key not in verify_cache:
+            verify_cache[key] = await _verify_unit(candidate, lot_ids, mcp, time_range)
+        suspect, evidence = verify_cache[key]
+
+        hypotheses.append(
+            {
+                "cause": candidate["cause"],
+                "tier": candidate["tier"],
+                "equipment": suspect,
+                "evidence": dict(evidence),
+            }
+        )
+
+    return {"hypotheses": {group_id: hypotheses}}
+
+
+async def _verify_unit(
+    candidate: GraphRAGCandidate, lot_ids: list[str], mcp: MCPClient, time_range: tuple[str, str]
+) -> tuple[str | None, EvidenceEntry]:
+    """검증단위(step, evidence_label, evidence) 하나당 MCP 호출 묶음을 한 번만 실행한다."""
+    evidence = _empty_evidence()
+
+    comm = await mcp.run_commonality_analysis(lot_ids, step=candidate["step"])  # 결정②
+    suspect = _top_equipment(comm)
+    if suspect is None:
+        return suspect, evidence
+
+    evidence["commonality_ratio"] = _ratio_for(comm, suspect)
+    neg = await mcp.get_normal_lot_ratio(equipment_id=suspect)
+    evidence["normal_ratio"] = neg["data"].get("normal_ratio")
+    evidence.update(await _verify_candidate(candidate, suspect, mcp, time_range))
+    return suspect, evidence
 
 
 async def _verify_candidate(
-    candidate: GraphRAGCandidate, suspect_equipment: str, mcp: MCPClient
-) -> EvidenceEntry:
-    """candidate.tier에 따라 정해진 MCP 도구만 호출해 EvidenceEntry를 채운다.
+    candidate: GraphRAGCandidate, suspect_equipment: str, mcp: MCPClient, time_range: tuple[str, str]
+) -> dict:
+    """candidate.tier에 따라 정해진 MCP 도구만 호출해 EvidenceEntry의 tier별 필드를 채운다."""
+    if candidate["tier"] == "근거없음":
+        return {}
 
-    TODO: tier == "자동"    -> query_telemetry(suspect, candidate.evidence, ...) 후
-                                candidate.direction과 비교해 drift_detected 결정
-          tier == "반자동"  -> evidence_label == "Maintenance"면 get_maintenance_history,
-                                "Recipe"면 get_lot_history로 recipe_id 비교
-          tier == "근거없음" -> MCP 호출 없이 빈 EvidenceEntry 반환
-    """
-    raise NotImplementedError
+    if candidate["tier"] == "자동":  # Parameter
+        telemetry = await mcp.query_telemetry(
+            suspect_equipment, time_range, params=[candidate["evidence"]]
+        )
+        series = telemetry["data"]["series"]
+        normal_range = telemetry["data"]["normal_ranges"].get(candidate["evidence"])
+        return {
+            "drift_detected": _detect_drift(series, normal_range),  # 결정③: direction 무시
+            "telemetry_summary": f"{candidate['evidence']} {len(series)}개 포인트, 정상범위 {normal_range}",
+        }
+
+    if candidate["evidence_label"] == "Maintenance":
+        maint = await mcp.get_maintenance_history(suspect_equipment, time_range)
+        rows = maint["data"]
+        result: dict = {"maintenance_hit": len(rows) > 0}
+        if rows:
+            result["maintenance_ts"] = rows[0]["ts"]
+            result["maintenance_summary"] = f"{rows[0]['type']} — {rows[0]['parts']}"
+        return result
+
+    if candidate["evidence_label"] == "Recipe":
+        # 기대 레시피가 KG에 없어 비교 불가(schema_v2.md에 명시된 한계) — 조회는 스킵,
+        # recipe_match=None으로 "판정은 사람 몫"임을 그대로 남긴다.
+        return {"recipe_match": None}
+
+    return {}
+
+
+def _empty_evidence() -> EvidenceEntry:
+    return {
+        "commonality_ratio": None,
+        "drift_detected": None,
+        "maintenance_hit": None,
+        "maintenance_ts": None,
+        "recipe_match": None,
+        "alarm_hit": None,
+        "normal_ratio": None,
+    }
+
+
+def _top_equipment(commonality: dict) -> str | None:
+    stats = commonality["data"]["commonality"]["equipment_id"]
+    return stats[0]["value"] if stats else None
+
+
+def _ratio_for(commonality: dict, equipment_id: str) -> float | None:
+    stats = commonality["data"]["commonality"]["equipment_id"]
+    return next((s["ratio"] for s in stats if s["value"] == equipment_id), None)
+
+
+def _detect_drift(series: list[dict], normal_range: list[float] | None) -> bool | None:
+    if not series or not normal_range:
+        return None
+    lo, hi = normal_range
+    return any(not (lo <= point["value"] <= hi) for point in series)
+
+
+async def _group_time_range(lot_ids: list[str], mcp: MCPClient) -> tuple[str, str]:
+    """그룹 대표(첫 로트)의 공정 진행 구간을 검증 시간창으로 쓴다."""
+    history = await mcp.get_lot_history(lot_ids[0])
+    rows = history["data"]
+    if not rows:
+        return ("2026-01-01 00:00:00", "2026-12-31 00:00:00")
+    return (min(r["ts_in"] for r in rows), max(r["ts_out"] for r in rows))
