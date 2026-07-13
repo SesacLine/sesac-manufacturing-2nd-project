@@ -51,3 +51,6 @@ secsgem-mcp/datasets/csv_export/
 # 커밋하면 안 되는 논문 PDF·교과서 원문 스캔본이라 명시적으로 제외
 kg_rca/data/raw/*.pdf
 kg_rca/data/raw/_reference/
+
+# 개인 작업공간
+personalspace/
