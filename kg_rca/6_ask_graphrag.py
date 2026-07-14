@@ -71,6 +71,7 @@ RETURN s.id            AS step,
        c.id            AS cause,
        c.name          AS cause_name,
        c.description   AS cause_description,
+       c.unverifiable_signals AS unverifiable_signals,
        coalesce(e.id, '근거없음')    AS evidence,
        coalesce(e.name, '문헌 서술') AS evidence_name,
        CASE
@@ -80,13 +81,15 @@ RETURN s.id            AS step,
          ELSE 'None'
        END             AS evidence_label,
        coalesce(e.fab_table, '-') AS fab_table,
+       e.consumable    AS consumable,
        vb.direction    AS direction,
        a.occurrence_prior AS occurrence_prior,
        (coalesce(a.extraction_confidence, 3)
         + coalesce(cb.extraction_confidence, 3)
         + coalesce(vb.extraction_confidence, 3)) / 3.0 AS confidence,
        cb.quotes       AS quotes,
-       cb.chunk_ids    AS chunk_ids
+       (coalesce(a.chunk_ids, []) + coalesce(cb.chunk_ids, [])
+        + coalesce(vb.chunk_ids, [])) AS chunk_ids
 """
 
 # 형상 경유 경로 (문서 D). 패턴 -> 형상은 시드에서 결정적으로 깔리고(HAS_SIGNATURE),
@@ -105,6 +108,7 @@ RETURN g.id            AS signature,
        c.id            AS cause,
        c.name          AS cause_name,
        c.description   AS cause_description,
+       c.unverifiable_signals AS unverifiable_signals,
        coalesce(e.id, '근거없음')    AS evidence,
        coalesce(e.name, '문헌 서술') AS evidence_name,
        CASE
@@ -114,13 +118,15 @@ RETURN g.id            AS signature,
          ELSE 'None'
        END             AS evidence_label,
        coalesce(e.fab_table, '-') AS fab_table,
+       e.consumable    AS consumable,
        vb.direction    AS direction,
        f.occurrence_prior AS occurrence_prior,
        (coalesce(f.extraction_confidence, 3)
         + coalesce(cb.extraction_confidence, 3)
         + coalesce(vb.extraction_confidence, 3)) / 3.0 AS confidence,
        cb.quotes       AS quotes,
-       cb.chunk_ids    AS chunk_ids
+       (coalesce(f.chunk_ids, []) + coalesce(cb.chunk_ids, [])
+        + coalesce(vb.chunk_ids, [])) AS chunk_ids
 """
 
 # 문헌이 공정을 거치지 않고 패턴 -> 원인을 바로 말한 경우(ref56 Table 1).
@@ -135,6 +141,7 @@ RETURN 'direct'        AS route,
        c.id            AS cause,
        c.name          AS cause_name,
        c.description   AS cause_description,
+       c.unverifiable_signals AS unverifiable_signals,
        coalesce(e.id, '근거없음')    AS evidence,
        coalesce(e.name, '문헌 서술') AS evidence_name,
        CASE
@@ -144,6 +151,7 @@ RETURN 'direct'        AS route,
          ELSE 'None'
        END             AS evidence_label,
        coalesce(e.fab_table, '-') AS fab_table,
+       e.consumable    AS consumable,
        vb.direction    AS direction,
        NULL            AS occurrence_prior,
        coalesce(at.extraction_confidence, 3) AS confidence,
@@ -187,6 +195,38 @@ TIER_OF_LABEL = {
 }
 
 TIER_TAG = {TIER_AUTO: "자동", TIER_SEMI: "반자동", TIER_NONE: "근거없음"}
+
+# =========================
+# 1.1b 시나리오 힌트 (MCP 문서 3.1의 검증 체인 라우팅)
+# -------------------------
+# evidence 종류가 검증 체인을 정한다: Parameter->A3, Recipe->A5,
+# Maintenance는 소모품(A6)/일반 정비(A2)로 갈린다 — Maintenance.consumable이 그 사실.
+# consumable은 추출 시 LLM이 문헌 문맥으로 판단해 노드에 저장된다.
+# 속성이 없는 소급분(재추출 전 노드)은 아래 키워드 휴리스틱으로 임시 판정한다.
+# =========================
+
+CONSUMABLE_KEYWORDS = ("pad", "brush", "slurry", "filter", "conditioner", "conditioning")
+
+
+def _consumable_heuristic(evidence_id: str, evidence_name: str) -> bool:
+    text = f"{evidence_id} {evidence_name}".lower()
+    return any(k in text for k in CONSUMABLE_KEYWORDS)
+
+
+def scenario_hint(row: dict) -> str | None:
+    """이 가설을 MCP 어느 검증 체인으로 보낼지. [근거없음]은 배정 체인 없음(None)."""
+    label = row["evidence_label"]
+    if label == "Parameter":
+        return "A3"
+    if label == "Recipe":
+        return "A5"
+    if label == "Maintenance":
+        consumable = row.get("consumable")
+        if consumable is None:   # 소급분 — 임시 휴리스틱 (재추출 시 노드 속성으로 대체됨)
+            consumable = _consumable_heuristic(row["evidence"] or "", row["evidence_name"] or "")
+        return "A6" if consumable else "A2"
+    return None
+
 
 LEGEND = """검증 등급 — 'fab.db에 있느냐'가 아니라 '에이전트가 스스로 판정할 수 있느냐'로 가릅니다.
   [자동]     Parameter. telemetry.param과 결정적으로 조인되고 정상범위로 판정 가능. 에이전트가 결론까지 냅니다.
@@ -383,13 +423,28 @@ def fetch_hypotheses(graph: Neo4jGraph, pattern: str) -> list[dict]:
     if filled:
         print(f"  (mapping_table: [근거없음] {filled}건 채움)")
 
-    # tier가 승격됐을 수 있으므로 점수를 다시 계산해 정렬한다.
+    # =========================
+    # 순위 — 검증 가능성(tier)이 아니라 문헌 근거로 매긴다.
+    #   (occurrence_prior, 근거 문서 수, 근거 청크 수) 내림차순.
+    #   tier는 "어떻게 확인하느냐"의 분류이지 그럴듯함이 아니므로 순위에서 뺀다.
+    #   confidence(LLM 자기평가)도 순위·출력에서 제외 — 근거 빈도는 측정값이라 신뢰 가능.
+    #   동점은 cause 이름순으로 고정해 실행마다 순서가 바뀌지 않게 한다.
+    # =========================
     for row in survivors:
-        prior = PRIOR_RANK.get(row["occurrence_prior"], 1)
-        row["_score"] = (row["tier"], prior, row["confidence"], ROUTE_RANK[row["route"]])
+        chunks = set(row.get("chunk_ids") or [])
+        row["evidence_chunks"] = len(chunks)
+        row["evidence_docs"] = len({c.split("#")[0] for c in chunks})
 
-    ranked = sorted(survivors, key=lambda r: r["_score"], reverse=True)
-    return ranked if TOP_K is None else ranked[:TOP_K]
+    survivors.sort(key=lambda r: (r["cause"] or "", r["evidence"] or ""))   # 결정적 tiebreak
+    survivors.sort(
+        key=lambda r: (
+            PRIOR_RANK.get(r["occurrence_prior"], 1),
+            r["evidence_docs"],
+            r["evidence_chunks"],
+        ),
+        reverse=True,
+    )
+    return survivors if TOP_K is None else survivors[:TOP_K]
 
 
 # =========================
@@ -459,8 +514,7 @@ def describe_path(row: dict) -> str:
         f"{head}"
         f"  근본 원인: {row['cause_name']} ({row['cause']})\n"
         f"  원인 설명: {row['cause_description']}\n"
-        f"  검증 신호: [{label}] {verify}\n"
-        f"  평균 추출 신뢰도: {row['confidence']:.1f}"
+        f"  검증 신호: [{label}] {verify}"
     )
 
 
@@ -534,8 +588,9 @@ def main() -> None:
                 "반자동": "Maintenance/Recipe. fab 테이블 조회는 되지만 판정은 사람 몫.",
                 "근거없음": "evidence 없는 문헌 서술. fab 데이터로 확인 불가.",
             },
-            "score_note": "score = (tier, occurrence_prior, confidence) 내림차순. "
-                          "tier 외 성분은 LLM 자기평가라 신뢰도 낮음 (STATUS.md P2).",
+            "score_note": "순위 = (occurrence_prior, evidence_docs, evidence_chunks) 내림차순 — 전부 측정값. "
+                          "검증 등급(tier)은 확인 방법의 분류일 뿐 그럴듯함이 아니므로 순위에 반영하지 않는다. "
+                          "LLM 자기평가(confidence)는 출력에서 제외.",
         },
         "questions": [],
     }
@@ -547,9 +602,9 @@ def main() -> None:
 
         rows = fetch_hypotheses(graph, pattern)
 
+        # question 문자열은 meta.question_template + pattern으로 유도되므로 싣지 않는다.
         entry = {
             "pattern": pattern,
-            "question": f"{pattern} 결함 패턴이 나타나는 근본 원인은 무엇인가요?",
             "counts": {},
             "hypotheses": [],
         }
@@ -563,16 +618,13 @@ def main() -> None:
             continue
 
         by_tier = collections.Counter(TIER_TAG[r["tier"]] for r in rows)
-        by_route = collections.Counter(r["route"] for r in rows)
         entry["counts"] = {
             "total": len(rows),
             "by_tier": dict(by_tier),
-            "by_route": dict(by_route),
         }
         summary = ", ".join(f"{TIER_TAG[t]} {by_tier[TIER_TAG[t]]}건"
                             for t in (TIER_AUTO, TIER_SEMI, TIER_NONE) if by_tier[TIER_TAG[t]])
         print(f"가설 {len(rows)}건 — {summary}")
-        print(f"  (공정 경유 {by_route['step']}건, 문헌 직결 {by_route['direct']}건)")
         if TOP_K is not None:
             print(f"  (TOP_K={TOP_K} 환경변수가 설정돼 상위 {TOP_K}건만 출력합니다)")
         print()
@@ -609,12 +661,17 @@ def main() -> None:
                     f" 를 정상범위와 비교 (예상 이탈 방향: {row['direction']}){src}"
                 )
             elif row["tier"] == TIER_SEMI:
+                hint = scenario_hint(row)
                 print(
                     f"   검증: [반자동] agent가 {row['fab_table']} 테이블을 조회, 판정은 사람이"
                     f" — {row['evidence_name']}"
+                    + (f" (체인 {hint})" if hint else "")
                 )
             else:
                 print("   검증: [근거없음] fab 데이터에 연결되지 않음. 문헌 서술로만 존재합니다")
+                if row.get("unverifiable_signals"):
+                    print(f"          문헌이 지목한 신호(fab 계측 없음): "
+                          f"{', '.join(row['unverifiable_signals'])} — 부족한 데이터로 기록(C2)")
                 if mapping:
                     hint = f"param={mapping['param']}" if mapping["param"] not in (None, "none") \
                         else f"process={mapping['process']} (이력 단서)"
@@ -624,14 +681,17 @@ def main() -> None:
                           f" (prob={mapping['prob']}, {hint}){warn}")
             print()
 
+            # 경로 종류(공정 경유/형상 경유/문헌 직결)는 별도 필드 없이
+            # path의 null 패턴으로 판별한다: step만 있으면 공정 경유,
+            # signature가 있으면 형상 경유, 둘 다 null이면 문헌 직결.
             entry["hypotheses"].append({
                 "rank": i,
                 "sentence": sentence,
                 "tier": TIER_TAG[row["tier"]],
-                "route": row["route"],                     # step=공정 경유, direct=문헌 직결
+                # MCP 검증 체인 라우팅: A3(텔레메트리)/A5(레시피)/A2(일반 정비)/A6(소모품)/null(체인 없음)
+                "scenario_hint": scenario_hint(row),
                 "path": {
-                    "pattern": pattern,
-                    "signature": row["signature"],   # 형상 경유일 때만, 아니면 null
+                    "signature": row["signature"],
                     "step": row["step"],
                     "failure_mode": row["failure_mode"],
                     "cause": row["cause"],
@@ -641,23 +701,23 @@ def main() -> None:
                 "verification": {
                     "fab_table": None if row["fab_table"] == "-" else row["fab_table"],
                     "direction": row["direction"],
+                    # 문헌이 지목했지만 fab 어휘에 없어 붙이지 못한 신호 (C2 성격 —
+                    # '지식 없음'이 아니라 '계측 없음'. agent는 부족한 데이터란에 기록 권장)
+                    "unverifiable_signals": row.get("unverifiable_signals") or None,
                 },
+                # 순위 성분 — 전부 측정값. LLM 자기평가(confidence)와 검증 등급(tier)은
+                # 그럴듯함의 근거가 아니므로 점수에 넣지 않는다.
                 "score": {
-                    "tier": row["tier"],
                     "occurrence_prior": row["occurrence_prior"],
-                    "confidence": row["confidence"],
-                },
-                "detail": {
-                    "failure_mode_name": row["failure_mode_name"],
-                    "cause_name": row["cause_name"],
-                    "cause_description": row["cause_description"],
+                    "evidence_docs": row["evidence_docs"],
+                    "evidence_chunks": row["evidence_chunks"],
                 },
                 "provenance": {
-                    "chunk_ids": row.get("chunk_ids") or [],
+                    # 경로 세 엣지의 chunk_ids를 이어붙인 것이라 중복 제거 (순서 유지)
+                    "chunk_ids": list(dict.fromkeys(row.get("chunk_ids") or [])),
                     "quotes": row.get("quotes") or [],
                 },
                 # mapping_table.yaml 오버레이로 채워진 경우만 non-null.
-                # 검증 신호의 출처가 문헌(그래프)이 아니라 큐레이션 표임을 명시한다.
                 "mapping": row.get("mapping"),
             })
 

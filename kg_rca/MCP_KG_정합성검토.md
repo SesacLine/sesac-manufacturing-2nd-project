@@ -1,162 +1,71 @@
 # SECS/GEM MCP 문서 ↔ KG 출력 정합성 검토
 
-> 작성: 2026-07-11
+> 갱신: 2026-07-13 (MCP 문서 07-13 12:22 개정판 반영)
 > 대조 기준:
-> - `SECS GEM MCP 문서_v0 1 (작업중).md` (최종 편집 2026-07-11 16:11)
-> - `outputs/hypotheses.json` (2026-07-11 16:12 생성, 가설 175건)
-> - `schema_v2.md` (v2.2)
->
-> 이 문서는 **검토 결과만** 담는다. 코드·문서 수정은 하지 않았다.
+> - `SECS GEM MCP 문서_v0 1.md` (2026-07-13 12:22 — §5 E2E 시나리오 3종·§6 Agent 결합 신설,
+>   매핑표에서 Center-세정 노즐 행 및 Edge-bead removal 취소선 삭제)
+> - `outputs/hypotheses.json` (schema **v2.4**, 가설 642건 — CLEAN·Edge-Ring-CMP 문서 반영) + `KG_output_명세.md`
+> - `mapping_table.yaml` (원본 유지 — KG 매칭 키워드는 KG 모듈 소유)
 
 ---
 
-## 0. 전제 경고 — 현재 그래프에 조작 문서 기반 엣지가 들어가 있음
+## 1. 미해소 항목 (우선순위 순)
 
-검토 중 확인한 사실. 현재 Neo4j의 `ARISES_IN` 9건 중 **6건의 근거가 `pattern_process_extended.txt`**다
-(Center→CMP/CLEAN, Edge-Ring→CMP/CLEAN, Scratch→CMP/CLEAN). 이 파일은 문헌 근거 없이
-임의로 작성된 것으로, 폐기하고 형상(SpatialSignature) 노드 + 실제 레퍼런스로 대체하기로 결정된 상태다.
+| # | 항목 | 내용 · 필요한 조치 |
+|---|---|---|
+| X3 | **가설 수 × 루프 비용** | 가설 368건을 "후보 원인마다" 체인 실행하면 툴 호출 폭주 (E3/E4의 정신에 반함). 고유 검증 단위는 훨씬 적음 — Center 88 / Edge-Ring 31 / Scratch 16. **개정판에서 구체화**: §5 시나리오의 KG 질의는 **"후보 원인 3종"** 형태를 기대 (5.x 2단계), §6 Agent 결합도 "후보 원인 공정 확보" 수준. **조치**: `hypotheses.json`에 시나리오용 요약 후보 뷰(`candidates[]` — mapping_table 항목 단위) + 상세 `checks[]` 그룹 뷰 추가 (→ Q3) |
+| X4 | **Alarm evidence 부재** | 알람은 KG에 노드/경로가 없어 B3 판정 ③("KG에 신호→결함 경로 있는가")에서 **모든 알람이 자동으로 교란 신호 판정**. **개정판 5.1이 이 위험을 실증**: 교란 알람 `HEATER_TEMP_DEV`는 KG 부재로 배제(의도대로)되지만, 같은 논리로 **관련 알람 `FLOW_LOW`도 배제될 것** — 시나리오는 이를 A4 보조 증거로 기대함. **조치**: `Alarm` evidence 노드(`fab_table='alarm'`, `[반자동]`) 추가 또는 B3 규칙 완화 (→ Q2) |
+| N3 | **VLM 형상 분류 모듈 미구현** | VLM은 형상을 **자유 서술**로 출력 — 미지 패턴 진입(A0 분기 2)에는 서술 → shape/zone enum 분류기가 전제. 문서 추출(5번)과 같은 분류 계약이라 프롬프트 재사용 가능. **조치**: 모듈 소유·위치 결정 (→ Q5) |
+| X7 | **Maintenance id ↔ T7 `parts` 매칭 불가** | `inspect_whether_residual_copper_...` 같은 id는 T7 반환의 "교체 부품" 텍스트와 자동 대조 불가. **조치**: Maintenance dedup 시 `parts_keyword` 정규화 속성 추가 |
+| N1 | **재적재 간 앵커 비결정성** | 앵커 보강 패스로 실행 내 합집합은 확보했으나, **전체 재적재 간** 엣지 구성이 변동 (예: `Edge-Ring→CLEAN`이 실행에 따라 있다가 없다가). **조치(운영 규칙)**: agent 연동 테스트는 그래프 스냅샷 고정 + `meta.generated_at` 신선도 검사 |
+| N2 | **`[근거없음]`이 상위 rank에 올 수 있음** | 순위가 tier 무관(의도된 설계 — 그럴듯함 ≠ 확인 용이성). **조치(agent 규칙)**: rank 순회가 아니라 **tier로 실행 계획을 세우고 rank는 tier 내 순서로** 사용 |
+| X6잔여 | **KG 후보 분류 단계가 MCP 문서에 없음** | direct 가설(step=null)과 `[근거없음]` 가설의 처리 절차가 시나리오에 미명문화. **조치(문서 측)**: A0~A1 사이에 분류 단계 추가 — step 보유→표준 루프 / direct→step 미지정 T3 / 근거없음→evidence table 참고 정보 |
 
-**영향:** 지금 `hypotheses.json`(175건)의 provenance 일부가 조작 문서를 가리킨다.
-MCP 문서의 D3(Faithfulness)·E2(사실만 인용) 원칙과 정면 충돌하므로,
-**형상 노드 작업 완료 후 재적재한 출력을 기준으로 agent 연동을 시작해야 한다.**
-아래 항목들은 이 전제 위에서 읽을 것.
+## 2. 결정 필요 사항
+
+| # | 질문 | 연관 |
+|---|---|---|
+| Q3 | agent 루프 단위 — 가설별 vs 고유 검증 단위(`step`×`evidence`)별. `checks[]` 뷰를 KG가 제공할지 | X3 |
+| Q2 | `Alarm` evidence 노드 추가 vs B3 규칙 완화 | X4 |
+| Q5 | VLM 형상 서술 → enum 분류 모듈의 소유와 위치 (KG측 유틸 vs agent 내부) | N3 |
+| Q6 | 실시간 단건 질의 모드(패턴 1건 입력) 필요 여부 — 현재는 배치 json에서 `questions[].pattern` 섹션 참조 | — |
+
+## 3. 권장 착수 순서
+
+1. Q3 `candidates[]`(시나리오용 후보 요약 뷰) + `checks[]` 그룹 뷰 — agent 루프 비용 확정 (STATUS ②와 병행)
+2. Q2 Alarm evidence — 5.1이 관련 알람(`FLOW_LOW`)의 KG 연결을 실제로 요구
+3. X7 `parts_keyword` — Maintenance dedup(P3)과 한 묶음
+4. X6잔여(MCP 문서 측 — KG 후보 분류 단계 명문화) / Q5 VLM 분류기
 
 ---
 
-## 1. 정합 확인 (충돌 없음)
+## 4. 완화·운영 방침 확정 항목 (기록)
+
+| # | 항목 | 확정된 방침 |
+|---|---|---|
+| X1 | **파라미터 어휘 불일치 — 출력 처리 방침** (⚠ 어휘 확장 자체는 X1E로 재격상됨) | (a) 어휘 밖 신호는 `[근거없음]` 유지 — 자동/반자동으로 새지 않음. (b) '지식 없음'이 아니라 '계측 없음'이므로 **C2(부분 커버리지)로 처리** — agent는 `verification.unverifiable_signals` 또는 `mapping.param_in_fab_vocab=false`를 evidence table "부족한 데이터"란에 기록. (c) 버려지던 신호명 **보존** — `Cause.unverifiable_signals` → 출력 (실측: Cause 18개, 가설 20건). 이 방침은 어휘가 확장돼도 잔여 밖 신호에 계속 적용됨 |
+| X1E | **E2E 정답 신호 fab 어휘 (Q1 결정 반영, 07-13)** | **대부분 해소.** ① `pad_usage_hours`는 fab에 실재(git pull 갭) → `seeds/parameters.json`(21종)·`fab.md` CMP 행·5번 Literal에 추가, `cmp_pad_wear` 매핑 가설이 `[자동]`(hint A3) 승격 실측. ② `shower_flow`/`pressure`는 `chamber_pressure` 별칭으로 처리 — 5.1 Center 정답 검증 가능. ③ **잔여(해결 불가)**: `motor_torque`·`slurry_particle`은 제거 결정(고려 불가 변수) — 5.3의 슬러리 대입자 변별 신호 절반이 계측 불가로 남음(slurry_flow 반쪽만 가능). 해당 신호는 X1 방침대로 [근거없음]+C2 처리. MCP 문서 5.1/5.3의 시나리오 본문 표기(shower_flow, motor_torque, slurry_particle 언급) 정리는 문서 소유자 몫 |
+| X2 | **클래스×원인 매핑표 커버리지** | **해소 (07-13).** 매핑표(취소선 제외 8항목)의 모든 패턴→공정 조합이 KG에 존재 — 누락 0. 마지막 공백이던 `Edge-Ring→CMP`는 `edgering-cmp.txt`(Xie & Boning, MIT/MRS 2005 + 큐레이션 메타데이터 "Related Defect: Edge Ring")로 확보. 근거 강도 주의: 본문은 기전(edge over-polish→주변부 불균일)까지만 말하고 패턴 연결은 메타데이터 큐레이션임. retaining ring(부품)↔ring(패턴) 어휘 함정은 프롬프트 가드로 차단 확인. CLEAN 계열은 `...TABLE+CLEAN.md`로 해소 (재구성 표, provenance 주의 명기). ※ 07-13 N4 결정으로 Center-세정 행이 복원됐으나(9항목), 해당 행은 문헌 무근거 큐레이션 전용(함정 후보)으로 합의돼 문헌 커버리지 잣대에서 제외 — "누락 0"은 문헌 기대 8항목 기준으로 유지 |
+| X5 | **시나리오 체인 라우팅** | **해소 (07-13).** 출력에 `scenario_hint` 필드 신설 — Parameter→A3, Recipe→A5, Maintenance→`consumable`(추출 시 LLM 판단, 노드 속성)이면 A6·아니면 A2, 근거없음→null. 소급 노드는 키워드 휴리스틱(pad/brush/slurry/filter/conditioner) 임시 판정, 재추출 시 정식 값으로 대체. 실측 분포: A2 209 / A3 97 / A5 32 / A6 44 / null 260 |
+| X8 | **표기 규약** | **해소 (07-13, KG측이 문서 수정).** MCP 문서의 식별자 표기를 코드에 정렬 — `step=증착/식각/세정` → `step=DEPO/ETCH/CLEAN`(11건), `params=[RF_power]` → `[rf_power]`. 산문(한국어 서술)은 유지. T8의 `metric=수율` 같은 툴 자체 계약값은 X8 범위 밖으로 보존 |
+| N4 | **매핑표 취소선 ↔ yaml 정합 (07-13 의사결정)** | **해소.** 취소선 사유 = "형상 서술 RAG 문서를 못 찾음". KG측 무이상 확인 후 **취소선 해제, 행 유지**로 결정 — 문서와 yaml 재정렬. 역할 분담 합의: Center-세정은 **문헌 무근거 큐레이션 항목**(5.1 함정 후보 H3 용도)으로, 후보 공급은 문헌 그래프가 아니라 `mapping_table.yaml`→`candidates[]` 뷰(Q3)가 담당. KG 그래프의 Center→CLEAN 경로는 0건이며 문헌이 생기기 전까지 0건이 정상 |
+| X9 | 수치 prior 출처 | 정본 = `mapping_table.yaml`의 `prob`. KG는 `mapping.prob`로 노출만 |
+| X10 | KG 질의 인터페이스 | 계약 = `hypotheses.json` + `KG_output_명세.md`. agent는 `questions[].pattern`으로 자기 섹션을 읽음. 잔여는 Q6 |
+
+## 5. 정합 확인 (충돌 없음)
 
 | # | 항목 | 근거 |
 |---|---|---|
-| OK-1 | **3클래스 명칭 일치** — VLM 출력 = MCP 문서(A0) = KG `DefectPattern.id` 모두 `Center`/`Edge-Ring`/`Scratch` | 시드 정렬 작업 완료됨 |
-| OK-2 | **T5 호출 인자 공급 가능** — A3의 `params=[KG가 지목한 파라미터]`는 `hypotheses.json`의 `verification.fab_table` + `path.evidence` + `direction`으로 그대로 조립 가능 (E3의 "전체 덤프 금지"도 자연 충족) | `[자동]` 가설 구조 |
-| OK-3 | **D3 Faithfulness 요건 충족** — "KG 메커니즘 연결 문장"은 `sentence`(합성 문장) + `path`(기계가독 경로) + `provenance`(chunk_ids/quotes)로 제공됨 | ① 작업 완료분 |
-| OK-4 | **E2 원칙과 설계 철학 일치** — 툴은 사실만, 원인 서술은 KG 교차 후. KG 출력도 인스턴스 주장 없이 메커니즘만 담음 (lot/장비/시각 없음) | schema v2.2 |
-| OK-5 | **C4 스코프 일치** — "전공정~wafer test" 스코프 = KG 6스텝. 후공정·RTP 등 스코프 밖 원인은 KG에서 `[근거없음]`으로 이미 격리됨 | 검증 등급 3단 |
-| OK-6 | **B1(negative evidence)은 KG와 독립** — KG 출력이 방해하지 않음. 가설마다 필수 수행은 agent 몫 | — |
-| OK-7 | **Scratch 원인 일부 실제 겹침** — 문서의 "CMP 패드 마모"↔KG `worn_pad→replace_polishing_pad`, "슬러리 대입자"↔KG `slurry_particle_agglomeration` | 교과서 CMP 표 |
-
----
-
-## 2. 충돌 / 공백 목록
-
-심각도: ■■■ 연동 차단급 / ■■ 설계 결정 필요 / ■ 소소한 규약 문제
-
-### [X1] ■■■ 파라미터 어휘 불일치 — 문서의 예시 파라미터가 fab 어휘에 없음
-
-- MCP 문서가 KG가 지목할 것으로 예시하는 파라미터:
-  `에지 플라즈마 밀도`(A3), `샤워헤드 유량`(A3), `패드 사용 시간`(A6), `브러시 압력`(A6), 슬러리 `입자` 신호(A6)
-- fab 어휘(`seeds/parameters.json` 20종 = `telemetry.param`)에 위 항목이 **없다**.
-  CMP는 `down_force`/`slurry_flow` 둘뿐, CLEAN에 브러시 계열 없음, ETCH에 플라즈마 밀도 없음.
-- KG는 fab 어휘만 지목할 수 있으므로(공정 조건부 resolver), A6의 "사용량 파라미터" 체인은
-  현재 어휘로는 **성립 불가**. 실측: Scratch의 `[자동]` 가설 0건.
-- **수정 위치:** 협의 필요 — ① fab.db generator에 파라미터 추가(→ `fab.md`, `seeds/parameters.json`,
-  5번 `Literal` 동시 갱신) 또는 ② MCP 문서의 예시를 기존 20종으로 교체.
-  **파라미터 어휘의 정본이 어디인지**를 먼저 정해야 함.
-
-### [X2] ■■■ 클래스×원인 매핑표(3.1)와 KG 내용 불일치
-
-- 문서의 후보 원인 9종(클래스당 3종, 배정 확률 포함)은 **fab 시나리오 설계 기준**이고,
-  KG의 원인은 **교과서·논문 추출** 결과라 어휘와 구성이 다름.
-  예: 문서 "샤워헤드 막힘"(Center 55%)에 해당하는 KG Cause 없음.
-- 특히 **세정(CLEAN) 계열 3종**(노즐 이상·브러시 접촉·세정 문제)은 KG에 근거 문헌이 전혀 없음.
-  CLEAN은 FailureMode 1개뿐(빈 공정) → `ARISES_IN → CLEAN` 엣지가 있어도(현재는 조작 문서 기반)
-  완전 경로가 안 만들어져 **CLEAN 가설 0건**.
-- 문서의 매핑표를 정답 시나리오로 쓴다면, agent가 KG에서 그 원인을 찾지 못해
-  "KG 메커니즘 연결 문장 부재 → 재계획"(D3)에 걸리는 역설 발생.
-- **수정 위치:** 협의 필요 —
-  ① CLEAN(및 필요시 각 원인) troubleshooting 문서를 실제 레퍼런스로 추가 (STATUS P5, 사용자 예정 작업)
-  ② 형상 노드 + 레퍼런스로 패턴→공정 커버리지 확보 (진행 예정)
-  ③ 그래도 안 덮이는 원인은 문서 매핑표 쪽을 KG 실상에 맞춰 조정
-
-### [X3] ■■ 가설 수(175건) × Hypothesis Loop = 툴 호출 폭발
-
-- 문서 2장: "후보 원인마다 A1→A2~6→T4→T9" 체인 실행. 가설당 최소 4~6회 호출.
-  175건 × 5회 ≈ **875회** — E3/E4가 막으려는 폭주가 루프 구조에서 재발.
-- 실측 구조상 **고유 검증 단위는 훨씬 적다**: `(step, evidence)` 기준
-  Center 4+41, Edge-Ring 8+64, Scratch 0+8. 같은 `(ETCH, rf_power)`를 지목하는 가설 여러 건이
-  T5 호출 1회를 공유할 수 있음.
-- **수정 위치:** KG 측(6번) — `hypotheses.json`에 검증 단위 그룹 키 또는 `checks[]` 인덱스 추가
-  (가설 N건 → 고유 검증 M건 매핑). + agent 측 — 루프를 "가설별"이 아니라 "검증 단위별"로 돌도록 명시.
-  STATUS ③(점수 재설계)의 Top-K/우선순위와도 직결.
-
-### [X4] ■■ Alarm evidence 부재 — A4/B3가 요구하는 "신호→결함 KG 경로"가 알람엔 없음
-
-- B3 판정 3문항 중 ③ "KG에 해당 신호→결함 메커니즘 경로가 있는가?"
-  — 알람은 KG에 노드/경로가 전혀 없으므로 **모든 알람이 자동으로 '교란 신호' 판정**됨.
-  A4(알람 동시성) 체인이 지지 증거를 만들 수 없는 구조.
-- `schema_v2.md`에 "향후 확장: `alarm` 테이블용 `Alarm` evidence 노드" 로 이미 예고돼 있음.
-- **수정 위치:** KG 측 — `Alarm` evidence 노드(`fab_table='alarm'`, `[반자동]`) 추가.
-  단, 문헌에 알람 서술이 있어야 추출 가능 — 없으면 문서 B3 규칙을
-  "Parameter 경로가 있는 장비의 알람은 간접 연결로 인정" 식으로 완화하는 협의 필요.
-
-### [X5] ■■ 시나리오 체인 라우팅 정보가 KG 출력에 없음
-
-- 문서는 원인 유형별 분기를 전제: 정비→A2, 파라미터→A3, 알람→A4, recipe→A5, 소모품→A6.
-- `evidence_label`로 부분 유도 가능(Parameter→A3, Maintenance→A2, Recipe→A5)하지만:
-  - **A2(일반 정비)와 A6(소모품 마모)을 구분할 정보가 없음** — 둘 다 `Maintenance`.
-    A6은 Scratch 특화 체인이라 구분이 실전에서 중요.
-  - `[근거없음]` 가설은 배정될 체인이 아예 없음 (아래 X6).
-- **수정 위치:** KG 측(6번) — `scenario_hint` 필드 추가(evidence_label + 소모품 여부로 산출)
-  또는 매핑 규칙을 별도 문서로 합의. Maintenance 노드에 `consumable: true/false` 속성 검토 (P3 dedup과 함께).
-
-### [X6] ■■ `route=direct`(ATTRIBUTED_TO) 가설의 처리 절차가 문서에 없음
-
-- direct 가설은 `step=null` — A1이 `step` 옵션으로 T3를 좁히는 첫 단계부터 어긋남
-  (문서에 "결과 없으면 step 미지정 재호출" fallback은 있으나 direct 가설용 절차는 아님).
-- `[근거없음]` 가설(evidence 없음)은 A 체인 어디에도 들어갈 수 없음.
-  문서 C1(판단 불가)로 빠질 것도 아니고, C4(범위 밖)와도 다름 — **"검증 계획 없음, 문헌 참고용"**이라는
-  제3의 처리 경로가 필요.
-- **수정 위치:** MCP 문서 측 — A0~A1 사이에 "KG 후보 분류" 단계를 명시
-  (step 보유→표준 루프 / direct+evidence→step 미지정 T3 / 근거없음→참고 정보로만 evidence table에 기재).
-
-### [X7] ■ Maintenance id가 T7 `parts` 필드와 자동 대조 불가
-
-- T7 반환의 "교체 부품" 텍스트와 KG `Maintenance.id`
-  (예: `inspect_whether_residual_copper_cleaning_finished_on_patterned_wafer`)는 형태가 달라
-  키워드 매칭조차 어려움. `[반자동]` 정의("판정은 사람")와는 일치하지만,
-  A6처럼 agent가 "교체 부품 필드에서 패드/브러시 확인"을 하려면 검색 키워드가 필요.
-- **수정 위치:** KG 측 — Maintenance dedup(P3) 시 `parts_keyword` 같은 정규화 속성 추가
-  (예: `replace_polishing_pad` → `["pad"]`).
-
-### [X8] ■ step 표기 규약 — 문서는 한국어, KG/fab은 코드
-
-- 문서: `step=증착`, `step=세정`. KG·`lot_history.step`: `DEPO`, `CLEAN`.
-  T3의 `step` 파라미터 규약을 코드(`LITHO/ETCH/DEPO/CMP/CLEAN/EDS`)로 통일 필요.
-- **수정 위치:** MCP 문서 측 (표기만 바꾸면 됨).
-
-### [X9] ■ 배정 확률(55%/60%…)의 출처가 KG에 없음
-
-- 문서 매핑표의 수치 prior에 대응하는 KG 값은 `occurrence_prior`(high/mid/low, LLM 자기평가)뿐.
-  수치 prior가 필요하면 출처를 정해야 함: 문서 하드코딩 유지 / KG 관계 속성으로 이관 /
-  fab 검증 이력 기반 posterior(STATUS ③ 장기안)로 대체.
-- **수정 위치:** 협의 필요. 단기적으론 문서 하드코딩을 유지하고 KG와 분리해 두는 것도 가능.
-
-### [X10] ■ KG 질의 인터페이스 미정 (문서엔 "MCP 외부"라고만)
-
-- A0은 VLM 클래스 **1건**으로 진입하는데, 현재 `hypotheses.json`은 3패턴 배치 생성물.
-  agent가 (a) json에서 해당 `pattern` 섹션만 읽는 규약인지, (b) 패턴 단건 질의 모드
-  (예: `PATTERN=Edge-Ring python 6_ask_graphrag.py`)인지, (c) Neo4j 직접 질의인지 미정.
-- VLM이 3클래스 외/형상만 넘기는 경우(A0 분기 2)는 형상 노드 도입 후 "형상 단건 질의"도 필요해짐.
-- **수정 위치:** 협의 필요 (STATUS ②). 배치 json 재사용이 가장 싸고, 실시간성이 필요하면 단건 모드 추가.
-
----
-
-## 3. 결정 필요 사항 (요약)
-
-| # | 질문 | 연관 항목 |
-|---|---|---|
-| Q1 | 파라미터 어휘의 정본은? fab.db generator를 늘릴 것인가, 문서 예시를 20종에 맞출 것인가 | X1 |
-| Q2 | 문서의 클래스×원인 매핑표는 "정답 시나리오"인가 "예시"인가? 정답이면 KG 문헌을 그에 맞춰 보강해야 함 | X2 |
-| Q3 | CLEAN troubleshooting 문서를 언제/어떤 레퍼런스로 추가할 것인가 | X2 |
-| Q4 | `Alarm` evidence 노드를 추가할 것인가, B3 규칙을 완화할 것인가 | X4 |
-| Q5 | agent 루프의 단위: 가설별인가 검증 단위(`step`×`evidence`)별인가 | X3 |
-| Q6 | KG 질의 인터페이스: 배치 json / 단건 CLI / Neo4j 직접 | X10 |
-| Q7 | 수치 prior의 출처 | X9 |
-
-## 4. 권장 착수 순서
-
-1. **`pattern_process_extended.txt` 제거 + 형상 노드 작업** (§0 전제 해소 — 이것 없이는 어떤 연동 테스트도 오염된 provenance 위에서 돈다)
-2. X1 어휘 정본 결정 (fab generator와 시드를 한 번에 정렬)
-3. X3+X5: `hypotheses.json`에 검증 단위 그룹 + `scenario_hint` 추가 (STATUS ①의 잔여분과 묶어서)
-4. X6+X8: MCP 문서 측 소폭 보강 (KG 후보 분류 단계, step 코드 표기)
-5. X2/X4: 문서 보강(CLEAN, 알람 서술) — 레퍼런스 확보되는 대로
+| OK-1 | 3클래스 명칭 일치 — VLM = MCP(A0) = KG `DefectPattern.id` (`Center`/`Scratch`/`Edge-Ring`) | 시드 계약 |
+| OK-2 | T5 호출 인자 공급 — `verification.fab_table` + `path.evidence` + `direction` (E3 "전체 덤프 금지" 충족) | 출력 구조 |
+| OK-3 | D3 Faithfulness 요건 — `sentence` + `path` + `provenance`(경로 전체 chunk_ids) | 출력 구조 |
+| OK-4 | E2 원칙 — KG 출력에 인스턴스 주장 없음. 문헌 근거(provenance)와 큐레이션 근거(`mapping`) 구분 | 설계 |
+| OK-5 | C4 스코프 일치 — 후공정·RTP 등은 `[근거없음]` 격리 | 검증 등급 |
+| OK-6 | B1(negative evidence)은 KG와 독립 — 출력이 방해하지 않음 | — |
+| OK-7 | Scratch 원인 실제 겹침 — 패드 마모·슬러리 대입자가 문서 매핑표와 KG 양쪽에 존재 | 교과서 CMP 표 |
+| OK-8 | MCP 3.1 매핑표와 직접 연동 — `mapping_table.yaml`을 오버레이로 소비, `prob`·`citation`·신호가 가설에 실림 | 매핑 오버레이 |
+| OK-9 | 순위가 측정값 기반 — `(occurrence_prior, evidence_docs, evidence_chunks)`. "그럴듯한 순서"(rank)와 "확인 방법"(tier)이 독립 | v2.4 출력 |
+| OK-10 | 미지 패턴 대응 기반 — 형상 관측을 shape/zone enum으로 분류하면 `SpatialSignature`부터 순회 가능 (A0 분기 2 지원) | v2.4 형상 레이어 |
+| OK-11 | **Edge-bead removal 취소선 삭제** — KG가 스코프 밖으로 버려온 판단과 문서가 일치하게 됨 | 개정판 §3.1 |
+| OK-12 | **Center-세정 행의 역할 합의** — 취소선 해제로 복원하되 문헌 무근거 큐레이션 항목(함정 후보)으로 위치 확정. yaml과 재정렬 (N4 해소) | 07-13 결정 |
+| OK-13 | **§6 Agent 결합 1단계와 부합** — "KG/문헌에서 후보 원인 공정 확보"는 `hypotheses.json`의 `pattern`→`path.step`/`cause`로 충족 | 개정판 §6 |

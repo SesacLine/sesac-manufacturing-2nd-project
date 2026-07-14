@@ -1,0 +1,33 @@
+[Metadata]
+Title: CMP at the Wafer Edge – Modeling the Interaction between Wafer Edge Geometry and Polish Performance
+Authors: Xiaolin Xie, Duane Boning
+Affiliation: Microsystems Technology Laboratories, Massachusetts Institute of Technology (MIT)
+Year: 2005
+Source: Materials Research Society (MRS)
+Process: CMP (Chemical Mechanical Planarization)
+Related Defect: Edge Ring, Edge Roll-off, Edge Over-polishing
+Keywords: wafer edge, retaining ring, localized pressure, polishing uniformity, edge exclusion
+
+[Content]
+
+As the drive to improve integrated circuit manufacturing yield continues, renewed attention is being paid to the edge of the wafer. The industry is seeking to reduce the edge exclusion region and achieve good performance to within 2 mm or smaller. This creates substantial challenges, both for CMP and for the starting wafer.
+
+In this work, we consider two key elements that play a role in non-uniform polish near the edge of the wafer.
+
+First, we study the impact of localized pressure on the edge of the wafer as a function of the wafer and retaining ring pressures, gap separation between wafer and retaining ring, and pad material properties. Simulations show that several millimeters into the wafer from the edge can polish either more quickly or more slowly than the center of the wafer, depending on the combination of these parameters.
+
+Second, we also consider the impact of wafer edge roll-off on polishing uniformity. We again find that the polish uniformity can be affected dramatically, depending on the details of the starting wafer geometry.
+
+The edge roll-off is typically a convex profile near the wafer periphery and occurs within 1–5 mm from the wafer edge. In both prime wafer preparation and in IC fabrication, edge roll-off may result from CMP polish nonuniformity. In addition, this edge roll-off can potentially impact uniformity in subsequent CMP processes.
+
+The pad bends around the wafer edge due to the existence of the gap and retaining ring; thus the wafer edge is polished non-uniformly due to a localized pressure concentration.
+
+The factors causing the non-uniform pressure distribution are gap size, pad stiffness, wafer pressure, and retaining ring pressure.
+
+In the static simulation, a large gap results in pressure peaked at the edge. Thus, we expect excessive polishing at the edge resulting in edge roll-off profiles.
+
+The larger pressure results in excessive edge over-polishing, which is consistent with the static simulation result. The smaller pressure results in slight over-polishing at the edge.
+
+These dynamic simulations suggest that the larger the gap size, the faster the edge polishes; the higher the pressure, the faster the edge polishes; and the stiffer the pad, the more uniform the wafer polishes.
+
+The simulation results suggest better edge uniformity can be achieved by using stiffness tailored pads, median gap size, and median pressures. Edge polishing is also influenced by the initial surface profile. Better matching of the starting profile and tool setup will provide more uniform post-polish results.

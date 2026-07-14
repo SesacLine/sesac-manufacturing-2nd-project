@@ -1,5 +1,11 @@
 ### 테이블 필드 (generate.py의 CREATE TABLE 기준)
 
+> ⚠ 동기화 필요 (데이터 모델 설계_v2.0 §6 F-2): 이 문서는 4테이블만 기록하나,
+> 설계 문서 v1.0은 `metric_series`(장비 단위 스코프)·`wafer`(die_map) 테이블을 추가로 언급한다.
+> (07-13 X1E 정리 반영: `pad_usage_hours`는 fab에 실재 → CMP 행에 추가됨.
+>  `shower_flow`/`pressure`는 `chamber_pressure`로 처리(별칭). `motor_torque`·`slurry_particle`은
+>  제거 결정 — 고려 불가 변수로 잔여, 정합성검토 X1E 기록 참조.)
+
 **`lot_history`** — lot의 장비 통과 이력 (모든 추적의 시작점)
 
 | 필드 | 타입 | 의미 |
@@ -50,6 +56,6 @@
 | **LITHO** | `exposure_dose` · `focus_offset` · `stage_temp` · `alignment_offset` | 4 |
 | **ETCH** | `rf_power` · `chamber_pressure` · `he_flow` · `temperature` · `etch_rate` | 5 |
 | **DEPO** | `chamber_pressure` · `rf_power` · `gas_flow` · `susceptor_temp` · `deposition_rate` | 5 |
-| **CMP** | `down_force` · `slurry_flow` | 2 |
+| **CMP** | `down_force` · `slurry_flow` · `pad_usage_hours` | 3 |
 | **CLEAN** | `flow_rate` · `megasonic_power` · `chemical_temp` · `rinse_time` | 4 |
 | **EDS** | `chuck_temp` · `contact_resistance` | 2 |

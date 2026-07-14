@@ -8,11 +8,11 @@
 
 | 조각 | 상태 | 위치 |
 |---|---|---|
-| KG(지식그래프) 원인 탐색 | 완성, 계속 갱신 중(v2.3). 재생성될 때마다 가설 건수가 바뀐다 — 정확한 값은 항상 `kg_rca/STATUS.md` §1에서 확인 | `SesacLine_SemiRCA/kg_rca/` |
+| KG(지식그래프) 원인 탐색 | 완성, 계속 갱신 중(v2.4, 07-13 갱신). 재생성될 때마다 가설 건수가 바뀐다 — 정확한 값은 항상 `kg_rca/STATUS.md` §1에서 확인 | `SesacLine_SemiRCA/kg_rca/` |
 | MCP 서버(9개 조회 도구) | 완성, fab.db 조회 함수 9개 전부 구현됨 | `SesacLine_SemiRCA/secsgem-mcp/` |
-| 연결 코드(Hypothesis/Critic 등) | **스텝0~9 전부 구현 완료, end-to-end 실행 검증까지 끝남**(아래 §4) — 단 Walking Skeleton이라 여러 곳을 단순화했다(§5) | `SesacLine_SemiRCA/backend/` |
+| 연결 코드(Hypothesis/Critic 등) | **스텝0~9 전부 구현 완료, end-to-end 실행 검증까지 끝남**(아래 §4) — 단 Walking Skeleton이라 여러 곳을 단순화했다(§5). kg_rca v2.4 출력 스키마 변경(`route`/`confidence` 삭제, `scenario_hint`/`evidence_docs`/`evidence_chunks` 추가)에 맞춰 07-14에 `kg_client.py`/`state.py` 갱신, 재검증 완료 | `SesacLine_SemiRCA/backend/` |
 
-- **Walking Skeleton이 실제로 끝까지 돈다**: 2026-03-04 배치로 돌려서 저수율 로트 선별(`SVLOT-009`) → VLM(하드코딩) → 그룹화 → GraphRAG 후보 244건 조회 → Hypothesis 검증(MCP 실호출) → Critic 심사(136건 채택/108건 기각) → 응답 카드 생성까지 전부 확인했다. 채택된 가설 중엔 fab.db에 실제로 주입된 `Center/DEPO/chamber_pressure` drift도 정확히 잡아냈다(§4 스텝9).
+- **Walking Skeleton이 실제로 끝까지 돈다**: 2026-03-04 배치로 돌려서 저수율 로트 선별(`SVLOT-009`) → VLM(하드코딩) → 그룹화 → GraphRAG 후보 조회 → Hypothesis 검증(MCP 실호출) → Critic 심사 → 응답 카드 생성까지 전부 확인했다. 채택된 가설 중엔 fab.db에 실제로 주입된 `Center/DEPO/chamber_pressure` drift도 정확히 잡아냈다(§4 스텝9). 최초 검증(0713)은 244건 후보 → 136건 채택/108건 기각, kg_rca v2.4 갱신 후 재검증(0714)은 297건 후보 → 163건 채택/134건 기각 — kg_rca가 재생성될 때마다 이 숫자는 바뀐다.
 - 세 조각 다 `SesacLine_SemiRCA/` 밑에 있다(0713에 물리적으로 합침 — 공동작업 편하게 하려는 목적). `kg_rca`, `secsgem-mcp`가 원래 갖고 있던 각자의 `.git`은 팀 결정으로 삭제했다 — 이제 `SesacLine_SemiRCA`에서 `git init`하면 안의 파일까지 전부 하나의 히스토리로 잡힌다.
 - 가상환경은 루트 `SesacLine_SemiRCA/.venv` 하나만 쓴다(`pyproject.toml` 하나로 세 곳 의존성 통합, `uv sync`로 설치). `.gitignore`도 루트 하나로 병합, `.env`는 `./kg_rca`·`./secsgem-mcp` 상대경로로 이미 맞춰져 있다.
 - KG는 "이 결함 패턴이면 일반적으로 어떤 원인이 있을 수 있는지"를 문헌에서 찾아주고, MCP 서버는 "이번에 실제로 문제가 된 로트가 어느 장비를 지났고 그 장비에서 무슨 일이 있었는지"를 조회해준다. Hypothesis 노드는 KG가 준 원인 후보 하나하나를 MCP 서버로 실제로 확인해보는 역할이고, Critic 노드는 그 확인 결과가 믿을 만한지 다시 한번 점검하는 역할이다.
@@ -114,9 +114,16 @@ fab.db는 실제 공장 데이터가 아니라, 시뮬레이터가 만들어 둔
 - `.env`는 `.env_example`을 복사해 이미 채워져 있다(`OPENAI_API_KEY`도 채움).
 - `secsgem-mcp/datasets/fab.db` 존재 확인됨.
 
-### ✅ 스텝 1. `graph_client/kg_client.py` — 완료
+### ✅ 스텝 1. `graph_client/kg_client.py` — 완료 (07-14, kg_rca v2.4 출력 스키마 변경에 맞춰 갱신)
 
 `KGClient.get_candidates(pattern)` 구현 완료. `kg_rca/outputs/hypotheses.json`의 `questions[].hypotheses[]`를 `GraphRAGCandidate`(state.py) 모양으로 매핑한다.
+
+kg_rca가 07-13에 schema v2.4로 갱신되면서 출력에서 `route`(경로 종류)와 `score.confidence`(LLM
+자기평가)가 빠졌다 — 전자는 `path.signature`/`path.step`의 null 패턴으로 판별 가능하고 backend
+어디서도 실제로 안 썼으며(hypothesis.py는 `step`만 봄), 후자는 측정값이 아니라서 kg_rca가 순위에서
+직접 뺐다. 대신 MCP 검증 체인 라우팅 힌트 `scenario_hint`와 측정 기반 순위 성분
+`evidence_docs`/`evidence_chunks`가 새로 생겼다. 아래는 07-14 갱신 후 현재 매핑
+(정본은 `kg_rca/KG_output_명세.md`):
 
 | hypotheses.json 필드 | GraphRAGCandidate 필드 |
 |---|---|
@@ -124,19 +131,30 @@ fab.db는 실제 공장 데이터가 아니라, 시뮬레이터가 만들어 둔
 | `path.failure_mode` | `failure_mode` |
 | `path.step` | `step` |
 | `path.signature` | `signature` |
-| `route` | `route` |
+| `scenario_hint` | `scenario_hint` (A2/A3/A5/A6/null — hypothesis.py는 아직 안 읽음, tier/evidence_label 분기만 씀) |
 | `tier` | `tier` |
 | `path.evidence_label` | `evidence_label` |
 | `path.evidence` | `evidence` |
 | `verification.fab_table` | `fab_table` |
 | `verification.direction` | `direction` |
 | `score.occurrence_prior` | `occurrence_prior` |
-| `score.confidence` | `confidence` |
+| `verification.unverifiable_signals` | `unverifiable_signals` (신규 — backend 어디서도 아직 안 씀) |
 | `sentence` | `sentence` |
 
-실제 데이터로 검증됨(2026-07-13): `Donut`처럼 미매핑 패턴은 `candidates=[]`로 정상 처리. `state.py`의 `Route` 타입에 `"signature"`도 추가 완료.
+`score.evidence_docs`/`evidence_chunks`는 kg_rca 내부 순위 계산용이라 `GraphRAGCandidate`로 옮기지
+않았다 — 필요해지면 그때 추가.
 
-> 가설 건수는 kg_rca 재생성마다 바뀐다 — 하드코딩하지 말 것. 최근 확인값(참고용): Center 244 / Edge-Ring 74 / Scratch 50.
+실제 데이터로 검증됨(2026-07-13 최초, 2026-07-14 kg_rca v2.4 재검증): `Donut`처럼 미매핑 패턴은 `candidates=[]`로 정상 처리. `state.py`의 `route`/`Route` 타입은 07-14에 제거(kg_rca 출력에서 사라져 죽은 코드가 됨), 대신 `scenario_hint: ScenarioHint | None` 추가.
+
+> 가설 건수는 kg_rca 재생성마다 바뀐다 — 하드코딩하지 말 것. 최근 확인값(참고용, 2026-07-13 v2.4 갱신 기준): Center 297 / Edge-Ring 249 / Scratch 96 (`kg_rca/STATUS.md` §1).
+
+> **cross-component 갭 발견(07-14)**: kg_rca는 `pad_usage_hours`가 fab에 실재한다고 보고
+> `seeds/parameters.json`에 21번째 파라미터로 추가하고 `[자동]` 승격까지 했다(`MCP_KG_정합성검토.md`
+> X1E, "git pull 갭"으로 기록됨). 하지만 이 저장소의 `secsgem-mcp/simulator/fab_model.yaml`의 CMP
+> 파라미터는 여전히 `down_force`/`slurry_flow` 둘뿐이라 `pad_usage_hours`가 없다 — 이 파라미터로
+> `[자동]` 승격된 후보가 실제로 `query_telemetry`를 타면 정상범위를 못 찾아 `drift_detected=None`으로
+> 빠질 것이다(크래시는 안 남, 그냥 조용히 판정 불가). secsgem-mcp 쪽에서 `fab_model.yaml`에
+> `pad_usage_hours`를 추가하고 `fab.db`를 재생성해야 완전히 해소된다 — 팀과 확인 필요.
 
 ### ✅ 스텝 2. `mcp_client/client.py` — 완료
 
@@ -237,6 +255,7 @@ fab.db는 실제 공장 데이터가 아니라, 시뮬레이터가 만들어 둔
 ### KG팀원이 정리해 둔, 우리 쪽에도 영향 있는 결정 (`kg_rca/MCP_KG_정합성검토.md` §3)
 
 **⑦ [Q1]** 파라미터 어휘의 정본을 어디로 할지 — fab.db 시뮬레이터에 파라미터를 추가할지, MCP 문서 예시를 KG의 20종에 맞출지. 아직 답은 안 나왔지만, KG팀원이 임시 완화책을 하나 넣었다 — `6_ask_graphrag.py`에 `[근거없음]` 가설을 `mapping_table.yaml`(fab 시나리오)과 유사도 매칭해서, 맞으면 `[자동]`으로 승격시키는 로직(`apply_mapping_fill`)이 추가됨. 실제로 Scratch `[자동]` 건수가 3→10건으로 늘었다(2026-07-13 확인). 다만 매칭 대상이 `mapping_table.yaml`의 9개 항목뿐이라 전체 커버리지 문제가 풀린 건 아니고, cause 문자열 자체가 통일되는 것도 아니라서(§Q1 근본 질문은 그대로) — 완화책이지 정답 확정은 아니다.
+  - **(07-13/07-14 갱신)** KG팀원이 `pad_usage_hours`를 "fab에 실재"로 판단해 `seeds/parameters.json`에 21번째 파라미터로 추가하고 `[자동]` 승격까지 진행했다(`MCP_KG_정합성검토.md` X1E, "git pull 갭"으로 기록 — KG팀원 쪽에서는 secsgem-mcp가 이미 이 파라미터를 갖고 있다고 인지한 것으로 보인다). 그런데 07-14에 이 저장소의 `secsgem-mcp/simulator/fab_model.yaml`을 직접 대조해보니 CMP 파라미터는 여전히 `down_force`/`slurry_flow` 둘뿐이고 `pad_usage_hours`는 없다 — 즉 두 팀이 보고 있는 secsgem-mcp 버전이 서로 다르거나, 애초에 반영이 안 된 상태다. 결과적으로 kg_rca가 `[자동]`으로 승격시킨 `cmp_pad_wear` 계열 가설은 이 저장소에서 실행하면 `query_telemetry`가 정상범위를 못 찾아 조용히 `drift_detected=None`(판정 불가)으로 빠진다 — 에러는 안 나지만 사실상 검증이 안 되는 상태. secsgem-mcp 쪽에 `pad_usage_hours`를 추가하고 `fab.db`를 재생성할지 팀과 확인 필요.
 **⑧ [Q2]** MCP `mapping_table.yaml`의 클래스×원인 매핑표를 "정답 시나리오"로 볼지 "예시"로만 볼지.
 **⑨ [Q6]** KG 조회 방식 — 지금처럼 배치 생성된 `hypotheses.json`을 읽을지, 패턴 단건 질의나 Neo4j 직접 질의로 바꿀지. 스켈레톤은 배치 방식을 전제하고 있어서, 바뀌면 `kg_client.py` 재작성 필요.
 
@@ -279,6 +298,13 @@ fab.db는 실제 공장 데이터가 아니라, 시뮬레이터가 만들어 둔
   1. `MultiServerMCPClient.get_tools()`가 **호출마다 새 stdio 서브프로세스를 띄우는 설계**(라이브러리 docstring에 명시)라, 244건 가설 검증 중 타임아웃 발생 → `client.session()`으로 연결을 한 번만 열고 재사용하도록 `mcp_client/client.py` 재구성. 이 수정 하나로 타임아웃이 정상 완료로 바뀜.
   2. `secsgem-mcp/simulator/fab_model.py`가 `fab_model.yaml`을 인코딩 지정 없이 읽어서 Windows(cp949)에서 한글 주석 때문에 `UnicodeDecodeError` — `encoding="utf-8"` 명시로 수정.
   최종 결과: Center 그룹 1개, 후보 244건 → 채택 136건/기각 108건, 그중 fab.db에 실제로 주입된 `Center/DEPO/chamber_pressure` drift를 정확히 잡아낸 것까지 확인(§4 스텝9). 스텝8(UC-2/UC-3 예외 카드)은 코드는 있으나 이번 실행에서 실제로 타보진 못해서 별도 확인이 남아있음.
+- **0714**: kg_rca 팀원이 zip으로 넘겨준 최신본(schema v2.4, 07-13 갱신분)을 받아 `kg_rca/`를 통째로 교체(GraphRAG_RCA-rca-graph-rework-es-v3 → `kg_rca` 리네임, 자체 `.gitignore`/`requirements.txt`/`.claude` 등 root와 충돌하는 파일은 제거하고 root 컨벤션으로 통일).
+  이후 실제 내용 diff를 점검해 backend 영향도를 확인:
+  1. **`hypotheses.json` 출력 스키마 변경**: `route`(경로 종류)·`score.confidence`(LLM 자기평가)가 삭제되고 `scenario_hint`(MCP 검증 체인 A2/A3/A5/A6/null)·`score.evidence_docs`/`evidence_chunks`(측정 기반 순위)가 추가됨. `kg_client.py`의 `_to_candidate`가 사라진 두 필드를 그대로 읽고 있어서 **호출 즉시 `KeyError`로 죽는 상태**였음 — `kg_client.py`/`state.py`(`GraphRAGCandidate`, `Route`→`ScenarioHint`) 수정으로 해결(§4 스텝1 표 갱신).
+  2. **가설 건수**: Center 244→297, Edge-Ring 74→249, Scratch 50→96 (총 642건, CLEAN 공정 커버리지 신규 확보 등이 원인, `kg_rca/STATUS.md` §1 참고).
+  3. **`parameters.json`**: `pad_usage_hours`가 21번째 파라미터로 추가됨(CMP). 단, 대조해보니 `secsgem-mcp/simulator/fab_model.yaml`의 CMP 파라미터에는 아직 이게 없음(`down_force`/`slurry_flow`뿐) — kg_rca 쪽은 "fab에 실재"라고 기록했지만(`MCP_KG_정합성검토.md` X1E) 이 저장소의 secsgem-mcp에는 반영 안 됨. 크래시는 안 나지만(`query_telemetry`가 그냥 정상범위를 못 찾아 조용히 판정 불가로 빠짐) 실질적으로는 이 신호로 `[자동]` 검증이 안 되는 상태 — 팀과 확인 필요(§5 ⑦ 갱신).
+  4. **`kg_rca/README.md`**: 팀원 로컬 작업본 기준으로 `requirements.txt`/독립 venv 안내가 되돌아가 있어서, 이전에 맞춰둔 root 통합 안내(`cd .. && uv sync`)로 재수정.
+  수정 후 `backend.graph.build_graph(...).ainvoke(...)`로 실제 MCP 서버(secsgem-mcp)까지 붙여 재검증: Center 그룹 297건 후보 → 163건 채택/134건 기각, `DEPO-03`의 `chamber_pressure` drift 검출도 그대로 재확인. `pytest backend/tests` 통과.
 
 ---
 

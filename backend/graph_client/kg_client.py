@@ -25,8 +25,9 @@ class KGClient:
         패턴이 들어오면(UC-3, 미매핑 패턴) candidates=[]를 반환한다 — 이 경우 그래프의
         graphrag.py가 이 그룹의 ④~⑥을 건너뛴다.
 
-        필드 매핑(kg_rca 출력 -> state.GraphRAGCandidate)은
-        personalspace/0713 work/skeleton_kickoff.md §4 스텝1 표가 정본이다.
+        필드 매핑(kg_rca 출력 -> state.GraphRAGCandidate)은 kg_rca/KG_output_명세.md(schema v2.4)가
+        정본이다. 07-13 갱신으로 `route`/`score.confidence`가 출력에서 빠졌다 — 대신 `scenario_hint`,
+        `score.evidence_docs`/`evidence_chunks`를 옮긴다.
         """
         data = self._load()
         for question in data.get("questions", []):
@@ -48,14 +49,14 @@ class KGClient:
             "failure_mode": path["failure_mode"],
             "step": path["step"],
             "signature": path.get("signature"),
-            "route": hypothesis["route"],
+            "scenario_hint": hypothesis.get("scenario_hint"),
             "tier": hypothesis["tier"],
             "evidence_label": path["evidence_label"],
             "evidence": path["evidence"],
             "fab_table": verification["fab_table"],
             "direction": verification["direction"],
             "occurrence_prior": score["occurrence_prior"],
-            "confidence": score["confidence"],
+            "unverifiable_signals": verification.get("unverifiable_signals"),
             "sentence": hypothesis["sentence"],
         }
 

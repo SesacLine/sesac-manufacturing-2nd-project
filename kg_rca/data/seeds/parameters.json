@@ -8,7 +8,7 @@
     { "id": "alignment_offset",   "name": "alignment_offset",   "steps": ["LITHO"], "aliases": ["overlay", "overlay error", "registration", "alignment error"] },
 
     { "id": "rf_power",           "name": "rf_power",           "steps": ["ETCH", "DEPO"], "aliases": ["rf power", "plasma power", "source power"] },
-    { "id": "chamber_pressure",   "name": "chamber_pressure",   "steps": ["ETCH", "DEPO"], "aliases": ["pressure", "process pressure", "system pressure"] },
+    { "id": "chamber_pressure",   "name": "chamber_pressure",   "steps": ["ETCH", "DEPO"], "aliases": ["pressure", "process pressure", "system pressure", "shower flow", "shower_flow", "showerhead flow"] },
     { "id": "he_flow",            "name": "he_flow",            "steps": ["ETCH"], "aliases": ["helium flow", "backside he flow", "backside cooling flow"] },
     { "id": "temperature",        "name": "temperature",        "steps": ["ETCH"], "aliases": ["wafer temperature", "electrode temperature"] },
     { "id": "etch_rate",          "name": "etch_rate",          "steps": ["ETCH"], "aliases": ["etch speed", "removal rate"] },
@@ -19,6 +19,7 @@
 
     { "id": "down_force",         "name": "down_force",         "steps": ["CMP"], "aliases": ["polish pressure", "polish down force", "head pressure", "pressure"] },
     { "id": "slurry_flow",        "name": "slurry_flow",        "steps": ["CMP"], "aliases": ["slurry flow rate", "slurry"] },
+    { "id": "pad_usage_hours",    "name": "pad_usage_hours",    "steps": ["CMP"], "aliases": ["pad usage hours", "pad usage", "pad usage time", "pad life", "패드 사용 시간"] },
 
     { "id": "flow_rate",          "name": "flow_rate",          "steps": ["CLEAN"], "aliases": ["chemical flow rate", "dispense flow"] },
     { "id": "megasonic_power",    "name": "megasonic_power",    "steps": ["CLEAN"], "aliases": ["megasonic", "megasonic energy", "acoustic power"] },

@@ -90,7 +90,7 @@ ParameterId = Literal[
     "exposure_dose", "focus_offset", "stage_temp", "alignment_offset",
     "rf_power", "chamber_pressure", "he_flow", "temperature", "etch_rate",
     "gas_flow", "susceptor_temp", "deposition_rate",
-    "down_force", "slurry_flow",
+    "down_force", "slurry_flow", "pad_usage_hours",
     "flow_rate", "megasonic_power", "chemical_temp", "rinse_time",
     "chuck_temp", "contact_resistance",
 ]
@@ -316,6 +316,11 @@ class MaintenanceNode(BaseModel):
     id: str = Field(description="유일 키. 소문자 snake_case. 예: chamber_wet_clean")
     name: str = Field(description="문헌 표기 그대로. 예: chamber wet clean")
     description: str = Field(description="완결된 한국어 한 문장")
+    consumable: bool = Field(
+        description="소모품(패드·브러시·슬러리·필터·컨디셔너 등)의 교체/마모/수명 계열이면 true, "
+                    "일반 정비·세정·점검·교정이면 false. "
+                    "예: replace polishing pad -> true, chamber wet clean -> false"
+    )
 
 
 class RecipeNode(BaseModel):
@@ -467,6 +472,8 @@ Maintenance와 Recipe는 문헌 표현으로 자유롭게 만드세요.
                 공정에 맞는 변수로 자동 매핑됩니다. 예: ETCH의 "Incorrect temperature"는
                 'temperature'라고 쓰세요. 'chuck_temp'처럼 다른 공정의 변수를 고르면 버려집니다.
 - Maintenance : 정비 행위. 조치 문장에서 뽑는다. (예: chamber wet clean, replace defective thermocouple)
+                consumable 필드를 채우세요: 소모품(패드/브러시/슬러리/필터/컨디셔너)의
+                교체·마모·수명 계열이면 true, 일반 정비·세정·점검·교정이면 false.
 - Recipe      : 레시피 확인 대상. (예: process recipe)
 
 관계(kind) 7종:
@@ -505,6 +512,17 @@ VERIFIED_BY 대상 고르는 법:
   예: 'Edge-Ring' (O) / 'edge-ring' (X), 'ETCH' (O) / 'etching' (X)
 - ARISES_IN은 **원문에 공정 이름이 실제로 등장할 때만** 만드세요.
   공정이 언급되지 않은 서론·요약 문단에서는 ARISES_IN을 추측해 만들지 마세요.
+- 청크 머리의 "## Center pattern", "## Scratch pattern — Cleaning" 같은 헤딩은
+  **그 단락 전체가 해당 DefectPattern에 대한 서술**임을 뜻합니다.
+  헤딩에 패턴명이 있고 본문이 공정을 지목하면, 고장 모드 추출과 **별개로**
+  그 패턴의 ARISES_IN도 반드시 만드세요.
+  예: "## Scratch pattern — Cleaning" + 본문에 cleaning 서술
+      -> ARISES_IN: Scratch -> CLEAN (+ 본문의 FailureMode/Cause 추출은 평소대로)
+- **"retaining ring"은 CMP 캐리어 부품이지 결함 패턴이 아닙니다.**
+  retaining ring 언급만으로 Edge-Ring 패턴이나 ring 형상을 만들지 마세요.
+  패턴/형상은 웨이퍼맵 상의 불량 분포를 서술할 때만 해당합니다.
+- 문서 머리의 [Metadata] 블록에 "Related Defect: Edge Ring"처럼 관련 결함이 명시돼 있고
+  Process가 지목돼 있으면, 그것은 큐레이션된 패턴-공정 연결이므로 ARISES_IN으로 추출하세요.
 - 불량 패턴(Center/Scratch/Edge-Ring)은 DefectPattern이지 FailureMode가 아닙니다.
   'scratch_pattern' 같은 FailureMode를 만들지 마세요. 패턴은 ARISES_IN의 source로만 씁니다.
   FailureMode는 공정 내부의 고장(post-etch residue, overlay misregistration 등)입니다.
@@ -541,6 +559,7 @@ def validate_kg(
     kg: RcaGraph,
     dropped: Optional[list[str]] = None,
     chunk_text: str = "",
+    unverifiable: Optional[dict[str, set[str]]] = None,
 ) -> RcaGraph:
     """
     [Graph Pruning]
@@ -678,6 +697,11 @@ def validate_kg(
             tgt, reason = resolve_parameter(tgt, cause_steps.get(src, set()))
             if tgt is None:
                 log.append(f"{raw}: {reason}")
+                # 문헌이 지목한 신호 자체는 지식이다 — fab이 계측하지 않을 뿐(C2 성격).
+                # 버리되 신호명은 Cause에 보존해 출력까지 흘려보낸다 (정합성검토 X1-c).
+                if unverifiable is not None:
+                    signal = normalize_id(rel.target.strip()) or rel.target.strip()
+                    unverifiable.setdefault(src, set()).add(signal)
                 continue
         else:
             # Maintenance / Recipe 는 문서에서 자유 추출. 같은 청크에 노드가 있어야 한다.
@@ -753,6 +777,26 @@ _CHUNK_IDS_SET = """
 """
 
 
+def save_unverifiable_signals(graph: Neo4jGraph, signals: dict[str, set[str]]) -> None:
+    """
+    문헌이 지목했지만 fab 어휘로 붙지 못한 검증 신호를 Cause 노드에 보존한다.
+    (예: film_stress, resist_thickness) — VERIFIED_BY 엣지는 만들지 않는다.
+    join key 원칙은 지키되 "지식은 있는데 계측이 없다"는 사실을 잃지 않기 위함.
+    """
+    if not signals:
+        return
+    items = [{"cause": c, "signals": sorted(s)} for c, s in signals.items()]
+    graph.query(
+        """
+        UNWIND $items AS it
+        MATCH (c:Cause {id: it.cause})
+        SET c.unverifiable_signals = coalesce(c.unverifiable_signals, [])
+            + [s IN it.signals WHERE NOT s IN coalesce(c.unverifiable_signals, [])]
+        """,
+        params={"items": items},
+    )
+
+
 def save_kg_to_neo4j(graph: Neo4jGraph, kg: RcaGraph, chunk: dict) -> None:
     failure_modes = [n.model_dump() for n in kg.failure_modes]
     causes = [n.model_dump() for n in kg.causes]
@@ -820,6 +864,7 @@ def save_kg_to_neo4j(graph: Neo4jGraph, kg: RcaGraph, chunk: dict) -> None:
             SET m:Evidence,
                 m.name = n.name,
                 m.description = n.description,
+                m.consumable = n.consumable,
                 m.fab_table = $fab_table
             MERGE (c)-[:MENTIONS]->(m)
             """,
@@ -1040,7 +1085,8 @@ def main() -> None:
         kg = extract_kg_from_chunk(structured_llm, chunk)
 
         dropped: list[str] = []
-        kg = validate_kg(kg, dropped, chunk_text=chunk["text"])
+        unverifiable: dict[str, set[str]] = {}
+        kg = validate_kg(kg, dropped, chunk_text=chunk["text"], unverifiable=unverifiable)
 
         print(
             "FailureMode:", len(kg.failure_modes),
@@ -1055,6 +1101,7 @@ def main() -> None:
         total_dropped += len(dropped)
 
         save_kg_to_neo4j(graph, kg, chunk)
+        save_unverifiable_signals(graph, unverifiable)
         append_result_to_jsonl(OUTPUT_PATH, chunk, kg)
 
         totals["failure_modes"] += len(kg.failure_modes)
@@ -1065,15 +1112,23 @@ def main() -> None:
         totals["relationships"] += len(kg.relationships)
 
     # 앵커 보강: 패턴/형상을 언급하는 청크만 K-1회 재추출해 합집합 (MERGE라 중복 없음)
+    # 진입점 엣지는 mini 모델이 자주 놓친다(헤딩 규칙을 예시로 줘도). ANCHOR_MODEL로
+    # 보강 패스만 상위 모델을 쓸 수 있다 — 대상이 ~30청크라 비용 부담이 작다.
+    anchor_model = os.getenv("ANCHOR_MODEL", OPENAI_MODEL)
+    anchor_llm = structured_llm if anchor_model == OPENAI_MODEL else \
+        ChatOpenAI(model=anchor_model, temperature=0).with_structured_output(
+            RcaGraph, method="json_schema")
     anchor_chunks = [c for c in chunks if mentions_pattern_or_signature(c["text"])]
     for pass_no in range(2, ANCHOR_PASSES + 1):
         print("=" * 80)
-        print(f"앵커 보강 패스 {pass_no}/{ANCHOR_PASSES} — 대상 {len(anchor_chunks)}청크")
+        print(f"앵커 보강 패스 {pass_no}/{ANCHOR_PASSES} — 대상 {len(anchor_chunks)}청크 (모델: {anchor_model})")
         for chunk in anchor_chunks:
-            kg = extract_kg_from_chunk(structured_llm, chunk)
+            kg = extract_kg_from_chunk(anchor_llm, chunk)
             dropped = []
-            kg = validate_kg(kg, dropped, chunk_text=chunk["text"])
+            unverifiable = {}
+            kg = validate_kg(kg, dropped, chunk_text=chunk["text"], unverifiable=unverifiable)
             save_kg_to_neo4j(graph, kg, chunk)
+            save_unverifiable_signals(graph, unverifiable)
             anchors = [
                 f"{r.kind} {r.source}->{r.target}"
                 for r in kg.relationships
