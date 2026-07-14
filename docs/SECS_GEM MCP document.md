@@ -1,3 +1,15 @@
+> **0714 안내 — 이 문서는 목표 설계도다, 지금 코드가 이렇게 동작한다는 뜻이 아니다.**
+> 여기 그려진 A0~E5 세분화 검증 체인(원인 유형별로 동적으로 도구를 골라 부르는 방식)은 앞으로
+> 만들어야 할 목표 설계다. 실제 구현된 `backend/nodes/hypothesis.py`·`critic.py`(Walking Skeleton)는
+> 훨씬 단순하다 — `tier`(자동/반자동/근거없음) 하나로만 MCP 호출을 분기하고, `detect_change_points`
+> (T8)는 아직 전혀 안 쓰며, Recipe 검증(A5)은 조회 자체를 안 하고 "사람 판정 필요"로만 남긴다.
+> 실제 구현 현황은 `docs/skeleton_kickoff.md`(§4·§8)·`personalspace/0714 work/skeleton_study.md` 참고.
+>
+> 또한 §3.1 표와 §5.1.3/§5.2.3 예시가 언급하는 `motor_torque`(모터 토크)·`slurry_particle`(슬러리
+> 대입자)는 2026-07-13 kg_rca 팀 결정(`kg_rca/MCP_KG_정합성검토.md` X1E)으로 "계측 불가 변수"로
+> 제거하기로 확정됐다 — 이 두 값이 실제로 조회 가능하다는 전제로 짜인 예시 부분은 그 결정과 안
+> 맞으니 참고할 때 감안할 것.
+
 # 1. Tool 명세
 
 - Tool별 코드: `secsgem-mcp/server/tools/*.py` 참고
