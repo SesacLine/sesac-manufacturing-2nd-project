@@ -58,4 +58,5 @@ kg_rca/outputs/extracted_kg.jsonl
 kg_rca/outputs/parsed_docs.jsonl
 
 # 개인 작업공간
-personalspace/
+personalspace_rca/
+
