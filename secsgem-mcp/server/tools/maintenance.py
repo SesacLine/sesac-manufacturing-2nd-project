@@ -1,3 +1,4 @@
+"""T7: get_maintenance_history (PM/BM 이력)"""
 from server.schemas import respond
 from server.db import query
 

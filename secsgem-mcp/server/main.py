@@ -9,4 +9,4 @@ for mod in (wafer, lot, commonality, normal_ratio, telemetry,
     mod.register(mcp)
 
 if __name__ == "__main__":
-    mcp.run()   # stdio; LangGraph/Claude 클라이언트에서 연결
+    mcp.run()   # stdio; LangGraph/(OPTION)Claude 클라이언트에서 연결

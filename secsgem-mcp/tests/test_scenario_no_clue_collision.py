@@ -19,7 +19,7 @@ def test_no_clue_overwritten_with_default_config():
 
 
 def test_drift_sites_unique_across_scenarios():
-    """(장비, 파라미터) 드리프트 주입 지점이 시나리오 간에 겹치지 않아야 한다."""
+    """(장비, 파라미터) 드리프트 주입 지점이 시나리오 간에 겹치지 않아야 함"""
     seen = {}
     for c in _cards():
         for clue in c.get("telemetry_clues", []):
@@ -30,7 +30,7 @@ def test_drift_sites_unique_across_scenarios():
 
 
 def test_promised_drift_clues_exist_in_telemetry():
-    """정답 카드가 '단서 있음'이라 약속한 드리프트가 실제 텔레메트리에 있어야 한다.
+    """정답 카드가 '단서 있음'이라 약속한 드리프트가 실제 텔레메트리에 있어야 함.
     (t0 이후 평균이 드리프트 방향으로 이동 — 덮어쓰기로 소실됐다면 실패)"""
     from server.db import query
     checked = 0

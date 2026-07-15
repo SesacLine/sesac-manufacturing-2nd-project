@@ -1,6 +1,6 @@
-"""M3 서버 테스트 공용 fixture — in-process FastMCP 클라이언트.
+"""서버 테스트 공용 fixture — in-process FastMCP 클라이언트
 
-data 마커 테스트 전용: fab.db가 있어야 함 (python -m simulator.generate 선행).
+data 마커 테스트 전용: fab.db가 있어야 함 (python -m simulator.generate 선행)
 """
 import asyncio
 import json
@@ -28,8 +28,19 @@ def client():
 
 
 @pytest.fixture(scope="session")
+def wm811k_df():
+    """WM-811K 로드 결과"""
+    import pathlib
+    from preprocess.wm811k_loader import load_wm811k
+    p = pathlib.Path("datasets/raw/WM811K.pkl")
+    if not p.exists():
+        pytest.skip("datasets/raw/WM811K.pkl 없음")
+    return load_wm811k(str(p))
+
+
+@pytest.fixture(scope="session")
 def sample_wafer():
-    """이미지가 저장된(시나리오) lot 하나 — 존재가 보장된 조회 키."""
+    """이미지가 저장된(시나리오) lot 하나 — 존재가 보장된 조회 키"""
     from server.db import query
     r = query("SELECT lot_id, wafer_id FROM wafer "
               "WHERE die_map IS NOT NULL LIMIT 1")
@@ -39,7 +50,7 @@ def sample_wafer():
 
 @pytest.fixture(scope="session")
 def all_tool_responses(client, sample_wafer):
-    """9종 툴을 대표 인자로 1회씩 호출한 응답 목록 (P5 검사용)."""
+    """9종 툴을 대표 인자로 1회씩 호출한 응답 목록"""
     lot, wid = sample_wafer["lot_id"], sample_wafer["wafer_id"]
     tr = ("2026-01-01", "2026-04-01")
     from server.db import query

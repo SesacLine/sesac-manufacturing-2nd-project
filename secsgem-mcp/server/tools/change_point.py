@@ -1,4 +1,4 @@
-"""변화점 시각 목록 + 인접 이벤트(PM/recipe 변경/알람) 정렬"""
+"""T8: detect_change_points (수율/파라미터 변화점 + 인접 이벤트 정렬)"""
 import numpy as np, ruptures as rpt
 from server.schemas import respond
 from server.db import query
@@ -7,7 +7,7 @@ def register(mcp):
     @mcp.tool()
     def detect_change_points(metric: str, scope: str,
                              time_range: tuple[str, str]) -> dict:
-        """수율/파라미터 변화점 + 인접 이벤트 정렬. 원인은 추론하지 않는다."""
+        """수율/파라미터 변화점 + 인접 이벤트 정렬 (원인은 추론하지 않음)"""
         rows = query("SELECT ts, value FROM metric_series "
                      "WHERE metric=? AND scope=? AND ts BETWEEN ? AND ? ORDER BY ts",
                      (metric, scope, *time_range))

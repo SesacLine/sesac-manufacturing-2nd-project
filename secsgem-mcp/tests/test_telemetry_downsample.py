@@ -1,4 +1,4 @@
-# 텔레메트리 다운샘플 상한 검증 — 순수 로직이라 fab.db 불필요 (CI 포함)
+# 텔레메트리 다운샘플 상한 검증 (fab.db 불필요)
 import pytest
 
 from server.tools.telemetry import MAX_POINTS, downsample
@@ -6,7 +6,7 @@ from server.tools.telemetry import MAX_POINTS, downsample
 
 @pytest.mark.parametrize("n_raw", [0, 1, 499, 500, 501, 750, 999, 1000, 1001, 1500, 10000])
 def test_returned_never_exceeds_max_points(n_raw):
-    """어떤 원본 개수에서도 반환 개수는 max_points를 넘지 않는다 (특히 501~999 구간)."""
+    """어떤 원본 개수에서도 반환 개수는 max_points를 넘지 않음(특히 501~999 구간)."""
     out = downsample(list(range(n_raw)), MAX_POINTS)
     assert len(out) <= MAX_POINTS, f"n_raw={n_raw} → {len(out)}개 반환"
 
@@ -19,7 +19,7 @@ def test_no_reduction_when_under_limit(n_raw):
 
 @pytest.mark.parametrize("n_raw", [501, 999, 1000, 1500])
 def test_uniform_spacing_keeps_endpoints_side(n_raw):
-    """균일 간격 표본 — 첫 포인트를 보존하고 간격이 일정하다."""
+    """균일 간격 표본 — 첫 포인트를 보존하고 간격이 일정함"""
     rows = list(range(n_raw))
     out = downsample(rows, MAX_POINTS)
     assert out[0] == 0

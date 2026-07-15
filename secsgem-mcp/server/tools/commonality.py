@@ -1,4 +1,4 @@
-"""P1 — 인터뷰 두 건 모두 최우선 요구"""
+"""T3: run_commonality_analysis (불량 lot 집합의 공통 장비 / chamber / recipe 집계)"""
 from collections import Counter
 from server.schemas import respond
 from server.db import query
@@ -6,7 +6,7 @@ from server.db import query
 def register(mcp):
     @mcp.tool()
     def run_commonality_analysis(lot_ids: list[str], step: str | None = None) -> dict:
-        """불량 lot들의 공통 장비/chamber/recipe 집계. '몰림' 판단은 에이전트의 책임"""
+        """불량 lot들의 공통 장비/chamber/recipe 집계 ('몰림' 판단은 Hypo Agent의 단일 책임)"""
         n = len(lot_ids)
         counters = {"equipment_id": Counter(), "chamber": Counter(), "recipe_id": Counter()}
         for lot in lot_ids:

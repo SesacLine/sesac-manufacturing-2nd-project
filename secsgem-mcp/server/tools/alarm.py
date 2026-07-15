@@ -1,3 +1,4 @@
+"""T6: get_alarm_history (S5F1 알람 목록)"""
 from server.schemas import respond
 from server.db import query
 

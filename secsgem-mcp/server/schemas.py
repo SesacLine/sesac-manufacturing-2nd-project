@@ -7,7 +7,7 @@ SCOPE_NOTE = "전공정~wafer test 단계 데이터. 패키징 이후 이력 없
 class Coverage(BaseModel):
     time_range_queried: str | None = None
     time_range_available: str | None = None
-    missing: list[str] = Field(default_factory=list)   # P4: 없는 건 없다고 명시
+    missing: list[str] = Field(default_factory=list)
 
 class Meta(BaseModel):
     source: str = "synthetic (SECS/GEM simulator v1, dataset seed 20260101)"

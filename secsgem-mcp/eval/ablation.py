@@ -4,9 +4,11 @@
 """
 def run_ablation(scenarios):
     return {
+        # '클래스→최빈 원인' 고정 응답은 cause_discrimination(metrics.py)이 산출
         "kg_only":    evaluate(scenarios, tools_enabled=False),  # 문헌 KG만
         "kg_plus_mcp":evaluate(scenarios, tools_enabled=True),   # KG + MCP
-        # WM-811K만으로도 성립 확인 (GAN 생성분 영향 배제, §10-3)
-        "kg_plus_mcp_wm811k_only":
-            evaluate([s for s in scenarios if s.source == "wm811k"], tools_enabled=True),
     }
+    
+    
+# 실행 스크립트
+# python -m eval.ablation --scenarios simulator/scenarios --out eval/results.json

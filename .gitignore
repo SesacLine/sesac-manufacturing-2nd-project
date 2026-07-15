@@ -39,7 +39,9 @@ Thumbs.db
 # --- secsgem-mcp 전용 ---
 secsgem-mcp/datasets/raw/
 secsgem-mcp/datasets/raw_secs_logs/
+secsgem-mcp/datasets/raw_secs_logs.backup/
 secsgem-mcp/datasets/fab.db
+secsgem-mcp/datasets/fab.db.backup
 secsgem-mcp/datasets/ground_truth/
 secsgem-mcp/issue/
 secsgem-mcp/eval/results.json

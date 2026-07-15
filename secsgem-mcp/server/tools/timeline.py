@@ -1,10 +1,11 @@
+"""T9: get_lot_timeline (lot 처리 전후 관련 장비 이벤트 통합 타임라인)"""
 from server.schemas import respond
 from server.db import query
 
 def register(mcp):
     @mcp.tool()
     def get_lot_timeline(lot_id: str) -> dict:
-        """lot 처리 전후 관련 장비 이벤트 통합 타임라인 — 선후관계 판단 보조 (P2)."""
+        """lot 처리 전후 관련 장비 이벤트 통합 타임라인 (선후관계 판단 보조)"""
         rows = query(
             "SELECT ts, source_kind, equipment_id, detail FROM ("
             "  SELECT ts_in ts, 'process' source_kind, equipment_id, step detail "

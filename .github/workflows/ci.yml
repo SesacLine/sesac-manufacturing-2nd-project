@@ -1,8 +1,5 @@
 name: ci
 on: [push, pull_request]
-defaults:
-  run:
-    working-directory: secsgem-mcp
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -11,5 +8,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -e . && pip install pytest pyyaml
+      # 설치는 저장소 루트에서 — 통합 pyproject.toml 하나로 backend/kg_rca/secsgem-mcp 전부
+      # (pytest·PyYAML도 root 의존성에 포함)
+      - run: pip install -e .
+      # 테스트는 secsgem-mcp 안에서 — 테스트가 simulator/*.yaml 등 상대경로를 읽어 cwd 의존적임
       - run: pytest -q -m "not data"
+        working-directory: secsgem-mcp
