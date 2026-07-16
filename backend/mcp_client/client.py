@@ -114,6 +114,19 @@ class MCPClient:
             self._exit_stack = None
             self._tools = None
 
+    async def get_agent_tools(self, names: list[str] | None = None) -> list:
+        """
+        에이전트(create_react_agent)에 넘길 LangChain 도구 객체 리스트를 반환한다.
+
+        도구 변환(MCP→LangChain)은 _tool()이 이미 load_mcp_tools로 해둔다(client.py:95).
+        MultiServerMCPClient로 새 세션을 만들면 호출마다 서브프로세스가 떠 느려진다.
+        (CLAUDE.md 버그5) - 절대 금지.
+        """
+        await self._tool("run_commonality_analysis")    # self._tools 지연 초기화 트리거
+        assert self._tools is not None                  # 위 호출 뒤엔 반드시 채워져 있음(타입 좁히기)
+        tools = list(self._tools.values())
+        return [t for t in tools if not names or t.name in names]
+
     async def get_wafer_map(self, lot_id: str, wafer_id: str) -> dict:
         return await self._call("get_wafer_map", lot_id=lot_id, wafer_id=wafer_id)
 
