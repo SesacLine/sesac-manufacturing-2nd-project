@@ -95,6 +95,9 @@ class Hypothesis(TypedDict):
     equipment: str | None
     evidence: EvidenceEntry
     next_actions: NotRequired[list[str]]
+    sentence: str                            # GraphRAGCandidate.sentence 그대로 옮김(근거)
+    rationale: NotRequired[str]              # 에이전트가 쓴 판단 근거
+    verdict: NotRequired[str]                # adopt_* / reject_* / judge_unknown (§4-1 harness 계약)
 
 
 class CriticResult(TypedDict):
