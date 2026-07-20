@@ -53,7 +53,7 @@
   `batch_group_result`(그룹별 최종 응답 JSON) 저장. 최초 커서 `2026-03-04` 하드코딩.
 
 **현재 구현된 API 3종**: `POST /batch/run`(배치 1회 실행) · `GET /batch/results`(누적 결과 조회) ·
-`GET /health`. 프론트↔백엔드 API 계약(7종)의 **정본은 `docs/API_명세서_v1.0.md`** — 계약은 확정이고
+`GET /health`. 프론트↔백엔드 API 계약(8종, 명세 §3.1 표 기준)의 **정본은 `docs/API_명세서_v1.0.md`** — 계약은 확정이고
 백엔드가 순차 구현 중이다(미구현 구간은 명세 본문 `🔲` 마커로 표시).
 
 ### MCP 연결 시 반드시 알아야 할 것
@@ -178,7 +178,7 @@ uvicorn backend.main:app --reload
 | 기획 전체(배경·차별점·기술스택·평가방법·타임라인) | `docs/semiconductor_proposal.md` |
 | 백엔드 현재 상태·구조·실행법 | `README.md` |
 | 스켈레톤 구축 로그·팀 결정사항·컴포넌트별 개선목록 (가장 자주 갱신) | `docs/skeleton_kickoff.md` |
-| 프론트↔백엔드 API 계약 7종(정본) | `docs/API_명세서_v1.0.md` |
+| 프론트↔백엔드 API 계약 8종(정본) | `docs/API_명세서_v1.0.md` |
 | KG 스키마 전체 명세(정본) | `docs/KG_schema_v1.2.md` (`kg_rca/schema_v2.md`는 07-14에 삭제됨, 내용은 이 파일로 이전) |
 | `hypotheses.json` 출력 필드별 상세 명세(정본) | `kg_rca/KG_output_명세.md` |
 | KG 진행상황·남은 문제 | `kg_rca/STATUS.md` |
