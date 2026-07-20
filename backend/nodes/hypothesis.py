@@ -65,9 +65,11 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
             {
                 "cause": candidate["cause"],
                 "tier": candidate["tier"],
+                "stage": candidate["step"],
                 "equipment": suspect,
                 "evidence": dict(evidence),
-                "sentence": candidate["senetence"],
+                "citations": candidate.get("citations", []),
+                "sentence": candidate["sentence"],
             }
         )
 
@@ -82,6 +84,7 @@ async def _verify_unit(
 
     comm = await mcp.run_commonality_analysis(lot_ids, step=candidate["step"])  # 결정②
     suspect = _top_equipment(comm)
+    evidence["commonality_rows"] = _commonality_rows(comm)  # §2.7 리치 보존
     if suspect is None:
         return suspect, evidence
 
@@ -108,12 +111,33 @@ async def _verify_candidate(
         return {
             "drift_detected": _detect_drift(series, normal_range),  # 결정③: direction 무시
             "telemetry_summary": f"{candidate['evidence']} {len(series)}개 포인트, 정상범위 {normal_range}",
+            # §2.7 리치 보존 — 근거 모달 telemetry 섹션이 그대로 소비
+            "telemetry_collected": True,
+            "telemetry_param": candidate["evidence"],
+            "telemetry_series": [
+                {"ts": p.get("ts"), "value": p.get("value")} for p in series
+            ],
+            "telemetry_normal_range": list(normal_range) if normal_range else None,
         }
 
     if candidate["evidence_label"] == "Maintenance":
         maint = await mcp.get_maintenance_history(suspect_equipment, time_range)
         rows = maint["data"]
-        result: dict = {"maintenance_hit": len(rows) > 0}
+        result: dict = {
+            "maintenance_hit": len(rows) > 0,
+            # §2.7 리치 보존 — events 섹션 rows (알람은 파이프라인 미연동이라 maintenance만)
+            "events_collected": True,
+            "events_rows": [
+                {
+                    "ts": r["ts"],
+                    "type": "maintenance",
+                    "equipment_id": r.get("equipment_id", suspect_equipment),
+                    "kind": r.get("type"),
+                    "detail": r.get("parts", ""),
+                }
+                for r in rows
+            ],
+        }
         if rows:
             result["maintenance_ts"] = rows[0]["ts"]
             result["maintenance_summary"] = f"{rows[0]['type']} — {rows[0]['parts']}"
@@ -142,6 +166,27 @@ def _empty_evidence() -> EvidenceEntry:
 def _top_equipment(commonality: dict) -> str | None:
     stats = commonality["data"]["commonality"]["equipment_id"]
     return stats[0]["value"] if stats else None
+
+
+def _commonality_rows(commonality: dict) -> list[dict]:
+    """commonality 전체 테이블을 §2.7 rows 형태로 보존한다.
+
+    chamber_id는 null 고정 — MCP 집계가 장비/챔버를 별개 카운터로 내서 장비별 챔버를
+    특정할 수 없다(BACKEND_DECISIONS.md D5). suspect의 챔버도 같은 이유로 null이다.
+    """
+    data = commonality["data"]
+    n_lots = data.get("n_lots", 0)
+    return [
+        {
+            "equipment_id": s["value"],
+            "chamber_id": None,
+            "matched_lots": s["lot_count"],
+            "total_lots": n_lots,
+            "ratio": s["ratio"],
+            "note": None,
+        }
+        for s in data["commonality"]["equipment_id"]
+    ]
 
 
 def _ratio_for(commonality: dict, equipment_id: str) -> float | None:

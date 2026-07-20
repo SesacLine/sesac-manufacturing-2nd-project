@@ -15,12 +15,23 @@ from __future__ import annotations
 from ..mcp_client import MCPClient
 from ..state import CriticResult, Hypothesis, RCAState
 
+# 고정 사유 토큰(사유코드) — API가 verdict 3-state 승격을 이 토큰으로만 분기한다
+# (API 명세 §2.7 "verdict 매핑 주의": 자연어 reject_reason 본문 매칭 금지).
+# P2/P3/P4는 verdict="rejected", P5는 verdict="insufficient"로 승격된다.
+TOKEN_TIME_ORDER = "P2_TIME_ORDER"
+TOKEN_NO_COUNTER_EVIDENCE = "P3_NO_COUNTER_EVIDENCE"
+TOKEN_FAITHFULNESS = "P4_FAITHFULNESS"
+TOKEN_NO_KG_MECHANISM = "P5_NO_KG_MECHANISM"
+# semi_auto 잠정 자동 기각(명세 §2.5 tier 🔲 · §4-2 미결정 대기 — 사람 판정 경로가 생기면 제거)
+TOKEN_SEMI_AUTO_PENDING = "SEMI_AUTO_AUTO_REJECT"
+
 
 async def review_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> dict:
     """hypotheses[group_id]를 규칙대로 채택/기각하고 critic_result[group_id]를 채운다.
 
     문서 순서(①시간정합 ②반대근거 ③faithfulness ④KG메커니즘) 그대로 적용한다.
     채택 후보가 0개면 status="insufficient_evidence", 아니면 "accepted".
+    기각 항목에는 reject_reason(표시용 자연어)과 reject_token(고정 사유코드)을 같이 싣는다.
     """
     group = next((g for g in state["groups"] if g["group_id"] == group_id), None)
     lot_id = group["lot_ids"][0] if group and group["lot_ids"] else None
@@ -30,13 +41,37 @@ async def review_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> d
     rejected: list[dict] = []
     for h in candidates:
         if lot_id is not None and not await _check_time_consistency(h, mcp, lot_id):
-            rejected.append({**h, "reject_reason": "시간 정합 실패 — 원인이 결함 발생보다 늦음"})
+            rejected.append({
+                **h,
+                "reject_token": TOKEN_TIME_ORDER,
+                "reject_reason": "시간 정합 실패 — 원인이 결함 발생보다 늦음",
+            })
         elif not _check_negative_evidence(h):
-            rejected.append({**h, "reject_reason": "반대증거(normal_ratio) 미수행"})
+            rejected.append({
+                **h,
+                "reject_token": TOKEN_NO_COUNTER_EVIDENCE,
+                "reject_reason": "반대증거(normal_ratio) 미수행",
+            })
         elif not _check_faithfulness(h):
-            rejected.append({**h, "reject_reason": "faithfulness 위반 — 확인 안 된 값을 근거로 사용"})
+            rejected.append({
+                **h,
+                "reject_token": TOKEN_FAITHFULNESS,
+                "reject_reason": "faithfulness 위반 — 확인 안 된 값을 근거로 사용",
+            })
         elif not _check_kg_mechanism(h):
-            rejected.append({**h, "reject_reason": "KG 메커니즘 연결 없음(근거없음 등급)"})
+            rejected.append({
+                **h,
+                "reject_token": TOKEN_NO_KG_MECHANISM,
+                "reject_reason": "KG 메커니즘 연결(VERIFIED_BY) 없음",
+            })
+        elif h["tier"] == "반자동":
+            # 잠정(명세 §2.5 🔲·§4-2): 사람 판정 경로가 정립되지 않아 반자동 등급은
+            # 규칙을 통과해도 자동 기각으로 처리한다. 경로가 생기면 이 분기를 걷어낸다.
+            rejected.append({
+                **h,
+                "reject_token": TOKEN_SEMI_AUTO_PENDING,
+                "reject_reason": "반자동 등급 — 사람 판정 경로 미정립으로 잠정 자동 기각",
+            })
         else:
             accepted.append(h)
 

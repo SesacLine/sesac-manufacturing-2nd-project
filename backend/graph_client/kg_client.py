@@ -58,7 +58,24 @@ class KGClient:
             "occurrence_prior": score["occurrence_prior"],
             "unverifiable_signals": verification.get("unverifiable_signals"),
             "sentence": hypothesis["sentence"],
+            "citations": KGClient._to_citations(hypothesis.get("provenance")),
         }
+
+    @staticmethod
+    def _to_citations(provenance: dict | None) -> list[dict]:
+        """provenance.chunk_ids의 문서명("문서명#c00")을 {id, text} 인용 목록으로 유도한다.
+
+        같은 문서의 청크 여러 개는 문서 1건으로 접는다(등장 순서 유지, id는 후보 내 1부터).
+        API 명세 §2.5/§2.7 citations[] — 인용 없으면 [](null 금지).
+        """
+        if not provenance:
+            return []
+        seen: list[str] = []
+        for chunk_id in provenance.get("chunk_ids", []):
+            doc = chunk_id.rsplit("#", 1)[0]
+            if doc not in seen:
+                seen.append(doc)
+        return [{"id": i + 1, "text": doc} for i, doc in enumerate(seen)]
 
     def _load(self) -> dict:
         return json.loads(self._hypotheses_path.read_text(encoding="utf-8"))

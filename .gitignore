@@ -62,3 +62,10 @@ kg_rca/outputs/parsed_docs.jsonl
 # 개인 작업공간
 personalspace_rca/
 
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+
+# kg_rca 생성 캐시(18MB급) — 커밋 금지
+kg_rca/outputs/embedding_cache.json

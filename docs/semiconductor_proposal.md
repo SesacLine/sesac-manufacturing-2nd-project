@@ -255,7 +255,7 @@ VLM 기반 웨이퍼맵 결함 판독 결과를 시작점으로, GraphRAG와 Fab
 
 ## 6. 활용 데이터
 
-**6.1 웨이퍼맵 데이터 (WM-811K, MixedWM38)**
+**6.1 웨이퍼맵 데이터 (WM-811K)** — MixedWM38은 팀 결정으로 제외
 
 - 실제 팹에서 수집된 약 172,950장의 라벨링된 웨이퍼맵
 - 9개 패턴(Center, Donut, Edge-Loc, Edge-Ring, Loc, Near-Full, Scratch, Random, None)
@@ -314,7 +314,7 @@ erDiagram
     }
 
     wafer {
-        TEXT source "wm811k / mw38"
+        TEXT source "wm811k (MixedWM38 제외됨)"
         TEXT lot_id PK "join key"
         TEXT wafer_id PK
         BLOB die_map "np.save 바이트(2D uint8). 배경 lot은 NULL"
@@ -494,7 +494,7 @@ erDiagram
 ## 9. 실행
 
 - 액션 아이템
-    - WM-811K 및 MixedWM38 데이터 전처리, VLM 기반 결함 패턴 판독 구현
+    - WM-811K 데이터 전처리, VLM 기반 결함 패턴 판독 구현
     - 결함 판독 모델(VLM) 학습 및 few-shot 프로토타입 구축
     - 도메인 문헌 수집과 LLM 기반 지식그래프(엔티티/관계) 구축
     - fab.db(SQLite) 합성 데이터셋 구축 및 스키마 검증
