@@ -14,7 +14,7 @@
    - `pytest` 통과 (`secsgem-mcp/tests`, 관련 있으면 `-m "not data"`)
    - 관련 있으면 `uvicorn backend.main:app --reload`로 기동 확인
    - GitHub Actions CI(`.github/workflows/ci.yml`) 통과 여부 확인
-3. merge 시 conflict는 본인이 해결한다. 리뷰 승인 후 **본인이 merge**하고, 병합된 브랜치는 삭제한다.
+3. merge 시 conflict는 본인이 해결한다. 리뷰 승인 후 **리뷰어가 merge**하고, 병합된 브랜치는 **삭제하지 않고 그대로 둔다**(작업 이력 추적용).
 
 ## 금지 사항
 
@@ -74,11 +74,12 @@ ex)
 ## Branch 명명
 
 ```
-{type}/#이슈번호-작업내용   (공백은 - 로 연결)
+{type}/#이슈번호-작업내용   (작업내용은 영어 소문자 + 하이픈으로만, 한글 금지)
 
 ex)
-feat/#12-hypothesis-tier-분기
-fix/#15-telemetry-비교-버그
+feat/#12-hypothesis-tier-branching
+fix/#15-telemetry-range-compare
+docs/#20-skeleton-kickoff-env-setup
 ```
 
 ---
@@ -86,8 +87,8 @@ fix/#15-telemetry-비교-버그
 ## PR
 
 - 제목: `[Type] 이슈 제목`
-- **리뷰어 1명 승인** 후 merge
-- merge 후 작업 브랜치는 시간 날 때 삭제
+- **리뷰어 1명 승인** 후 해당 **리뷰어가 merge**
+- merge 후에도 작업 브랜치는 삭제하지 않고 유지
 - 컨플릭트나 리뷰 중 질문 사항은 팀 채널에 남긴다
 
 ### 템플릿
