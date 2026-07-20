@@ -17,13 +17,17 @@ from ..state import CriticResult, Hypothesis, RCAState
 
 # 고정 사유 토큰(사유코드) — API가 verdict 3-state 승격을 이 토큰으로만 분기한다
 # (API 명세 §2.7 "verdict 매핑 주의": 자연어 reject_reason 본문 매칭 금지).
-# P2/P3/P4는 verdict="rejected", P5는 verdict="insufficient"로 승격된다.
+# 내부 3버킷(adopt/reject/judge_unknown)을 프론트 3값에 매핑한다(hypo_critic_py.md §13-1 C1·C2):
+#   P2/P3/P4 = reject → verdict="rejected"
+#   P5(근거없음)·SEMI_AUTO(반자동 미조사) = judge_unknown → verdict="insufficient"
 TOKEN_TIME_ORDER = "P2_TIME_ORDER"
 TOKEN_NO_COUNTER_EVIDENCE = "P3_NO_COUNTER_EVIDENCE"
 TOKEN_FAITHFULNESS = "P4_FAITHFULNESS"
 TOKEN_NO_KG_MECHANISM = "P5_NO_KG_MECHANISM"
-# semi_auto 잠정 자동 기각(명세 §2.5 tier 🔲 · §4-2 미결정 대기 — 사람 판정 경로가 생기면 제거)
-TOKEN_SEMI_AUTO_PENDING = "SEMI_AUTO_AUTO_REJECT"
+# 반자동(Maintenance/Recipe)은 fab 증거로 아직 조사되지 않은 상태 = judge_unknown(미조사).
+# 기각(reject)이 아니라 "판단 보류"로 남긴다 — investigate_group 에이전트가 붙으면 이 분기를 걷어내고
+# 에이전트가 adopt/reject를 판정한다(hypo_critic_py.md §13-4 step2).
+TOKEN_SEMI_AUTO_PENDING = "SEMI_AUTO_PENDING"
 
 
 async def review_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> dict:
@@ -63,12 +67,13 @@ async def review_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> d
                 "reject_reason": "KG 메커니즘 연결(VERIFIED_BY) 없음",
             })
         elif h["tier"] == "반자동":
-            # 잠정(명세 §2.5 🔲·§4-2): 사람 판정 경로가 정립되지 않아 반자동 등급은
-            # 규칙을 통과해도 자동 기각으로 처리한다. 경로가 생기면 이 분기를 걷어낸다.
+            # 반자동은 fab 증거로 아직 조사되지 않았다 = judge_unknown(미조사) → "판단 보류".
+            # 기각이 아니다(hypo_critic_py.md §13-1 C1). rejected 리스트에 담되 토큰이
+            # verdict="insufficient"로 승격시킨다. investigate_group 에이전트가 붙으면 이 분기 제거.
             rejected.append({
                 **h,
                 "reject_token": TOKEN_SEMI_AUTO_PENDING,
-                "reject_reason": "반자동 등급 — 사람 판정 경로 미정립으로 잠정 자동 기각",
+                "reject_reason": "반자동 등급 — fab 증거 미조사로 판단 보류(judge_unknown)",
             })
         else:
             accepted.append(h)
