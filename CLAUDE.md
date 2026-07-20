@@ -170,8 +170,8 @@ uvicorn backend.main:app --reload
 
 - 브랜치: `develop` 없이 **`main` 하나만**. 이슈 기반 브랜치 → PR → `main`. `main` 직접 push 금지.
 - 커밋: `[Type] #이슈번호 제목` — Type은 `Feat`/`Fix`/`Refactor`/`Docs`/`Chore`/`Test`.
-- 브랜치명: `{type}/#이슈번호-작업내용`.
-- PR: 리뷰어 1명 승인 후 **본인이 merge**, 병합 브랜치는 삭제.
+- 브랜치명: `{type}/#이슈번호-작업내용` — 작업내용은 영어 소문자 + 하이픈으로만(한글 금지).
+- PR: 리뷰어 1명 승인 후 **해당 리뷰어가 merge**, 병합 브랜치는 삭제하지 않고 유지.
 - 금지: `--force` 푸시, `main` 직접 push, `.env`/API 키/`fab.db` 커밋.
 
 ## 막히면 볼 문서 (정본 인덱스)

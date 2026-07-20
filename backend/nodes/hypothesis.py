@@ -70,7 +70,7 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
                 "cause": candidate["cause"],
                 "tier": candidate["tier"],
                 "equipment": suspect,
-                "evidence": evidence,
+                "evidence": dict(evidence),
                 "sentence": candidate["sentence"],
             }
         )
