@@ -1,0 +1,692 @@
+<title>RCA 와이어프레임 v5</title>
+<style>
+  :root {
+    --bg: #eceef1; --panel: #ffffff; --line: #b9bec6; --line-strong: #6b7178;
+    --text: #1f2328; --text-dim: #6b7178; --header-bg: #202428; --header-text: #f4f5f6;
+    --accent-dark: #2b2f33; --good: #2f7d3f; --good-bg: #eaf4ec; --good-line: #3f9a52;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Segoe UI", "Malgun Gothic", -apple-system, sans-serif; font-size: 13px; line-height: 1.5; }
+  button { font-family: inherit; cursor: pointer; }
+
+  .topbar { position: sticky; top: 0; z-index: 50; background: var(--header-bg); color: var(--header-text); padding: 10px 22px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #000; }
+  .topbar .brand { font-weight: 700; font-size: 13.5px; }
+  .topbar .brand .dim { font-weight: 400; color: #9aa0a7; margin-left: 6px; font-size: 11px; }
+  .topbar .crumb { font-size: 12px; color: #d7dae0; }
+  .topbar .back-btn { background: transparent; color: #f4f5f6; border: 1px solid #6b7178; padding: 5px 12px; font-size: 12px; border-radius: 2px; }
+  .topbar .back-btn:hover { background: #33383d; }
+  .topbar .back-btn:disabled { opacity: 0.35; cursor: default; }
+
+  .page { max-width: 1160px; margin: 0 auto; padding: 22px 20px 70px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .panel { background: var(--panel); border: 1.5px solid var(--text); }
+  .panel-head { background: var(--header-bg); color: var(--header-text); padding: 9px 16px; font-weight: 700; font-size: 13.5px; display: flex; justify-content: space-between; align-items: center; }
+  .panel-head .tag { font-weight: 400; font-size: 11px; opacity: 0.85; }
+  .panel-body { padding: 16px 18px; }
+
+  .box { border: 1px solid var(--line); padding: 10px 12px; margin-bottom: 12px; }
+  .box-title { font-weight: 700; font-size: 11.5px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .caption { font-size: 10.5px; color: var(--text-dim); margin-top: 4px; }
+  .ref-note { margin-top: 10px; font-size: 10.5px; color: var(--text-dim); border: 1px dashed var(--line-strong); padding: 6px 10px; display: inline-block; }
+  .foot-note { border-top: 1px dashed var(--line); padding: 7px 18px; font-size: 10.5px; color: var(--text-dim); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 8px 8px; text-align: left; }
+  th { color: var(--text-dim); font-weight: 600; font-size: 11px; }
+  tr.clickable:hover { background: #f2f3f4; cursor: pointer; }
+
+  .badge { display: inline-block; padding: 2px 9px; border: 1px solid var(--line-strong); font-size: 10.5px; border-radius: 2px; }
+  .badge.dark { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); }
+
+  .primary-btn { display: inline-block; padding: 9px 20px; background: var(--accent-dark); color: #fff; font-weight: 700; font-size: 12.5px; border: none; border-radius: 2px; }
+  .primary-btn:hover { background: #000; }
+  .ghost-btn { display: inline-block; padding: 7px 14px; background: #fff; color: var(--text); font-weight: 600; font-size: 12px; border: 1px solid var(--line-strong); border-radius: 2px; }
+  .ghost-btn:hover { background: #f2f3f4; }
+
+  .lot-chip { display: inline-block; border: 1px solid var(--line-strong); padding: 3px 9px; font-size: 11px; margin: 3px 5px 3px 0; background: #fff; border-radius: 2px; }
+  .lot-chip.clickable { cursor: pointer; }
+  .lot-chip.clickable:hover { background: #eef0f2; }
+  .lot-chip.sel { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); }
+
+  /* 웨이퍼 드릴다운 */
+  .wafer-depth { border: 1.5px solid var(--text); background: #fff; padding: 12px 14px; margin-bottom: 14px; }
+  .wd-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 12.5px; margin-bottom: 10px; }
+  .wf-strip { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+  .wf-item { width: 110px; flex-shrink: 0; text-align: center; border: 1px solid var(--line); padding: 8px 6px; background: #fff; }
+  .wf-item.normal { border-style: dashed; }
+  .wf-map { width: 88px; height: 88px; margin: 0 auto 6px; border-radius: 50%; border: 1px solid var(--line); position: relative;
+    background: repeating-linear-gradient(0deg, transparent, transparent 8px, var(--line) 8px, var(--line) 9px), repeating-linear-gradient(90deg, transparent, transparent 8px, var(--line) 8px, var(--line) 9px); }
+  .wf-map .d { position: absolute; width: 6px; height: 6px; background: var(--text); border-radius: 1px; transform: translate(-50%, -50%); }
+  .wf-id { font-size: 11px; font-weight: 700; }
+  .wf-tag { font-size: 9.5px; color: var(--text-dim); margin-top: 1px; }
+
+  /* 진행 단계 */
+  .steps { display: flex; justify-content: space-between; margin: 8px 0 18px; }
+  .step { flex: 1; text-align: center; font-size: 10.5px; color: var(--text-dim); }
+  .step .circle { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--line-strong); display: flex; align-items: center; justify-content: center; margin: 0 auto 5px; background: #fff; font-weight: 700; font-size: 12px; transition: all .25s; }
+  .step.done .circle { background: var(--text); color: #fff; border-color: var(--text); }
+  .step.current .circle { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); animation: pulse 1s infinite; }
+  .step .label { color: var(--text); font-weight: 600; }
+  .step .sub { font-weight: 400; color: var(--text-dim); }
+  @keyframes pulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(43,47,51,.35);} 50%{ box-shadow: 0 0 0 5px rgba(43,47,51,0);} }
+  .log-console { background: var(--accent-dark); color: #d7dae0; font-family: Consolas, monospace; font-size: 11px; padding: 12px 14px; line-height: 1.9; min-height: 160px; }
+  .log-console .ok { color: #9adf9a; }
+  .log-console .grp { color: #e2c66b; }
+  .log-line { opacity: 0; animation: fadein .3s forwards; }
+  @keyframes fadein { to { opacity: 1; } }
+
+  /* v2 가설 카드 */
+  .hcard { border: 1px solid var(--line); background: #fff; padding: 13px 15px; margin-bottom: 11px; }
+  .hcard.top { border: 2px solid var(--good-line); background: var(--good-bg); }
+  .hcard .h-row1 { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .hcard .h-name { font-weight: 700; font-size: 14px; }
+  .hcard .h-stage { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .hcard .h-prob { font-size: 19px; font-weight: 700; white-space: nowrap; }
+  .hcard.top .h-prob { color: var(--good); }
+  .pbar { height: 8px; background: #e3e5e8; border: 1px solid var(--line); margin: 9px 0 10px; }
+  .pbar > i { display: block; height: 100%; background: var(--line-strong); }
+  .hcard.top .pbar > i { background: var(--good-line); }
+  .hcard .h-narr { font-size: 12px; line-height: 1.65; }
+  .hcard .h-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .adopt-flag { font-size: 10.5px; font-weight: 700; color: var(--good); }
+  .adopt-flag.rej { color: var(--text-dim); font-weight: 400; }
+  .critic-note { border: 1px dashed var(--line-strong); padding: 9px 12px; font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+  .cite-box { font-size: 11px; color: var(--text-dim); border: 1px solid var(--line); padding: 9px 12px; margin-top: 12px; }
+
+  .unable-box { border: 1.5px dashed var(--line-strong); padding: 28px 20px; text-align: center; margin-bottom: 14px; }
+  .unable-box .mark { width: 38px; height: 38px; border: 1.5px solid var(--line-strong); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 17px; }
+  .unable-box .title { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+  .unable-box .desc { font-size: 12px; color: var(--text-dim); max-width: 460px; margin: 0 auto; }
+
+  /* 근거 모달 (3섹션) */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(20,22,24,.45); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: #fff; border: 1.5px solid var(--text); width: 92%; max-width: 900px; max-height: 88vh; overflow-y: auto; }
+  .modal-head { background: var(--header-bg); color: var(--header-text); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; position: sticky; top: 0; }
+  .modal-head .close-btn { background: transparent; border: 1px solid #6b7178; color: #f4f5f6; padding: 3px 10px; font-size: 12px; border-radius: 2px; }
+  .modal-body { padding: 16px 18px; }
+  .ev-sec { border: 1px solid var(--line); margin-bottom: 14px; }
+  .ev-sec:last-child { margin-bottom: 0; }
+  .ev-sec-title { background: #f2f3f4; border-bottom: 1px solid var(--line); padding: 8px 12px; font-weight: 700; font-size: 12px; }
+  .ev-sec-title .num { color: var(--text-dim); margin-right: 6px; }
+  .ev-sec-body { padding: 12px 14px; }
+  .na-note { font-size: 11.5px; color: var(--text-dim); font-style: italic; }
+  .spark-wrap { border: 1px solid var(--line); padding: 8px 10px; }
+
+  .flow-diagram { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 22px 10px; flex-wrap: wrap; }
+  .flow-node { border: 1.5px solid var(--text); padding: 10px 14px; font-size: 11px; font-weight: 700; text-align: center; background: #fff; min-width: 88px; }
+  .flow-node .sub { font-weight: 400; font-size: 9.5px; color: var(--text-dim); margin-top: 3px; }
+  .flow-sep { font-size: 15px; color: var(--text-dim); }
+</style>
+
+<div class="topbar">
+  <div><span class="brand">RCA Multi-Agent 프로토타입<span class="dim">더미 데이터 · 그룹 단위 분석 · 결과 누적</span></span></div>
+  <div class="crumb" id="crumb">화면 1 · 대시보드</div>
+  <button class="back-btn" id="backBtn" onclick="goDashboard()" disabled>◀ 대시보드로</button>
+</div>
+
+<div class="page">
+
+  <!-- ============ 화면 1: 대시보드 ============ -->
+  <section class="screen active" id="screen-dashboard">
+    <div class="panel">
+      <div class="panel-head">
+        <span>대시보드 (메인 진입 화면)</span>
+        <span class="tag">⟳ 2026-07-06 09:02 갱신 · 일 1회 배치 (실시간 아님)</span>
+      </div>
+      <div class="panel-body">
+        <!-- 수율 현황: 가로 full-width -->
+        <div class="box">
+          <div class="box-title"><span>수율 현황 요약 · 일별 수율 추이 (2026-01-13 ~ 03-26 · 확정 시나리오 8건)</span><span style="font-weight:400;"><span id="rc5chip" class="rc5-chip"></span>데이터: RCA_수율일별_v3</span></div>
+          <svg id="rc5trend" viewBox="0 0 1100 230"></svg>
+          <div class="caption">점선 = 라인 평균 94.2% · 급락 지점에 마우스를 올리면 그날의 근본원인·장비·센서 증거가 표시됩니다</div>
+
+          <div class="rc5-div"></div>
+          <div class="box-title"><span>원인 장비 구성비 · 결함 패턴 Pareto · 패턴별 확정 원인</span><span style="font-weight:400;">조각/막대 클릭 시 연동 · 색 = 공정 단계&nbsp;&nbsp;<span class="rc5-lg" style="background:#2a78d6"></span>ETCH(식각)&nbsp;<span class="rc5-lg" style="background:#1baf7a"></span>DEPO(증착)&nbsp;<span class="rc5-lg" style="background:#eda100"></span>CMP(연마)&nbsp;<span class="rc5-lg" style="background:#4a3aa7"></span>CLEAN(세정)</span></div>
+          <div class="rc5-grid">
+            <div>
+              <div class="rc5-sub">이번 분석에서 원인으로 확정된 장비 (8건 중 몇 건인지)</div>
+              <svg id="rc5donut" viewBox="0 0 300 230"></svg>
+            </div>
+            <div>
+              <div class="rc5-sub">결함 패턴별 웨이퍼 수 — 파랑=원인 매핑 대상 3종 · 회색=미매핑(VLM 판독만)</div>
+              <svg id="rc5pareto" viewBox="0 0 400 240"></svg>
+            </div>
+            <div>
+              <div class="rc5-sub">패턴별로 확정된 근본원인 — 글자가 원인, 색이 해당 공정</div>
+              <div id="rc5causes"></div>
+              <details class="rc5-help">
+                <summary>ⓘ 읽는 법 — 색·등급이 뜻하는 것 (펼쳐보기)</summary>
+                <div>
+                  <p>① 한 줄 = 한 결함 패턴, 칩 하나 = 확정된 근본원인 (×n = 반복 횟수)</p>
+                  <p>② <b>색 = 원인이 발생한 공정</b> (파랑 식각 · 초록 증착 · 노랑 연마 · 보라 세정) → 확정 후 어느 공정팀에 인계할지</p>
+                  <p>③ <b>등급 = 검증 방식</b> · [자동] 센서 수치의 정상범위 이탈을 시스템이 계산으로 확인 ·
+                  [반자동] 센서 신호가 없어 정비기록을 <b>엔지니어가 직접 확인해야 하는 건</b></p>
+                  <p>④ <b>Center 패턴 3건은 원인이 전부 다름</b>(세정·증착·연마) → 패턴만으로 원인을 단정하지 않고
+                  공통 장비·센서·정비이력 같은 개별 증거로 건별 확정</p>
+                </div>
+              </details>
+              <table class="rc5-tbl" id="rc5tbl"></table>
+            </div>
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="box-title"><span>◆ 가설 검토 대기열 — 분석 완료 결과 누적 (<span id="queueCount">0</span>건, 행 클릭 시 결과 열람)</span><span style="font-weight:400;">↓ 최신순</span></div>
+          <table id="queueTable"></table>
+          <div class="caption" id="queueEmptyCap" style="display:none;">아직 분석된 결과가 없습니다. 아래 "오늘 판독 배치 확인"을 누르면 그룹화부터 Hypothesis·Critic 전과정이 실행되고, 결과가 이 대기열에 한 번에 쌓입니다.</div>
+        </div>
+
+        <div style="margin-top:16px; text-align:center;">
+          <button class="primary-btn" onclick="runBatchAnalysis()">▶ 오늘 판독 배치 확인 (그룹화 → 에이전트 전과정 실행)</button>
+        </div>
+      </div>
+      <div class="foot-note">버튼 클릭 = 어제 누적 데이터 자동 그룹화 + 전 그룹 Hypothesis·Critic 일괄 실행 → 결과가 대기열에 누적</div>
+    </div>
+  </section>
+
+  <!-- ============ 화면 2: 분석 진행 (동적 · 그룹화부터 전과정) ============ -->
+  <section class="screen" id="screen-progress">
+    <div class="panel">
+      <div class="panel-head"><span id="progTitle">오늘 판독 배치 분석 중...</span></div>
+      <div class="panel-body">
+        <div class="box-title">진행 단계</div>
+        <div class="steps" id="stepBar">
+          <div class="step" data-step="0"><div class="circle">1</div><div class="label">자동 그룹화<div class="sub">(웨이퍼→패턴 그룹)</div></div></div>
+          <div class="step" data-step="1"><div class="circle">2</div><div class="label">원인 후보 검색<div class="sub">(GraphRAG · 서버 밖)</div></div></div>
+          <div class="step" data-step="2"><div class="circle">3</div><div class="label">증거 수집<div class="sub">(Hypothesis)</div></div></div>
+          <div class="step" data-step="3"><div class="circle">4</div><div class="label">검증<div class="sub">(Critic)</div></div></div>
+          <div class="step" data-step="4"><div class="circle">5</div><div class="label">완료<div class="sub">(대기열 누적)</div></div></div>
+        </div>
+        <div class="box-title">MCP 도구 호출 로그 (전 그룹 일괄 · 그룹별 소속 로트 전체를 인자로 전달)</div>
+        <div class="log-console" id="logConsole"></div>
+        <div class="caption" id="progressCaption" style="margin-top:8px;">분석 중입니다. 잠시만 기다려주세요...</div>
+      </div>
+      <div class="foot-note">그룹화부터 Hypothesis → Critic 전과정 · 완료 시 모든 그룹 결과가 대시보드 대기열에 한 번에 누적</div>
+    </div>
+  </section>
+
+  <!-- ============ 화면 3: 분석 결과 (대기열 행 클릭 시 열람 · v2 가설 카드) ============ -->
+  <section class="screen" id="screen-result">
+    <div class="panel">
+      <div class="panel-head"><span id="resultTitle">분석 결과</span></div>
+      <div class="panel-body">
+        <div class="box" style="font-weight:700;" id="resultSummary"></div>
+        <div class="box">
+          <div class="box-title"><span>그룹 소속 로트 목록</span><span style="font-weight:400;color:var(--text-dim);">로트 클릭 → 판독 웨이퍼맵</span></div>
+          <div id="resultLotChips"></div>
+        </div>
+        <div class="wafer-depth" id="resultWaferDepth" style="display:none;"></div>
+
+        <div class="box-title" style="margin:6px 0 10px;">Hypothesis · Critic 결과 — 채택 가능성 내림차순</div>
+        <div id="hypoCards"></div>
+        <div id="unableBlock" style="display:none;"></div>
+        <div class="critic-note" id="criticNote"></div>
+        <div class="cite-box" id="citationBox"></div>
+      </div>
+      <div class="foot-note">가설 카드 = v2 방식(확률 %·확신도 바·AI 판단 서술문) 차용 · 근거 보기 = 3섹션 모달</div>
+    </div>
+  </section>
+
+  <!-- 참고 흐름 -->
+  <div class="panel" style="margin-top:22px;" id="flowRef">
+    <div class="panel-head"><span>참고 · 화면 간 전체 흐름</span></div>
+    <div class="flow-diagram">
+      <div class="flow-node">대시보드<div class="sub">결과 누적 대기열</div></div><div class="flow-sep">— 버튼 →</div>
+      <div class="flow-node">분석 진행<div class="sub">그룹화 → Hypothesis → Critic (동적)</div></div><div class="flow-sep">↺</div>
+      <div class="flow-node">대시보드<div class="sub">전 그룹 결과 한 번에 누적</div></div><div class="flow-sep">— 행 클릭 →</div>
+      <div class="flow-node">분석 결과<div class="sub">v2 가설 카드 · 근거 모달</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 근거 모달 (3섹션) -->
+<div class="modal-overlay" id="evidenceModal">
+  <div class="modal">
+    <div class="modal-head"><span id="modalTitle">근거 상세</span><button class="close-btn" onclick="closeEvidence()">✕ 닫기</button></div>
+    <div class="modal-body">
+      <div class="ev-sec">
+        <div class="ev-sec-title"><span class="num">①</span>Commonality — 공통 장비 집계 (그룹 소속 Lot 전체 기준)</div>
+        <div class="ev-sec-body"><table id="commonalityTable"></table><div class="caption" id="normalRatioCap"></div></div>
+      </div>
+      <div class="ev-sec">
+        <div class="ev-sec-title"><span class="num">②</span>Telemetry — 파라미터 시계열 vs 정상범위</div>
+        <div class="ev-sec-body" id="telemetryBody"></div>
+      </div>
+      <div class="ev-sec">
+        <div class="ev-sec-title"><span class="num">③</span>Alarm · Maintenance 이력</div>
+        <div class="ev-sec-body" id="alarmBody"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---- 실데이터 근거: fault_scenario.md SC-001/002/003/011 ---- */
+const GROUPS = {
+  grp_edgering: {
+    pattern:'Edge-Ring', lots:8, wafers:42, judgment:'ok',
+    lotIds:['lot23844','lot44793','lot6092','lot14756','lot12905','lot16428','lot20735','lot9151'],
+    title:'Edge-Ring 그룹', desc:'가장자리 고리형 불량 — ETCH 공정 연관 추정 (SC-002)', commEq:'ETCH-01',
+    hypotheses:[
+      {cause:'etch_nonuniformity', stage:'ETCH', prob:82, evidence:'etch_edgering',
+       narr:'8개 로트 전부가 ETCH-01(CH2)를 통과했고, 그 시점 rf_power가 정상범위(1900–2100W) 상한을 넘어 step-up drift를 보였습니다. 같은 시점 BM 정비와 rf_power high 알람이 함께 관측되어 식각 불균일이 원인일 개연성이 가장 높습니다. LITHO-01도 8/8 공통이나 해당 PM은 결함 이후라 배제했습니다.'},
+      {cause:'cmp_edge_overpolish', stage:'CMP', prob:14, evidence:'cmp_edgering_weak',
+       narr:'일부 로트(3/8)만 CMP-01 공통, down_force 신호도 약하고 통과 로트 정상 비율 65%로 높아 채택 곤란합니다.'}],
+    citation:'[1] Wang et al., IEEE Trans. Semiconductor Manufacturing 2020 (etch uniformity / edge-ring)',
+    critic:'Critic 검증: 시간 선후 정합(원인 t0 < 결함), 정상 로트 대조 수행, 함정 장비(LITHO-01: t0 이후 PM) 기각. 확률은 확정이 아니라 현재 증거 기준 상대적 설명력입니다.'
+  },
+  grp_center: {
+    pattern:'Center', lots:8, wafers:39, judgment:'ok',
+    lotIds:['lot33091','lot10326','lot9572','lot39444','lot36789','lot36635','lot10239','lot36835'],
+    title:'Center 그룹', desc:'중심부 집중 불량 — CLEAN 공정 연관 추정 (SC-001)', commEq:'CLEAN-01',
+    hypotheses:[
+      {cause:'clean_nozzle_clog', stage:'CLEAN', prob:71, evidence:'clean_center',
+       narr:'8개 로트가 CLEAN-01(CH1)을 공통 통과했고 flow_rate가 정상범위(950–1050ml/min) 아래로 이탈, 노즐 막힘 BM 정비가 동시 관측되어 중심부 잔류물 집중과 정합적입니다.'},
+      {cause:'deposition_center_thickness', stage:'DEPO', prob:16, evidence:'depo_center_weak',
+       narr:'DEPO-02 공통성(3/8)·chamber_pressure 신호가 약하고 정상 비율 58%로 높아 보조 가설에 그칩니다.'}],
+    citation:'[2] Wu et al., IEEE Trans. Semiconductor Manufacturing 2015 (WM-811K 원 논문)',
+    critic:'Critic 검증: 시간 선후 정합, 정상 로트 대조 수행, 함정 장비 기각. 확률은 상대적 설명력입니다.'
+  },
+  grp_scratch: {
+    pattern:'Scratch', lots:8, wafers:45, judgment:'ok',
+    lotIds:['lot42665','lot17441','lot47541','lot12233','lot44037','lot47160','lot46782','lot42731'],
+    title:'Scratch 그룹', desc:'선형 긁힘 불량 — CMP 취급 공정 연관 추정 (SC-003)', commEq:'CMP-02',
+    hypotheses:[
+      {cause:'handling_mechanical', stage:'CMP', prob:88, evidence:'cmp_scratch',
+       narr:'8개 로트가 CMP-02(CH1)를 공통 통과했고 취급 기계 관련 BM 정비 이력이 확인됩니다. 텔레메트리 시그니처는 없으나 알람/정비 이력이 선형 긁힘과 정합적입니다.'}],
+    citation:'[3] Wu et al., IEEE Trans. Semiconductor Manufacturing 2015',
+    critic:'Critic 검증: 시간 선후 정합, 정상 로트 대조 수행. 텔레메트리 단서 없어 알람/정비 중심 채택.'
+  },
+  grp_donut: {
+    pattern:'Donut', lots:6, wafers:18, judgment:'unmapped',
+    lotIds:['lot51002','lot51188','lot52301','lot52490','lot53117','lot53640'],
+    title:'Donut 그룹', desc:'도넛형 불량 — 원인 매핑 없음', commEq:null,
+    reason:'이 결함 패턴(Donut)은 현재 원인 매핑 데이터(mapping_table)가 없어 판독까지만 지원됩니다. 웨이퍼맵 확인은 가능하나 원인 가설은 생성되지 않습니다.'
+  }
+};
+
+/* 오늘 판독 배치 = 어제 누적 데이터로 자동 그룹화될 그룹들 */
+const BATCH_IDS = ['grp_edgering','grp_center','grp_scratch','grp_donut'];
+/* 대기열: 분석 완료 결과 누적 (초기 비어 있음 → 버튼 클릭 시 일괄 누적) */
+let analyzedQueue = [];
+
+const EVIDENCE = {
+  etch_edgering: {
+    commonality:[['ETCH-01 (CH2)','8 / 8','100%'],['LITHO-01','8 / 8','100% (함정 · t0 이후 PM)'],['CLEAN-02','2 / 8','25%']],
+    normalRatio:'반대 증거: ETCH-01-CH2 통과 로트 중 정상 20% 미만 → 원인 지지 (LITHO-01은 정상 다수 통과로 기각)',
+    telemetryLabel:'ETCH-01-CH2 · rf_power', telemetryRange:'정상범위 [1900, 2100] W · fab_model.yaml 병합 · t0 이후 상한 초과 step-up', hasTelemetry:true,
+    events:[['2026-01-27','Maintenance','ETCH-01','정기 PM'],['2026-01-29','Maintenance','ETCH-01','BM · etch_nonuniformity 관련 부품 교체'],['2026-01-30','Alarm','ETCH-01','rf_power high alarm']]
+  },
+  cmp_edgering_weak: {
+    commonality:[['CMP-01 (CH2)','3 / 8','38%']],
+    normalRatio:'반대 증거: CMP-01-CH2 통과 로트 중 65% 정상 → 약한 근거',
+    telemetryLabel:'CMP-01-CH2 · down_force (약한 신호)', telemetryRange:'정상범위 [4.5, 5.5] psi · fab_model.yaml 병합 · 뚜렷한 이탈 없음', hasTelemetry:true,
+    events:[['2026-01-20','Maintenance','CMP-01','정기 PM']]
+  },
+  clean_center: {
+    commonality:[['CLEAN-01 (CH1)','8 / 8','100%'],['LITHO-01','8 / 8','100% (함정 · t0 이후 PM)']],
+    normalRatio:'반대 증거: CLEAN-01-CH1 통과 로트 중 정상 24% → 원인 지지',
+    telemetryLabel:'CLEAN-01-CH1 · flow_rate', telemetryRange:'정상범위 [950, 1050] ml/min · fab_model.yaml 병합 · t0 이후 하한 이탈 linear-down', hasTelemetry:true,
+    events:[['2026-03-11','Maintenance','CLEAN-01','BM · clean_nozzle_clog 관련 부품 교체'],['2026-03-11','Alarm','CLEAN-01','flow_rate out of range']]
+  },
+  depo_center_weak: {
+    commonality:[['DEPO-02 (CH2)','3 / 8','38%']],
+    normalRatio:'반대 증거: DEPO-02-CH2 통과 로트 중 58% 정상 → 약한 근거',
+    telemetryLabel:'DEPO-02-CH2 · chamber_pressure (약한 신호)', telemetryRange:'정상범위 [2.0, 3.0] Torr · fab_model.yaml 병합 · 경미한 편차', hasTelemetry:true,
+    events:[['2026-02-10','Maintenance','DEPO-02','정기 PM']]
+  },
+  cmp_scratch: {
+    commonality:[['CMP-02 (CH1)','8 / 8','100%']],
+    normalRatio:'반대 증거: CMP-02-CH1 통과 로트 중 정상 33% → 원인 지지',
+    telemetryLabel:'CMP-02-CH1', telemetryRange:'', hasTelemetry:false,
+    telemetryNa:'해당 없음 — handling_mechanical은 텔레메트리 시그니처가 없어 알람/정비 이력만이 단서입니다.',
+    events:[['2026-03-03','Maintenance','CMP-02','BM · handling_mechanical 관련 부품 교체']]
+  }
+};
+
+/* ---------- 화면 전환 ---------- */
+function showScreen(id) {
+  if (id !== 'screen-progress') stopProgressTimers();
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('backBtn').disabled = (id === 'screen-dashboard');
+  document.getElementById('flowRef').style.display = (id === 'screen-dashboard') ? 'block' : 'none';
+  const crumbs = { 'screen-dashboard':'화면 1 · 대시보드', 'screen-progress':'화면 2 · 분석 진행', 'screen-result':'화면 3 · 분석 결과' };
+  document.getElementById('crumb').textContent = crumbs[id] || '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function goDashboard() { renderQueue(); showScreen('screen-dashboard'); }
+
+/* ---------- 대시보드 대기열 (누적) ---------- */
+function renderQueue() {
+  const tbl = document.getElementById('queueTable');
+  const header = `<tr><th>결함 패턴 그룹</th><th>소속 로트 수</th><th>유력 원인 후보</th><th>채택 확률</th><th>상태</th></tr>`;
+  const rows = analyzedQueue.slice().reverse().map(id => {
+    const g = GROUPS[id];
+    const ok = g.judgment === 'ok';
+    const cause = ok ? g.hypotheses[0].cause : '— 미매핑 —';
+    const prob = ok ? g.hypotheses[0].prob + '%' : '—';
+    const badge = ok ? '<span class="badge dark">검토완료</span>' : '<span class="badge">판단불가</span>';
+    return `<tr class="clickable" onclick="openResult('${id}')"><td>${g.pattern}</td><td>${g.lots}개 로트</td><td>${cause}</td><td>${prob}</td><td>${badge}</td></tr>`;
+  }).join('');
+  tbl.innerHTML = header + rows;
+  document.getElementById('queueCount').textContent = analyzedQueue.length;
+  document.getElementById('queueEmptyCap').style.display = analyzedQueue.length ? 'none' : 'block';
+}
+
+/* ---------- 웨이퍼 드릴다운 (결과 화면 로트 클릭) ---------- */
+const waferCache = {};
+function genDots(pattern) {
+  const clamp = v => Math.max(10, Math.min(90, v));
+  const jit = () => Math.random() * 9 - 4.5;
+  const dots = [];
+  if (pattern === 'Center') { for (let k=0;k<6;k++) dots.push([clamp(50+jit()*1.5), clamp(50+jit()*1.5)]); }
+  else if (pattern === 'Edge-Ring') { const R=37; for (let k=0;k<9;k++){const a=k*2*Math.PI/9; dots.push([clamp(50+R*Math.cos(a)+jit()), clamp(50+R*Math.sin(a)+jit())]);} }
+  else if (pattern === 'Scratch') { for (let k=0;k<6;k++){const t=k/5; dots.push([clamp(26+t*46+jit()), clamp(30+t*40+jit())]);} }
+  else if (pattern === 'Donut') { const R=23; for (let k=0;k<10;k++){const a=k*2*Math.PI/10; dots.push([clamp(50+R*Math.cos(a)), clamp(50+R*Math.sin(a))]);} }
+  else { for (let k=0;k<5;k++) dots.push([clamp(15+Math.random()*70), clamp(15+Math.random()*70)]); }
+  return dots;
+}
+function buildWafers(lotId, pattern) {
+  if (waferCache[lotId]) return waferCache[lotId];
+  const h = [...lotId].reduce((a,c)=>a+c.charCodeAt(0),0);
+  const n = 5 + (h % 4);
+  const arr = [];
+  for (let i=0;i<n;i++){ const normal = (i === n-2); arr.push({ id:'w'+String(i+1).padStart(2,'0'), normal, dots: normal?[]:genDots(pattern) }); }
+  waferCache[lotId] = arr; return arr;
+}
+function showWafers(lotId, pattern, chipEl, depthId) {
+  if (chipEl && chipEl.parentElement) chipEl.parentElement.querySelectorAll('.lot-chip').forEach(c=>c.classList.remove('sel'));
+  if (chipEl) chipEl.classList.add('sel');
+  const wafers = buildWafers(lotId, pattern);
+  const items = wafers.map(w => {
+    const dots = w.dots.map(d => `<div class="d" style="top:${d[0]}%;left:${d[1]}%"></div>`).join('');
+    return `<div class="wf-item ${w.normal?'normal':''}"><div class="wf-map">${dots}</div><div class="wf-id">${w.id}</div><div class="wf-tag">${w.normal?'정상':pattern}</div></div>`;
+  }).join('');
+  const wd = document.getElementById(depthId);
+  wd.innerHTML = `<div class="wd-head"><span>Lot ${lotId} · 판독 웨이퍼 ${wafers.length}장 <span style="font-weight:400;color:var(--text-dim);">(VLM 판독 기준 · 더미 이미지)</span></span><button class="ghost-btn" onclick="hideWafers('${depthId}')">✕ 닫기</button></div><div class="wf-strip">${items}</div>`;
+  wd.style.display = 'block';
+  wd.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+function hideWafers(depthId) { const wd = document.getElementById(depthId); if (wd){ wd.style.display='none'; wd.innerHTML=''; } }
+
+/* ---------- 오늘 판독 배치: 그룹화 → 전 그룹 에이전트 전과정 (동적) ---------- */
+let activeStepTimer=null, activeLogTimer=null, activeDoneTimeout=null;
+function stopProgressTimers() {
+  if (activeStepTimer) clearInterval(activeStepTimer);
+  if (activeLogTimer) clearInterval(activeLogTimer);
+  if (activeDoneTimeout) clearTimeout(activeDoneTimeout);
+  activeStepTimer = activeLogTimer = activeDoneTimeout = null;
+}
+function batchLog() {
+  const log = [{t:'09:14:00', grp:true, tool:`auto_group_wafermaps(어제 누적 저수율 로트) → ${BATCH_IDS.length}개 패턴 그룹 감지`}];
+  let sec = 2;
+  BATCH_IDS.forEach(id => {
+    const g = GROUPS[id];
+    const ts = `09:14:${String(sec).padStart(2,'0')}`;
+    if (g.judgment === 'unmapped') {
+      log.push({t:ts, tool:`[${g.pattern}] 원인 매핑 없음 → 판독까지만 (가설 생성 skip)`});
+    } else {
+      log.push({t:ts, tool:`[${g.pattern}] run_commonality_analysis(${g.lots} lots) → ${g.commEq} 공통`});
+      log.push({t:`09:14:${String(sec+2).padStart(2,'0')}`, tool:`[${g.pattern}] query_telemetry / alarm / maintenance / normal_ratio`});
+    }
+    sec += 4;
+  });
+  log.push({t:`09:14:${String(sec).padStart(2,'0')}`, tool:'Critic 검증(전 그룹): 시간 선후 · 정상 로트 대조 · 함정 기각'});
+  return log;
+}
+function runBatchAnalysis() {
+  stopProgressTimers();
+  document.getElementById('progTitle').textContent = `오늘 판독 배치 분석 중... (전 그룹 그룹화 → Hypothesis → Critic)`;
+  showScreen('screen-progress');
+  const PROGRESS_LOG = batchLog();
+  const stepEls = document.querySelectorAll('#stepBar .step');
+  const console_ = document.getElementById('logConsole');
+  const caption = document.getElementById('progressCaption');
+  stepEls.forEach(s => s.classList.remove('done','current'));
+  console_.innerHTML = '';
+  caption.textContent = '분석 중입니다. 잠시만 기다려주세요...';
+
+  let stepIdx = 0;
+  function advanceStep() {
+    stepEls.forEach((s,i) => {
+      if (i < stepIdx) { s.classList.add('done'); s.classList.remove('current'); }
+      else if (i === stepIdx) { s.classList.add('current'); s.classList.remove('done'); }
+      else s.classList.remove('done','current');
+    });
+  }
+  advanceStep();
+  let logIdx = 0;
+  const stepInterval = Math.max(700, Math.floor(PROGRESS_LOG.length * 600 / 5));
+  activeStepTimer = setInterval(() => {
+    stepIdx++;
+    if (stepIdx >= stepEls.length) { stepIdx = stepEls.length - 1; clearInterval(activeStepTimer); activeStepTimer = null; }
+    advanceStep();
+  }, stepInterval);
+  activeLogTimer = setInterval(() => {
+    if (logIdx >= PROGRESS_LOG.length) {
+      clearInterval(activeLogTimer); activeLogTimer = null;
+      stepEls.forEach(s => s.classList.remove('current'));
+      stepEls[stepEls.length-1].classList.add('done');
+      BATCH_IDS.forEach(addToQueue);   // 전 그룹 결과를 한 번에 누적
+      caption.textContent = `분석 완료 — ${BATCH_IDS.length}건이 대기열에 쌓였습니다. 대시보드로 이동합니다...`;
+      activeDoneTimeout = setTimeout(() => { goDashboard(); activeDoneTimeout = null; }, 1000);
+      return;
+    }
+    const line = PROGRESS_LOG[logIdx];
+    const div = document.createElement('div');
+    div.className = 'log-line';
+    const label = line.grp ? `<span class="grp">${line.tool}</span>` : line.tool;
+    div.innerHTML = `[${line.t}] ${label} <span class="ok">✓ 완료</span>`;
+    console_.appendChild(div);
+    logIdx++;
+  }, 600);
+}
+
+/* ---------- 분석 결과 (v2 가설 카드) ---------- */
+function addToQueue(id) { if (!analyzedQueue.includes(id)) analyzedQueue.push(id); }
+function openResult(id) {
+  const g = GROUPS[id];
+  document.getElementById('resultTitle').textContent = '분석 결과 — ' + g.title + ' (' + g.lots + ' Lots)';
+  document.getElementById('resultSummary').textContent = '결함 서술 요약 · ' + g.desc;
+  document.getElementById('resultLotChips').innerHTML = g.lotIds.map(l => `<span class="lot-chip clickable" onclick="showWafers('${l}','${g.pattern}',this,'resultWaferDepth')">${l}</span>`).join('');
+  hideWafers('resultWaferDepth');
+
+  const hypoWrap = document.getElementById('hypoCards');
+  const unableWrap = document.getElementById('unableBlock');
+  const criticNote = document.getElementById('criticNote');
+  const citeBox = document.getElementById('citationBox');
+
+  if (g.judgment === 'ok') {
+    hypoWrap.style.display = 'block'; unableWrap.style.display = 'none';
+    hypoWrap.innerHTML = g.hypotheses.map((h,i) => {
+      const top = i === 0;
+      return `<div class="hcard ${top?'top':''}">
+        <div class="h-row1"><div><div class="h-name">${h.cause}</div><div class="h-stage">공정 단계: ${h.stage}</div></div><div class="h-prob">${h.prob}%</div></div>
+        <div class="pbar"><i style="width:${h.prob}%"></i></div>
+        <div class="h-narr">${h.narr}</div>
+        <div class="h-foot"><span class="adopt-flag ${top?'':'rej'}">${top?'✔ 채택 유력':'△ 보조 가설'}</span><button class="ghost-btn" onclick="openEvidence('${h.evidence}','${h.cause}')">근거 보기</button></div>
+      </div>`;
+    }).join('');
+    criticNote.style.display = 'block'; criticNote.textContent = g.critic;
+    citeBox.style.display = 'block'; citeBox.innerHTML = '<strong>문헌 인용</strong> · ' + g.citation;
+  } else {
+    hypoWrap.style.display = 'none'; unableWrap.style.display = 'block';
+    unableWrap.innerHTML = `<div class="unable-box"><div class="mark">?</div><div class="title">판단 불가 — 원인 매핑 없음</div><div class="desc">${g.reason}</div></div>`;
+    criticNote.style.display = 'none'; citeBox.style.display = 'none';
+  }
+  showScreen('screen-result');
+}
+
+/* ---------- 근거 모달 (3섹션) ---------- */
+function openEvidence(key, causeName) {
+  const ev = EVIDENCE[key];
+  document.getElementById('modalTitle').textContent = '근거 상세 — ' + causeName;
+  const rows = ev.commonality.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+  document.getElementById('commonalityTable').innerHTML = `<tr><th>장비 (챔버)</th><th>불량 Lot 통과</th><th>일치율</th></tr>${rows}`;
+  document.getElementById('normalRatioCap').textContent = ev.normalRatio;
+
+  const tBody = document.getElementById('telemetryBody');
+  if (ev.hasTelemetry) {
+    tBody.innerHTML = `<div style="font-weight:700;font-size:12px;margin-bottom:6px;">${ev.telemetryLabel}</div>
+      <div class="spark-wrap"><svg viewBox="0 0 300 80" width="100%" height="80" preserveAspectRatio="none">
+        <line x1="150" y1="0" x2="150" y2="80" stroke="#6b7178" stroke-dasharray="3,3"/>
+        <polyline points="0,50 40,52 80,49 120,50 150,48 180,20 220,15 260,18 300,16" fill="none" stroke="#1f2328" stroke-width="2"/></svg>
+      <div class="caption">점선 세로: 이상 발생 시점 t0 · ${ev.telemetryRange}</div></div>`;
+  } else { tBody.innerHTML = `<div class="na-note">${ev.telemetryNa}</div>`; }
+
+  const aBody = document.getElementById('alarmBody');
+  if (ev.events && ev.events.length) {
+    const erows = ev.events.map(e => `<tr><td>${e[0]}</td><td>${e[1]}</td><td>${e[2]}</td><td>${e[3]}</td></tr>`).join('');
+    aBody.innerHTML = `<table><tr><th>시각</th><th>구분</th><th>Equipment</th><th>내용</th></tr>${erows}</table>`;
+  } else { aBody.innerHTML = `<div class="na-note">관련 이력 없음.</div>`; }
+
+  document.getElementById('evidenceModal').classList.add('active');
+}
+function closeEvidence() { document.getElementById('evidenceModal').classList.remove('active'); }
+document.getElementById('evidenceModal').addEventListener('click', e => { if (e.target.id === 'evidenceModal') closeEvidence(); });
+
+/* init */
+renderQueue();
+</script>
+
+<style>
+.rc5-div{border-top:1px dashed var(--line);margin:14px 0 10px}
+.rc5-grid{display:grid;grid-template-columns:3fr 4fr 5fr;gap:16px;align-items:start}
+@media(max-width:900px){.rc5-grid{grid-template-columns:1fr}}
+.rc5-lg{display:inline-block;width:8px;height:8px;margin-right:4px;vertical-align:-1px}
+.rc5-sub{font-size:10.5px;color:var(--text-dim);margin-bottom:6px}
+.rc5-crow{display:grid;grid-template-columns:64px 1fr;gap:6px;margin-bottom:6px;align-items:start}
+.rc5-crow>div{display:flex;gap:6px;flex-wrap:wrap}
+.rc5-cpat{text-align:right;font-size:11px;color:var(--text);padding-top:3px}
+.rc5-cchip{display:inline-block;color:#fff;font-size:11px;padding:3px 10px;cursor:default}
+.rc5-cchip small{opacity:.85;font-size:9.5px;margin-left:5px}
+.rc5-help{margin-top:8px;font-size:10.5px;color:var(--text-dim)}
+.rc5-help summary{cursor:pointer;display:inline-block;border:1px dashed var(--line-strong);padding:4px 10px;list-style:none;user-select:none}
+.rc5-help summary::-webkit-details-marker{display:none}
+.rc5-help[open] summary{border-bottom:none;color:var(--text)}
+.rc5-help>div{border:1px dashed var(--line-strong);padding:6px 10px;margin-top:-1px}
+.rc5-help p{margin:3px 0}
+.rc5-chip{display:none;font-size:10.5px;font-weight:400;border:1px solid var(--line-strong);padding:0 8px;margin-right:8px;cursor:pointer}
+.rc5-tbl{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:6px}
+.rc5-tbl th,.rc5-tbl td{text-align:left;padding:3px 6px;border-bottom:1px solid var(--line)}
+.rc5-tbl th{color:var(--text-dim);font-weight:700;font-size:10px}
+#rc5tip{position:fixed;pointer-events:none;background:#fff;border:1px solid var(--line-strong);
+ padding:8px 11px;font-size:11.5px;box-shadow:0 3px 10px rgba(0,0,0,.15);max-width:280px;display:none;z-index:99;color:#1f2328}
+#rc5tip b{display:block;margin-bottom:2px}
+#rc5tip .r{color:#6b7178}
+.rc5-mark{cursor:pointer}
+.rc5-dim{opacity:.25}
+.rc5-ax{fill:#6b7178;font-size:10.5px}
+.rc5-lb{fill:#3a3f45;font-size:11px}
+.rc5-vl{fill:#1f2328;font-size:11px;font-weight:600}
+</style>
+<div id="rc5tip"></div>
+<script>
+(function(){
+const DAILY=[{"d": "2026-01-13 12:00", "y": 91.4, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-14 12:00", "y": 90.8, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-15 12:00", "y": 92.5, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-16 12:00", "y": 91.7, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-17 12:00", "y": 91.2, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-18 12:00", "y": 90.6, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-19 12:00", "y": 91.6, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-20 12:00", "y": 91.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-21 12:00", "y": 90.5, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-22 12:00", "y": 91.5, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-23 12:00", "y": 92.8, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-24 12:00", "y": 90.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-25 12:00", "y": 91.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-26 12:00", "y": 91.4, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-27 12:00", "y": 92.6, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-28 12:00", "y": 92.8, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-29 05:58", "y": 8.5, "sc": "SC-002", "pat": "Edge-Ring", "cause": "식각 불균일", "eq": "ETCH-01", "sen": "rf_power step_up", "tier": "자동", "proc": "ETCH(식각)"}, {"d": "2026-01-30 12:00", "y": 90.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-01-31 12:00", "y": 90.3, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-01 12:00", "y": 92.7, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-02 12:00", "y": 92.5, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-03 12:00", "y": 91.6, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-04 12:00", "y": 90.7, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-05 23:00", "y": 9.1, "sc": "SC-008", "pat": "Edge-Ring", "cause": "식각 불균일", "eq": "ETCH-01", "sen": "rf_power step_up", "tier": "자동", "proc": "ETCH(식각)"}, {"d": "2026-02-06 12:00", "y": 91.4, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-07 12:00", "y": 91.3, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-08 12:00", "y": 91.7, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-09 15:40", "y": 67.4, "sc": "SC-006", "pat": "Scratch", "cause": "기계적 핸들링 손상", "eq": "CMP-02", "sen": "센서 없음 — 정비기록 확인", "tier": "반자동", "proc": "CMP(연마)"}, {"d": "2026-02-10 12:00", "y": 90.8, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-11 12:00", "y": 89.6, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-12 12:00", "y": 92.0, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-13 12:00", "y": 90.6, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-14 12:00", "y": 90.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-15 12:00", "y": 92.1, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-16 12:00", "y": 91.2, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-17 12:00", "y": 93.0, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-18 12:00", "y": 91.2, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-19 12:00", "y": 90.7, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-20 21:48", "y": 11.8, "sc": "SC-004", "pat": "Center", "cause": "증착 중심부 두께 이상", "eq": "DEPO-02", "sen": "chamber_pressure step_up", "tier": "자동", "proc": "DEPO(증착)"}, {"d": "2026-02-21 05:41", "y": 14.5, "sc": "SC-007", "pat": "Center", "cause": "CMP 중심부 과연마", "eq": "CMP-02", "sen": "slurry_flow linear_up", "tier": "자동", "proc": "CMP(연마)"}, {"d": "2026-02-22 12:00", "y": 89.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-23 12:00", "y": 92.1, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-24 12:00", "y": 91.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-25 12:00", "y": 92.3, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-26 12:00", "y": 90.8, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-27 12:00", "y": 91.3, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-02-28 12:00", "y": 91.6, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-01 12:00", "y": 90.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-02 12:00", "y": 91.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-03 15:17", "y": 61.5, "sc": "SC-003", "pat": "Scratch", "cause": "기계적 핸들링 손상", "eq": "CMP-02", "sen": "센서 없음 — 정비기록 확인", "tier": "반자동", "proc": "CMP(연마)"}, {"d": "2026-03-04 12:00", "y": 91.4, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-05 12:00", "y": 91.1, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-06 12:00", "y": 92.3, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-07 12:00", "y": 91.5, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-08 12:00", "y": 91.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-09 12:00", "y": 92.5, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-10 12:00", "y": 91.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-11 06:00", "y": 0.0, "sc": "SC-001", "pat": "Center", "cause": "세정 노즐 막힘", "eq": "CLEAN-01", "sen": "flow_rate linear_down", "tier": "자동", "proc": "CLEAN(세정)"}, {"d": "2026-03-11 20:48", "y": 22.5, "sc": "SC-005", "pat": "Edge-Ring", "cause": "식각 불균일", "eq": "ETCH-02", "sen": "rf_power step_up", "tier": "자동", "proc": "ETCH(식각)"}, {"d": "2026-03-12 12:00", "y": 92.1, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-13 12:00", "y": 90.2, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-14 12:00", "y": 91.1, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-15 12:00", "y": 89.8, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-16 12:00", "y": 92.0, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-17 12:00", "y": 91.1, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-18 12:00", "y": 92.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-19 12:00", "y": 90.1, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-20 12:00", "y": 91.5, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-21 12:00", "y": 92.4, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-22 12:00", "y": 92.5, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-23 12:00", "y": 91.8, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-24 12:00", "y": 92.1, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-25 12:00", "y": 92.9, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}, {"d": "2026-03-26 12:00", "y": 91.1, "sc": "—", "pat": "정상 조업", "cause": "특이사항 없음", "eq": "—", "sen": "이상 신호 없음", "tier": "—", "proc": "—"}],EVENTS=[{"d": "2026-01-29 05:58", "y": 8.5, "sc": "SC-002", "pat": "Edge-Ring", "cause": "식각 불균일", "eq": "ETCH-01", "sen": "rf_power step_up", "tier": "자동", "proc": "ETCH(식각)"}, {"d": "2026-02-05 23:00", "y": 9.1, "sc": "SC-008", "pat": "Edge-Ring", "cause": "식각 불균일", "eq": "ETCH-01", "sen": "rf_power step_up", "tier": "자동", "proc": "ETCH(식각)"}, {"d": "2026-02-09 15:40", "y": 67.4, "sc": "SC-006", "pat": "Scratch", "cause": "기계적 핸들링 손상", "eq": "CMP-02", "sen": "센서 없음 — 정비기록 확인", "tier": "반자동", "proc": "CMP(연마)"}, {"d": "2026-02-20 21:48", "y": 11.8, "sc": "SC-004", "pat": "Center", "cause": "증착 중심부 두께 이상", "eq": "DEPO-02", "sen": "chamber_pressure step_up", "tier": "자동", "proc": "DEPO(증착)"}, {"d": "2026-02-21 05:41", "y": 14.5, "sc": "SC-007", "pat": "Center", "cause": "CMP 중심부 과연마", "eq": "CMP-02", "sen": "slurry_flow linear_up", "tier": "자동", "proc": "CMP(연마)"}, {"d": "2026-03-03 15:17", "y": 61.5, "sc": "SC-003", "pat": "Scratch", "cause": "기계적 핸들링 손상", "eq": "CMP-02", "sen": "센서 없음 — 정비기록 확인", "tier": "반자동", "proc": "CMP(연마)"}, {"d": "2026-03-11 06:00", "y": 0.0, "sc": "SC-001", "pat": "Center", "cause": "세정 노즐 막힘", "eq": "CLEAN-01", "sen": "flow_rate linear_down", "tier": "자동", "proc": "CLEAN(세정)"}, {"d": "2026-03-11 20:48", "y": 22.5, "sc": "SC-005", "pat": "Edge-Ring", "cause": "식각 불균일", "eq": "ETCH-02", "sen": "rf_power step_up", "tier": "자동", "proc": "ETCH(식각)"}],PATTERNS=[{"pat": "Edge-Ring", "n": 9680, "mapped": true}, {"pat": "Edge-Loc", "n": 5189, "mapped": false}, {"pat": "Center", "n": 4294, "mapped": true}, {"pat": "Loc", "n": 3593, "mapped": false}, {"pat": "Scratch", "n": 1193, "mapped": true}, {"pat": "Random", "n": 866, "mapped": false}, {"pat": "Donut", "n": 555, "mapped": false}, {"pat": "Near-full", "n": 149, "mapped": false}];
+const PROC={'ETCH(식각)':'#2a78d6','DEPO(증착)':'#1baf7a','CMP(연마)':'#eda100','CLEAN(세정)':'#4a3aa7'};
+const T0=+new Date('2026-01-12T00:00'),T1=+new Date('2026-03-27T00:00');
+const tp=d=>+new Date(d.replace(' ','T'));
+let FILT=null;
+const tip=document.getElementById('rc5tip');
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+function sT(e,h){tip.innerHTML=h;tip.style.display='block';
+ tip.style.left=Math.min(e.clientX+14,innerWidth-300)+'px';tip.style.top=(e.clientY+12)+'px';}
+function hT(){tip.style.display='none';}
+function evTip(v){return `<b>${v.d} · ${v.sc} · ${v.pat}</b><span style="font-size:15px;font-weight:700">수율 ${v.y}%</span><br><span class="r">근본원인:</span> ${esc(v.cause)}<br><span class="r">원인 장비:</span> ${v.eq}<br><span class="r">센서 증거:</span> ${esc(v.sen)}<br><span class="r">검증등급:</span> [${v.tier}]`;}
+function match(v){if(!FILT)return true;
+ return FILT.type==='scenario'?v.sc===FILT.value:FILT.type==='pattern'?v.pat===FILT.value:v.eq===FILT.value;}
+
+(function trend(){
+ const W=1100,H=230,L=40,R=12,T=10,B=30,iw=W-L-R,ih=H-T-B;
+ const x=t=>L+iw*(t-T0)/(T1-T0),y=v=>T+ih*(1-v/100);
+ let g='';
+ for(let v=0;v<=100;v+=20)g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#e4e6ea"/><text class="rc5-ax" x="${L-6}" y="${y(v)+4}" text-anchor="end">${v}</text>`;
+ for(let m=0;m<3;m++){g+=`<text class="rc5-ax" x="${x(+new Date(2026,m,1))}" y="${H-9}" text-anchor="middle">${m+1}/1</text><text class="rc5-ax" x="${x(+new Date(2026,m,15))}" y="${H-9}" text-anchor="middle">${m+1}/15</text>`;}
+ const pts=DAILY.map(v=>[x(tp(v.d)),y(v.y)]);
+ g+=`<line x1="${L}" x2="${W-R}" y1="${y(94.2)}" y2="${y(94.2)}" stroke="#9aa0a7" stroke-dasharray="5 4"/>
+  <text class="rc5-ax" x="${W-R}" y="${y(94.2)-5}" text-anchor="end">라인 평균 94.2%</text>
+  <path d="${pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join('')}" fill="none" stroke="#2a78d6" stroke-width="2"/>`;
+ g+=DAILY.map((v,i)=>`<circle class="rc5-mark" data-i="${i}" cx="${pts[i][0].toFixed(1)}" cy="${pts[i][1].toFixed(1)}" r="7" fill="transparent"/>`).join('');
+ g+=EVENTS.map(v=>`<circle cx="${x(tp(v.d)).toFixed(1)}" cy="${y(v.y).toFixed(1)}" r="3.5" fill="#2a78d6" stroke="#fff" stroke-width="1.5"/>`).join('');
+ const s=document.getElementById('rc5trend');s.innerHTML=g;
+ s.addEventListener('mousemove',e=>{const m=e.target.closest('[data-i]');if(!m)return hT();
+  const v=DAILY[+m.dataset.i];
+  sT(e,v.sc.startsWith('SC')?evTip(v):`<b>${v.d}</b><span style="font-size:14px;font-weight:700">수율 ${v.y}%</span><br><span class="r">${esc(v.pat)} · ${esc(v.cause)} · ${esc(v.sen)}</span>`);});
+ s.addEventListener('mouseleave',hT);
+})();
+
+function donut(){
+ const eq={};EVENTS.forEach(v=>{(eq[v.eq]=eq[v.eq]||{n:0,proc:v.proc}).n++;});
+ const items=Object.entries(eq).map(([k,v])=>({eq:k,...v})).sort((a,b)=>b.n-a.n);
+ const cx=150,cy=105,r=72,r2=42;let a0=-Math.PI/2,g='';
+ items.forEach(v=>{const a1=a0+2*Math.PI*v.n/8,mid=(a0+a1)/2;
+  const p=(a,rr)=>`${(cx+rr*Math.cos(a)).toFixed(1)} ${(cy+rr*Math.sin(a)).toFixed(1)}`;
+  const big=(a1-a0)>Math.PI?1:0;
+  const dim=FILT&&!EVENTS.some(e=>e.eq===v.eq&&match(e))?' rc5-dim':'';
+  g+=`<path class="rc5-mark${dim}" data-q="${v.eq}" d="M${p(a0,r)}A${r} ${r} 0 ${big} 1 ${p(a1,r)}L${p(a1,r2)}A${r2} ${r2} 0 ${big} 0 ${p(a0,r2)}Z" fill="${PROC[v.proc]}" stroke="#fff" stroke-width="2"/>
+   <text class="rc5-lb" x="${cx+(r+20)*Math.cos(mid)}" y="${cy+(r+20)*Math.sin(mid)+4}" text-anchor="middle">${v.eq} ${v.n}</text>`;
+  a0=a1;});
+ g+=`<text class="rc5-vl" x="${cx}" y="${cy-1}" text-anchor="middle" font-size="16">8건</text><text class="rc5-ax" x="${cx}" y="${cy+15}" text-anchor="middle">확정 원인</text>`;
+ const s=document.getElementById('rc5donut');s.innerHTML=g;
+ s.onclick=e=>{const m=e.target.closest('[data-q]');if(m)togg('equipment',m.dataset.q);};
+ s.onmousemove=e=>{const m=e.target.closest('[data-q]');if(!m)return hT();
+  const list=EVENTS.filter(v=>v.eq===m.dataset.q);
+  sT(e,`<b>${m.dataset.q} — ${list.length}건</b>`+list.map(v=>`<span class="r">${v.sc}</span> ${esc(v.cause)}`).join('<br>'));};
+ s.onmouseleave=hT;
+}
+
+function pareto(){
+ const W=400,L=68,R=52,T=4,bh=20,gap=8;
+ const max=PATTERNS[0].n,x=v=>L+(W-L-R)*v/max;
+ let g='';
+ PATTERNS.forEach((v,i)=>{const Y=T+i*(bh+gap);
+  const dim=FILT&&FILT.type==='pattern'&&FILT.value!==v.pat?' rc5-dim':'';
+  g+=`<g class="rc5-mark${dim}" data-p="${v.pat}" data-m="${v.mapped?1:0}">
+   <text class="rc5-lb" x="${L-6}" y="${Y+bh/2+4}" text-anchor="end">${v.pat}</text>
+   <rect x="${L}" y="${Y}" width="${(x(v.n)-L).toFixed(1)}" height="${bh}" fill="${v.mapped?'#2a78d6':'#9aa0a7'}"/>
+   <text class="rc5-vl" x="${x(v.n)+5}" y="${Y+bh/2+4}">${v.n.toLocaleString()}</text></g>`;});
+ const s=document.getElementById('rc5pareto');s.innerHTML=g;
+ s.onclick=e=>{const m=e.target.closest('[data-p]');if(m)togg('pattern',m.dataset.p);};
+ s.onmousemove=e=>{const m=e.target.closest('[data-p]');if(!m)return hT();
+  sT(e,`<b>${m.dataset.p}</b><span class="r">${m.dataset.m==='1'?'원인 매핑 완료 — 클릭하면 원인 구성 필터':'미매핑 — VLM 판독까지 지원'}</span>`);};
+ s.onmouseleave=hT;
+}
+
+function causes(){
+ const list=EVENTS.filter(match);
+ const pats=[...new Set(EVENTS.map(v=>v.pat))].sort((a,b)=>EVENTS.filter(v=>v.pat===b).length-EVENTS.filter(v=>v.pat===a).length);
+ let h='';
+ pats.forEach(p=>{
+  const evs=list.filter(v=>v.pat===p);
+  const grp={};evs.forEach(v=>{(grp[v.cause]=grp[v.cause]||{proc:v.proc,scs:[]}).scs.push(v.sc);});
+  h+=`<div class="rc5-crow"><span class="rc5-cpat">${p}</span><div>`;
+  const keys=Object.keys(grp);
+  if(!keys.length)h+=`<span style="font-size:11px;color:var(--text-dim)">—</span>`;
+  keys.forEach(c=>{const g=grp[c];
+   h+=`<span class="rc5-cchip rc5-mark" data-c="${esc(c)}|${p}" style="background:${PROC[g.proc]}">${esc(c)}${g.scs.length>1?' ×'+g.scs.length:''}<small>${g.proc.split('(')[0]}</small></span>`;});
+  h+=`</div></div>`;});
+ const el=document.getElementById('rc5causes');el.innerHTML=h;
+ el.onmousemove=e=>{const m=e.target.closest('[data-c]');if(!m)return hT();
+  const[c,p]=m.dataset.c.split('|');
+  const evs=EVENTS.filter(v=>v.cause===c&&v.pat===p);
+  sT(e,`<b>${esc(c)} — ${evs.length}건</b>`+evs.map(v=>`<span class="r">${v.sc} · ${v.d.slice(0,10)}</span> ${v.eq} · 수율 ${v.y}% · [${v.tier}]`).join('<br>'));};
+ el.onmouseleave=hT;
+ document.getElementById('rc5tbl').innerHTML=`<tr><th>시나리오</th><th>패턴</th><th>근본원인</th><th>장비</th><th>등급</th></tr>`+
+  list.map(v=>`<tr><td>${v.sc}</td><td>${v.pat}</td><td>${esc(v.cause)}</td><td>${v.eq}</td><td>${v.tier}</td></tr>`).join('');
+}
+
+function togg(type,value){
+ FILT=(FILT&&FILT.type===type&&FILT.value===value)?null:{type,value};
+ const c=document.getElementById('rc5chip');
+ if(FILT){c.style.display='inline-block';c.textContent=`필터: ${FILT.value} ✕`;}else c.style.display='none';
+ donut();pareto();causes();
+}
+document.getElementById('rc5chip').onclick=()=>togg(null,null);
+donut();pareto();causes();
+})();
+</script>

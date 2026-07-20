@@ -83,9 +83,9 @@
 
 <!-- AGENT-EDITABLE: 프론트 환경. 슬라이스 0에서 채운다.
      이미 채워져 있으면 수정 금지 — 변경이 필요하면 멈추고 보고할 것. -->
-- 프론트 디렉터리: (슬라이스 0에서 채움)
-- dev 실행(백엔드+프론트 2줄): (슬라이스 0에서 채움)
-- API Base URL 주입 방식: (슬라이스 0에서 채움)
+- 프론트 디렉터리: `frontend/` (Vite + React 18 + TypeScript, 상태관리 라이브러리 없음 — useState/useEffect)
+- dev 실행(백엔드+프론트 2줄): `uvicorn backend.main:app --reload` (루트, .venv 활성 상태) / `cd frontend && npm run dev` (:5173)
+- API Base URL 주입 방식: 빌드타임 env `VITE_API_BASE_URL` (미지정 시 `http://localhost:8000/api/v1` 기본값, `frontend/src/api/client.ts`)
 - Vite 프록시: **사용 안 함** — §1 CORS를 서버(`CORSMiddleware`)가 담당한다
 <!-- /AGENT-EDITABLE -->
 
