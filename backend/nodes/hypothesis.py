@@ -62,7 +62,7 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
         if key not in verify_cache:
             verify_cache[key] = await _verify_unit(candidate, lot_ids, mcp, time_range)
         suspect, evidence = verify_cache[key]
-        evidence = dict(evidence)                        
+        evidence = dict(evidence)          
         evidence["defect_ts"] = defect_ts
 
         hypotheses.append(
@@ -70,7 +70,7 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
                 "cause": candidate["cause"],
                 "tier": candidate["tier"],
                 "equipment": suspect,
-                "evidence": dict(evidence),
+                "evidence": evidence,
                 "sentence": candidate["sentence"],
             }
         )
