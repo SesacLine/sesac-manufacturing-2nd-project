@@ -59,7 +59,7 @@ export const BATCH_STATUS_LABELS: Record<BatchStatus, string> = {
 export const VERDICT_LABELS: Record<Verdict, string> = {
   accepted: "✔ 채택",
   rejected: "✖ 기각",
-  insufficient: "△ 근거부족",
+  judge_unknown: "△ 미판정",
 };
 
 export const TIER_LABELS: Record<Tier, string> = {

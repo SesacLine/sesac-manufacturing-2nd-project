@@ -298,16 +298,16 @@
   - 🔲 **백엔드 확인(4장)**: 현재 백엔드 `VLMResult`(`state.py:21`)의 `description`은 **웨이퍼 1장 단위**라, 그룹 대표 서술을 무엇으로 삼을지(대표 웨이퍼 선정 vs 그룹 단위 재생성)가 미정이다. 또 VLM은 아직 실제 모델 미연동(패턴 하드코딩) 상태다. 확정·연동 전까지 `description`은 `null`일 수 있으며, 그동안 화면3은 `summary_line` fallback으로 동작한다.
 
 - **`tier` (검증등급)**: `auto`(자동·즉시 채택/기각까지) | `semi_auto`(반자동·사람 판정 필요) | `none`(근거없음·문헌 서술만, MCP 증거 없음)
-  - 🔲 **`semi_auto` 판정 처리(잠정·결정 필요)**: 반자동 등급의 사람 판정 시나리오가 아직 정립되지 않아, **현재는 Critic이 자동으로 기각(`rejected`)** 처리한다(위 `cmp_edge_overpolish` 예시). 추후 사람 판정 경로/시나리오가 정해지면 `verdict`가 미확정 대기 등으로 **변동될 수 있다**. ⤷ 4장 미결정 "`semi_auto` 사람 판정 결과 API 수신 경로"와 연동 — 그 엔드포인트가 생기면 이 잠정 처리(자동 기각)를 걷어낸다.
-- **`verdict` (Critic 판정)**: `accepted`(채택) | `rejected`(기각) | `insufficient`(근거부족) — 비채택 사유는 `verdict_reason`이 담는다
-  - **`verdict_reason` (비채택 사유, Nullable)**: `accepted`이면 `null`, `rejected`/`insufficient`이면 문자열. 값은 기획안 v1.5 Critic Workflow(§7.2) 규칙에 대응한다 — `rejected`는 ①시간 선후(P2)·②반대근거(P3, `get_normal_lot_ratio`)·③faithfulness, `insufficient`는 ④KG 메커니즘 연결 없음(P5).
+  - 🔲 **`semi_auto` 판정 처리(잠정·결정 필요)**: 반자동 등급은 fab 증거로 아직 조사되지 않아, **현재는 Critic이 판단 보류(`judge_unknown`, 미조사)** 처리한다(기각 아님). 추후 investigate_group 에이전트가 반자동을 fab 증거로 조사해 `verdict`를 `accepted`/`rejected`로 판정하면 이 잠정 처리를 걷어낸다(hypo_critic_py.md §13). ⤷ 4장 미결정 "`semi_auto` 사람 판정 결과 API 수신 경로"와도 연동.
+- **`verdict` (Critic 판정)**: `accepted`(채택) | `rejected`(기각) | `judge_unknown`(미판정) — 비채택 사유는 `verdict_reason`이 담는다. (그룹 `status`의 `insufficient`와는 다른 층 — verdict는 가설 1건, status는 그룹 전체.)
+  - **`verdict_reason` (비채택 사유, Nullable)**: `accepted`이면 `null`, `rejected`/`judge_unknown`이면 문자열. 값은 기획안 v1.5 Critic Workflow(§7.2) 규칙에 대응한다 — `rejected`는 ①시간 선후(P2)·②반대근거(P3, `get_normal_lot_ratio`)·③faithfulness, `judge_unknown`은 ④KG 메커니즘 연결 없음(P5) + 반자동 미조사(SEMI_AUTO_PENDING).
 - `stage` (공정, 고정 6종 **또는 `null`**): `LITHO` | `ETCH` | `DEPO` | `CMP` | `CLEAN` | `EDS` | `null`
   - **출처**: 각 `cause`가 KG(`kg_rca`/Neo4j)에서 매달린 **`ProcessStep` 노드값**(`hypotheses.json`의 `path.step`)이다. 기획안 v1.5 §6.2 스키마 `DefectPattern→ProcessStep→FailureMode→Cause→Evidence`에서 `ProcessStep`은 **고정 vocabulary 6종**(fab.db `EQUIPMENT.step_group`과 동일 집합). ④지식그래프(KG) 조회 시 candidate가 `cand.step`으로 이미 달고 나오고(§7.2 `suspect = top_equipment_for(comm, cand.step)` — stage로 장비를 찾는 것이지 장비에서 역산하지 않음), ⑤Hypothesis·⑥Critic·API는 전달만 한다. 빌드타임에 확정되는 그래프 구조 속성이라 fab.db·장비에서 계산하는 값이 아니다(데이터 모델 §3 Hypothesis 저장소 = Neo4j와 일치).
   - **`null` 가능**: 문헌직결 후보(`path.step` 없음)는 `stage: null`이다(`KG_output_명세.md:50`). 이 필드는 **가설 카드 표시용**이며, 프론트가 파생하는 한 줄 요약(부록 3.2)의 공정 조각 입력으로도 쓰인다. `stage=null`(실측 6~9%, 순위 꼬리)이면 그 요약은 "공정 미상"으로 fallback한다.
   - 🔲 **백엔드 확인(4장)**: 백엔드 `Hypothesis`(`state.py:90`)에는 현재 `stage`/`step` 필드가 없다(`equipment`만 있음). ⑤에서 `cand.step`을 `Hypothesis`에 실어주면 카드 `stage`가 채워진다(API가 `cause`로 ④ 후보에 재조인하는 대안도 있으나 전자가 간단). 프론트 파생 요약(부록 3.2)의 공정 조각도 이 값을 공유하므로 함께 해소된다.
 
-**응답 200 (판단 불가·근거부족 · `status: "insufficient"`)** — 원인 후보는 매핑돼 있으나 Critic이 **채택 가능한 후보를 하나도 못 찾은** 경우(재시도 없이 즉시 반환). 후보 목록(`hypotheses`)은 있으나 전부 `verdict`가 `rejected`/`insufficient`다.
-> **`status:"insufficient"`는 "채택 0개"의 세 하위 경우를 모두 포함한다**(기획안 v1.5 §7.1 "채택 후보 0개 → 즉시 `insufficient_evidence`"): ⓐ 전부 `rejected`(①시간정합·②반대근거·③faithfulness로 반박), ⓑ 전부 `insufficient`(④KG 메커니즘 없음), ⓒ 둘의 혼합. 세 경우 응답 형태는 동일하며(전부-reject라고 별도 status를 두지 않음), 반박이냐 근거부족이냐의 구분은 그룹이 아니라 **가설별 `verdict`/`verdict_reason`**이 담는다.
+**응답 200 (판단 불가·근거부족 · `status: "insufficient"`)** — 원인 후보는 매핑돼 있으나 Critic이 **채택 가능한 후보를 하나도 못 찾은** 경우(재시도 없이 즉시 반환). 후보 목록(`hypotheses`)은 있으나 전부 `verdict`가 `rejected`/`judge_unknown`다.
+> **`status:"insufficient"`는 "채택 0개"의 세 하위 경우를 모두 포함한다**(기획안 v1.5 §7.1 "채택 후보 0개 → 즉시 `insufficient_evidence`"): ⓐ 전부 `rejected`(①시간정합·②반대근거·③faithfulness로 반박), ⓑ 전부 `judge_unknown`(④KG 메커니즘 없음·반자동 미조사), ⓒ 둘의 혼합. 세 경우 응답 형태는 동일하며(전부-reject라고 별도 status를 두지 않음), 반박이냐 근거부족이냐의 구분은 그룹이 아니라 **가설별 `verdict`/`verdict_reason`**이 담는다.
 ```json
 {
   "analysis_id": "grp_center_20260707_01",
@@ -317,7 +317,7 @@
   "reason": "매핑된 원인 후보는 있으나 시간 정합·정상 로트 대조에서 채택 가능한 후보가 없어 판단 불가(근거부족).",
   "lot_count": 8,
   "lot_ids": ["lot30112", "lot30988", "lot31544", "lot32077", "lot32610", "lot33291", "lot33845", "lot34120"],
-  "hypotheses": [ { "hypothesis_id": "h0", "cause": "clean_nozzle_clog", "stage": "CLEAN", "tier": "auto", "verdict": "insufficient", "verdict_reason": "KG 메커니즘 연결(VERIFIED_BY) 없음", "narrative": "...", "next_actions": [], "citations": [{ "id": 7, "text": "Lee et al., Microelectronics Reliability 2021" }] } ]
+  "hypotheses": [ { "hypothesis_id": "h0", "cause": "clean_nozzle_clog", "stage": "CLEAN", "tier": "auto", "verdict": "judge_unknown", "verdict_reason": "KG 메커니즘 연결(VERIFIED_BY) 없음", "narrative": "...", "next_actions": [], "citations": [{ "id": 7, "text": "Lee et al., Microelectronics Reliability 2021" }] } ]
 }
 ```
 
@@ -549,7 +549,7 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
   "note": null
 }
 ```
-> **`verdict` 매핑 주의(🔲 백엔드 갭)**: 현재 Critic은 그룹 단위 `accepted[]`/`rejected[]` 두 리스트만 낸다. API는 조회된 가설이 어느 리스트에 있는지로 `accepted`/`rejected`를 정하고, `rejected` 중 **KG 메커니즘 연결 실패로 판정된 것**을 `verdict:"insufficient"`로 승격해 내린다(3-state 계약 유지).
+> **`verdict` 매핑 주의(🔲 백엔드 갭)**: 현재 Critic은 그룹 단위 `accepted[]`/`rejected[]` 두 리스트만 낸다. API는 조회된 가설이 어느 리스트에 있는지로 `accepted`/`rejected`를 정하고, `rejected` 중 **judge_unknown 계열 토큰(KG 메커니즘 없음 P5·반자동 미조사 SEMI_AUTO_PENDING)** 이 붙은 것을 `verdict:"judge_unknown"`으로 승격해 내린다(3-state 계약 유지).
 > - **승격 판정 앵커**: 이 승격은 `verdict_reason` **자유서술 문자열 본문을 매칭하지 않는다**. Critic/파이프라인이 사유에 **고정 토큰(사유코드, 예 `P5_NO_KG_MECHANISM`)**을 부여하고 API는 그 토큰으로만 분기한다(Critic이 자연어 문구를 바꿔도 배지가 안 깨진다). `verdict_reason` 자연어는 **표시용**이다.
 > - **`semi_auto` 최종 판정**: 조회 시점 `verdict`는 항상 3종 중 최종값이며 "검토 대기" 상태를 두지 않는다(2.5 "종료상태만 반환" 전제와 정합). ⤷ **단서**: 기획안상 반자동은 사람 판정이 필요할 수 있어, **사람 판정 결과를 서버로 되받는 별도 엔드포인트**가 신설되면 이 계약이 바뀐다(그 응답으로 `verdict`가 뒤집히거나 "미확정 대기" 상태가 필요해짐). 그 경로는 아직 없어 현재는 Critic 자동 확정으로 둔다 — 4장 미결항목 및 2.5 `tier` 🔲와 연동.
 
@@ -561,7 +561,7 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
   "cause": "handling_mechanical",
   "stage": "CMP",
   "tier": "none",
-  "verdict": "insufficient",
+  "verdict": "judge_unknown",
   "verdict_reason": "KG 메커니즘 연결(VERIFIED_BY) 없음",
   "suspect": { "equipment_id": "CMP-02", "chamber_id": "CH1" },
 
@@ -596,8 +596,8 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
 | `cause` | string | 원인 이름(kg_rca 자유추출). 표시용, 조회 키 아님 |
 | `stage` | enum\|null | 공정 6종 `LITHO/ETCH/DEPO/CMP/CLEAN/EDS` 또는 `null`(문헌직결) |
 | `tier` | enum | `auto` / `semi_auto` / `none` (백엔드 `자동/반자동/근거없음` 매핑) |
-| `verdict` | enum | `accepted` / `rejected` / `insufficient` |
-| `verdict_reason` | string\|null | `rejected`/`insufficient`일 때 사유, `accepted`면 `null` |
+| `verdict` | enum | `accepted` / `rejected` / `judge_unknown` |
+| `verdict_reason` | string\|null | `rejected`/`judge_unknown`일 때 사유, `accepted`면 `null` |
 | `suspect` | object\|null | `{equipment_id, chamber_id}`. commonality top 장비. 없으면 `null` |
 
 **필드 사전 — `sections.commonality`**
@@ -654,7 +654,7 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
 | `events`(alarm) | 미연동(`get_alarm_history` 미호출) | 파이프라인에 알람 조회 추가. 미연동 동안 events엔 alarm rows 없음 — 미구현 상태를 계약(`coverage`/`not_implemented`)으로 노출하지 않음 |
 | `unverified[]` | 추적 필드 없음 | ⑤/⑥에서 미검증 인용 기록 |
 | `next_actions[]` | NotRequired인데 미충전 | kg_rca candidate 또는 ⑦에서 생성해 주입 |
-| `verdict` 3-state | Critic은 accepted/rejected 2리스트, KG메커니즘 실패를 rejected에 넣음 | Critic이 사유에 **고정 토큰**(`P5_NO_KG_MECHANISM` 등) 부여 → API가 그 토큰으로 `insufficient` 승격(`verdict_reason` 문자열 본문 매칭 금지) |
+| `verdict` 3-state | Critic은 accepted/rejected 2리스트, judge_unknown 계열을 rejected에 넣음 | Critic이 사유에 **고정 토큰**(`P5_NO_KG_MECHANISM`·`SEMI_AUTO_PENDING`) 부여 → API가 그 토큰으로 `judge_unknown` 승격(`verdict_reason` 문자열 본문 매칭 금지) |
 
 > **필드 존재 계약(2.7)** — 이 응답은 `available`·`type`에 따라 **섹션 내부** 형태가 바뀐다. 키 존재 규칙을 층위별로 못 박는다(판단 기준: **Optional = 키 자체 부재 / Nullable = 키는 있고 값이 `null`**).
 >
@@ -710,7 +710,7 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
 > - `pattern` (결함 패턴, 5종 · KG 표준 엔티티): `Center` | `Edge-Ring` | `Scratch` | `Unknown` | `Normal` — 원인 매핑은 앞 3종(`Center`/`Edge-Ring`/`Scratch`)만, 비매핑 결함 통합값 `Unknown`(원 9종 중 `Edge-Loc`·`Loc`·`Donut`·`Near-Full`·`Random`)은 `unmapped`, `Normal`은 정상. CNN/DB 표기를 FastAPI가 이 집합으로 정규화
 > - `series[].name` (수율 시리즈, 2.1): `low_yield_eq`(저수율 장비) | `line_avg`(라인 평균) — 프론트가 이 키로 라벨·색 매핑
 > - `tier` (검증등급): `auto`(자동) | `semi_auto`(반자동) | `none`(근거없음)
-> - `verdict` (Critic 판정): `accepted` | `rejected` | `insufficient`
+> - `verdict` (Critic 판정): `accepted` | `rejected` | `judge_unknown`
 > - `stage` (공정, 6종): `LITHO` | `ETCH` | `DEPO` | `CMP` | `CLEAN` | `EDS`
 
 > **`analysis_id` 유니크 규칙**: `analysis_id`는 **배치 실행 + 패턴 단위로 유니크**하다(형식 `grp_{패턴}_{배치날짜}_{순번}`). `{순번}`은 그날의 배치 순번(2자리, `01`부터)으로, **같은 날 배치를 두 번 실행해도 ID가 충돌하지 않게** 하는 discriminator다(날짜만으로는 같은 날 2회차가 1회차를 덮어써 누적이 깨진다). 같은 패턴이라도 배치마다 새 ID가 부여되므로 `grp_edgering_20260706_01`·`grp_edgering_20260706_02`·`grp_edgering_20260707_01`은 서로 다른 별개의 결과다. 이렇게 해야 배치가 반복 실행돼도 과거 결과가 덮어써지지 않고 대기열에 누적된다. `batch_id`(`batch_{배치날짜}_{순번}`)는 한 배치가 만든 여러 analysis가 공유하는 값(1개 배치 → 여러 그룹 결과)이며, 그 배치의 그룹들은 같은 `{배치날짜}_{순번}`을 공유한다.

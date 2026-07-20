@@ -123,9 +123,12 @@ class Hypothesis(TypedDict):
     citations: NotRequired[list[Citation]]   # candidate.citations 그대로 옮김 — API §2.5/§2.7
     next_actions: NotRequired[list[str]]
     sentence: str                            # GraphRAGCandidate.sentence 그대로 옮김(근거)
-    rationale: NotRequired[str]              # 에이전트가 쓴 판단 근거
-    verdict: NotRequired[str]                # adopt_* / reject_* / judge_unknown (§4-1 harness 계약)
-    investigated: NotRequired[bool]
+    rationale: NotRequired[str]              # 에이전트가 쓴 판단 근거 (investigate_group 붙으면 채움)
+    # verdict: ⑤가 reject_token으로 판정 → ⑥(response.py)이 verdict로 매핑(hypo_critic_py.md §13-1 C2).
+    # 내부 3버킷 adopt/reject/judge_unknown = 프론트 accepted/rejected/insufficient.
+    # judge_unknown = 근거없음(P5) + 반자동 미조사(SEMI_AUTO). ④는 이 필드를 직접 안 채운다.
+    verdict: NotRequired[str]
+    investigated: NotRequired[bool]          # investigate_group이 실제 조사(도구호출/unit판정 상속)했으면 True, 미조사 False → judge_unknown
 
 
 class CriticResult(TypedDict):
