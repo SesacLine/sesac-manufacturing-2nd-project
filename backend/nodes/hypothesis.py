@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from ..mcp_client import MCPClient
 from ..state import EvidenceEntry, GraphRAGCandidate, Hypothesis, RCAState
+from langgraph.prebuilt import create_react_agent    # 또는 수동 루프(LangGraph_fs.md 7.2)
 
 # --- 0713 Walking Skeleton: 팀 결정 3가지를 전부 "가장 단순한 선택"으로 하드코딩했다.
 # 나중에 팀원과 다시 짤 때 이 세 지점부터 보면 된다(personalspace/0713 work/skeleton_kickoff.md §5).
@@ -49,6 +50,7 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
         return {"hypotheses": {group_id: []}}
 
     time_range = await _group_time_range(lot_ids, mcp)
+    defect_ts = await _group_defect_ts(lot_ids, mcp)
 
     # cause는 서로 달라도 (step, evidence_label, evidence)가 같으면 MCP에 던지는 질문이
     # 완전히 동일하다 — 결정①.
@@ -60,6 +62,8 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
         if key not in verify_cache:
             verify_cache[key] = await _verify_unit(candidate, lot_ids, mcp, time_range)
         suspect, evidence = verify_cache[key]
+        evidence = dict(evidence)          
+        evidence["defect_ts"] = defect_ts
 
         hypotheses.append(
             {
@@ -67,7 +71,7 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
                 "tier": candidate["tier"],
                 "stage": candidate["step"],
                 "equipment": suspect,
-                "evidence": dict(evidence),
+                "evidence": evidence,
                 "citations": candidate.get("citations", []),
                 "sentence": candidate["sentence"],
             }
@@ -75,6 +79,12 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
 
     return {"hypotheses": {group_id: hypotheses}}
 
+
+async def verify_one(candidate, suspect, time_range, tools, model) -> dict:
+    agent = create_react_agent(model, tools)
+    prompt = _build_prompt(candidate, suspect, time_range)     # 고정키 주입 + 소프트힌트
+    result = await agent.ainvoke({"messages": [("user",prompt)]})
+    return _to_hypothesis(candidate, result)
 
 async def _verify_unit(
     candidate: GraphRAGCandidate, lot_ids: list[str], mcp: MCPClient, time_range: tuple[str, str]
@@ -157,6 +167,7 @@ def _empty_evidence() -> EvidenceEntry:
         "drift_detected": None,
         "maintenance_hit": None,
         "maintenance_ts": None,
+        "defect_ts": None,
         "recipe_match": None,
         "alarm_hit": None,
         "normal_ratio": None,
@@ -208,3 +219,9 @@ async def _group_time_range(lot_ids: list[str], mcp: MCPClient) -> tuple[str, st
     if not rows:
         return ("2026-01-01 00:00:00", "2026-12-31 00:00:00")
     return (min(r["ts_in"] for r in rows), max(r["ts_out"] for r in rows))
+
+async def _group_defect_ts(lot_ids: list[str], mcp: MCPClient) -> str | None:
+    """그룹 대표(첫 로트)의 결함 확정(EDS) 시각. Critic 시간정합의 비교 기준 — ④가 수집(firewall)."""
+    timeline = await mcp.get_lot_timeline(lot_ids[0])
+    eds_events = [e for e in timeline["data"] if e["detail"] == "EDS"]
+    return max(e["ts"] for e in eds_events) if eds_events else None

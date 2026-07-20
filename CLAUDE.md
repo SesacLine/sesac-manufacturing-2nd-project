@@ -11,7 +11,10 @@
 (문헌 기반 "일반적으로 이런 원인이 있을 수 있다")와 MCP 서버(fab.db 기반 "이번에 실제로
 무슨 일이 있었나")를 교차 검증해 근거 있는 원인 후보 카드를 만들어준다.
 
-- 팀 프로젝트(SeSAC 2nd Project), 개인 작업 공간은 `personalspace/`(이 repo 상위 폴더, git 추적 밖)
+- 팀 프로젝트(SeSAC 2nd Project). **개인 작업 공간은 이 repo 안의 `personalspace_rca/`**(`.gitignore`
+  등록됨, git 추적 밖). 날짜별 `MMDD work/` 폴더 아래에 그날 스터디·설계 노트를 둔다(예:
+  `personalspace_rca/0718 work/0718_study.md`). Claude는 개인 작업/노트를 항상 여기에 만들 것 —
+  repo 상위의 옛 `Semiconductor/personalspace/`(0714까지)는 폐기된 위치이므로 쓰지 말 것.
 - **현재 상태(2026-07-13, kg_rca v2.4 갱신은 2026-07-14 반영)**: 파이프라인 ⓪~⑥ **Walking Skeleton
   완성**, end-to-end 실행 검증됨(kg_rca v2.4 갱신 후 재검증: Center 297건 후보 → 163건 채택/134건
   기각). 단, VLM(①)과 응답생성(⑥)은 실제 LLM 미연동 상태(하드코딩/템플릿) — 아래 "단순화 목록" 참고.
@@ -168,8 +171,8 @@ uvicorn backend.main:app --reload
 
 - 브랜치: `develop` 없이 **`main` 하나만**. 이슈 기반 브랜치 → PR → `main`. `main` 직접 push 금지.
 - 커밋: `[Type] #이슈번호 제목` — Type은 `Feat`/`Fix`/`Refactor`/`Docs`/`Chore`/`Test`.
-- 브랜치명: `{type}/#이슈번호-작업내용`.
-- PR: 리뷰어 1명 승인 후 **본인이 merge**, 병합 브랜치는 삭제.
+- 브랜치명: `{type}/#이슈번호-작업내용` — 작업내용은 영어 소문자 + 하이픈으로만(한글 금지).
+- PR: 리뷰어 1명 승인 후 **해당 리뷰어가 merge**, 병합 브랜치는 삭제하지 않고 유지.
 - 금지: `--force` 푸시, `main` 직접 push, `.env`/API 키/`fab.db` 커밋.
 
 ## 막히면 볼 문서 (정본 인덱스)

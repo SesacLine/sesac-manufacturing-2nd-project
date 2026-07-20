@@ -33,14 +33,12 @@ async def review_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> d
     채택 후보가 0개면 status="insufficient_evidence", 아니면 "accepted".
     기각 항목에는 reject_reason(표시용 자연어)과 reject_token(고정 사유코드)을 같이 싣는다.
     """
-    group = next((g for g in state["groups"] if g["group_id"] == group_id), None)
-    lot_id = group["lot_ids"][0] if group and group["lot_ids"] else None
     candidates = state["hypotheses"].get(group_id, [])
 
     accepted: list[Hypothesis] = []
     rejected: list[dict] = []
     for h in candidates:
-        if lot_id is not None and not await _check_time_consistency(h, mcp, lot_id):
+        if not _check_time_consistency(h):
             rejected.append({
                 **h,
                 "reject_token": TOKEN_TIME_ORDER,
@@ -80,21 +78,17 @@ async def review_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> d
     return {"critic_result": {group_id: result}}
 
 
-async def _check_time_consistency(hypothesis: Hypothesis, mcp: MCPClient, lot_id: str) -> bool:
-    """get_lot_timeline으로 원인 이벤트 ts < 결함 발생(EDS) ts 확인. 실패 시 False(reject).
-
-    비교할 원인 이벤트가 없는 hypothesis(정비 이력이 안 잡힌 경우)는 시간 정합 검사 대상이
-    아니므로 통과시킨다 — 이 규칙은 "함정 정비"(결함 이후에 이뤄진 정비) 배제가 목적이다.
+def _check_time_consistency(hypothesis: Hypothesis) -> bool:
+    """evidence의 maintenance_ts < defect_ts 확인 (firewall: 재조회 없음)
     """
     maintenance_ts = hypothesis["evidence"].get("maintenance_ts")
     if maintenance_ts is None:
         return True
 
-    timeline = await mcp.get_lot_timeline(lot_id)
-    eds_events = [e for e in timeline["data"] if e["detail"] == "EDS"]
-    if not eds_events:
+    defect_ts = hypothesis["evidence"].get("defect_ts")  
+    if defect_ts is None:                                 
         return True
-    defect_ts = max(e["ts"] for e in eds_events)
+    
     return maintenance_ts < defect_ts
 
 

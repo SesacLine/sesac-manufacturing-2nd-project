@@ -68,6 +68,9 @@ class GraphRAGCandidate(TypedDict):
     fab_table: str | None
     direction: NotRequired[Literal["high", "low"] | None]
     occurrence_prior: NotRequired[str | None]
+    rank: NotRequired[int | None]
+    evidence_docs: NotRequired[int | None]
+    evidence_chunks: NotRequired[int | None]
     unverifiable_signals: NotRequired[list[str] | None]
     sentence: str
     citations: NotRequired[list[Citation]]
@@ -95,6 +98,7 @@ class EvidenceEntry(TypedDict):
     maintenance_ts: str | None
     recipe_match: bool | None
     alarm_hit: bool | None
+    defect_ts: str | None
     normal_ratio: float | None
     telemetry_summary: NotRequired[str]
     maintenance_summary: NotRequired[str]
@@ -121,6 +125,7 @@ class Hypothesis(TypedDict):
     sentence: str                            # GraphRAGCandidate.sentence 그대로 옮김(근거)
     rationale: NotRequired[str]              # 에이전트가 쓴 판단 근거
     verdict: NotRequired[str]                # adopt_* / reject_* / judge_unknown (§4-1 harness 계약)
+    investigated: NotRequired[bool]
 
 
 class CriticResult(TypedDict):
