@@ -35,6 +35,10 @@ from langgraph.prebuilt import create_react_agent    # 또는 수동 루프(Lang
 #        전체 공정 뭉뚱그린 결과를 그대로 쓴다(신호가 흐려지는 걸 감수).
 # 결정③ direction=null인 [자동] 후보 — 방향 상관없이 정상범위 이탈이면 drift_detected=True.
 #        (사실 모든 [자동] 후보에 이 규칙을 통일 적용한다 — candidate.direction 자체를 안 본다)
+# verify_one: 자동(Parameter) tier 후보를 에이전트(create_react_agent)로 검증한다.
+#   시그니처: verify_one(candidate, suspect, base_evidence, time_range, tools, model) -> Hypothesis
+#   base_evidence = Layer1 pre-pass(commonality/normal_ratio) 결과 — 에이전트는 그 위에 tier별 증거만 얹는다.
+#   evidence는 LLM이 아니라 도구 반환(ToolMessage)에서 재구성한다(옵션 A). 반자동·근거없음은 결정론 경로 유지.
 
 
 async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> dict:
