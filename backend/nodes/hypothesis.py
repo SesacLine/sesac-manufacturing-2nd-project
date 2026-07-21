@@ -90,6 +90,33 @@ async def verify_one(candidate, suspect, time_range, tools, model) -> dict:
     result = await agent.ainvoke({"messages": [("user",prompt)]})
     return _to_hypothesis(candidate, result)
 
+
+def _build_prompt(candidate: GraphRAGCandidate, suspect: str, time_range: tuple[str, str]) -> str:
+    return f"""너는 웨이퍼 결함의 원인 가설을 fab 운영데이터로 검증하는 에이전트다.
+
+[검증 대상 — 아래 값은 확정된 사실이다. 바꾸거나 지어내지 마라]
+- 의심 원인(cause): {candidate['cause']}
+- 의심 장비(equipment_id): {suspect}
+- 확인할 신호(evidence): {candidate['evidence']}
+- 공정 단계(step): {candidate['step']}
+- 조회 테이블(fab_table): {candidate['fab_table']}
+- 예상 방향(direction): {candidate.get('direction')}
+- 검증 시간창(time_range): {time_range[0]} ~ {time_range[1]}
+- KG 문헌 근거: {candidate['sentence']}
+
+[참고 힌트 — 조사 방향 참고용, 절대 사실로 인용하지 마라]
+- 검증등급(tier): {candidate['tier']}  (자동 = query_telemetry로 센서 시계열 확인)
+- 시나리오 힌트: {candidate.get('scenario_hint')}
+
+[규칙]
+- 도구 인자로는 위의 equipment_id / evidence / time_range 만 사용하라.
+- 인용하는 수치는 반드시 도구가 반환한 값이어야 한다. 값을 추정하거나 지어내지 마라.
+- 조회 결과 데이터가 없으면 "없음"으로 보고하라. 없는 것을 있는 것처럼 말하지 마라.
+- 검증에 필요한 도구를 호출한 뒤, 무엇을 확인했고 이 원인 가설을
+뒷받침하는지/반박하는지 한 문단으로 정리하라.
+"""
+
+
 async def _verify_unit(
     candidate: GraphRAGCandidate, lot_ids: list[str], mcp: MCPClient, time_range: tuple[str, str]
 ) -> tuple[str | None, EvidenceEntry]:
