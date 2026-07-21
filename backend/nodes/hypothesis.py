@@ -24,6 +24,8 @@ from ..state import EvidenceEntry, GraphRAGCandidate, Hypothesis, RCAState
 from langgraph.prebuilt import create_react_agent    # 또는 수동 루프(LangGraph_fs.md 7.2)
 from langchain_core.messages import ToolMessage
 from ..mcp_client.client import _as_dict   # 도구 반환 정규화 헬퍼 재사용
+import os
+from langchain_openai import ChatOpenAI
 
 # --- 0713 Walking Skeleton: 팀 결정 3가지를 전부 "가장 단순한 선택"으로 하드코딩했다.
 # 나중에 팀원과 다시 짤 때 이 세 지점부터 보면 된다(personalspace/0713 work/skeleton_kickoff.md §5).
@@ -58,32 +60,53 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
     time_range = await _group_time_range(lot_ids, mcp)
     defect_ts = await _group_defect_ts(lot_ids, mcp)
 
-    # cause는 서로 달라도 (step, evidence_label, evidence)가 같으면 MCP에 던지는 질문이
-    # 완전히 동일하다 — 결정①.
-    verify_cache: dict[tuple, tuple] = {}
+# 슬라이스1: 자동 후보 1개만 에이전트로 (경로 증명). 나머지는 결정론.
+    agent_target = next((c for c in candidates if c["tier"] == "자동"), None)
+    tools = model = None
 
+    # 같은 (step, evidence_label, evidence)는 결과 재사용 — 결정①.
+    verify_cache: dict[tuple, tuple] = {}
     hypotheses: list[Hypothesis] = []
     for candidate in candidates:
-        key = (candidate["step"], candidate["evidence_label"], candidate["evidence"])
-        if key not in verify_cache:
-            verify_cache[key] = await _verify_unit(candidate, lot_ids, mcp, time_range)
-        suspect, evidence = verify_cache[key]
-        evidence = dict(evidence)          
-        evidence["defect_ts"] = defect_ts
-
-        hypotheses.append(
-            {
-                "cause": candidate["cause"],
-                "tier": candidate["tier"],
-                "stage": candidate["step"],
-                "equipment": suspect,
-                "evidence": evidence,
-                "citations": candidate.get("citations", []),
-                "sentence": candidate["sentence"],
-            }
-        )
+        if candidate is agent_target:                          # ── 에이전트 경로
+            if tools is None:
+                tools = await mcp.get_agent_tools()            # 그룹당 1회
+                model = _make_model()
+            suspect, base_evidence = await _prepass(candidate, lot_ids, mcp)
+            if suspect is None:                                # 조사할 장비 없음 → 미조사
+                base_evidence["defect_ts"] = defect_ts
+                hypotheses.append(_det_hypothesis(candidate, suspect, base_evidence, investigated=False))
+                continue
+            hyp = await verify_one(candidate, suspect, base_evidence, time_range, tools, model)
+            hyp["evidence"]["defect_ts"] = defect_ts
+            hypotheses.append(hyp)                             # verify_one이 investigated=True 세팅
+        else:                                                  # ── 결정론 경로
+            key = (candidate["step"], candidate["evidence_label"], candidate["evidence"])
+            if key not in verify_cache:
+                verify_cache[key] = await _verify_unit(candidate, lot_ids, mcp, time_range)
+            suspect, evidence = verify_cache[key]
+            evidence = dict(evidence)
+            evidence["defect_ts"] = defect_ts
+            hypotheses.append(_det_hypothesis(candidate, suspect, evidence, investigated=False))
 
     return {"hypotheses": {group_id: hypotheses}}
+
+
+def _make_model():
+      return ChatOpenAI(model=os.environ["OPENAI_MODEL"], temperature=0)   # temp=0 = 재현성(§8-7)
+
+
+def _det_hypothesis(candidate, suspect, evidence, investigated: bool) -> Hypothesis:
+    return {
+        "cause": candidate["cause"],
+        "tier": candidate["tier"],
+        "stage": candidate["step"],
+        "equipment": suspect,
+        "evidence": evidence,
+        "citations": candidate.get("citations", []),
+        "sentence": candidate["sentence"],
+        "investigated": investigated,
+    }
 
 
 async def verify_one(candidate, suspect, base_evidence, time_range, tools, model) -> dict:
@@ -156,21 +179,27 @@ def _to_hypothesis(candidate, result, suspect, base_evidence) -> Hypothesis:
     }
 
 
-async def _verify_unit(
-    candidate: GraphRAGCandidate, lot_ids: list[str], mcp: MCPClient, time_range: tuple[str, str]
-) -> tuple[str | None, EvidenceEntry]:
-    """검증단위(step, evidence_label, evidence) 하나당 MCP 호출 묶음을 한 번만 실행한다."""
+async def _prepass(candidate, lot_ids, mcp):
+    """Layer1 결정론 공통조회: commonality→suspect + normal_ratio → (suspect, base_evidence)."""
     evidence = _empty_evidence()
-
     comm = await mcp.run_commonality_analysis(lot_ids, step=candidate["step"])  # 결정②
     suspect = _top_equipment(comm)
     evidence["commonality_rows"] = _commonality_rows(comm)  # §2.7 리치 보존
     if suspect is None:
         return suspect, evidence
-
     evidence["commonality_ratio"] = _ratio_for(comm, suspect)
     neg = await mcp.get_normal_lot_ratio(equipment_id=suspect)
     evidence["normal_ratio"] = neg["data"].get("normal_ratio")
+    return suspect, evidence
+
+
+async def _verify_unit(
+    candidate: GraphRAGCandidate, lot_ids: list[str], mcp: MCPClient, time_range: tuple[str, str]
+) -> tuple[str | None, EvidenceEntry]:
+    """검증단위 하나당 MCP 호출 묶음. pre-pass(공통) + tier별 검증."""
+    suspect, evidence = await _prepass(candidate, lot_ids, mcp)
+    if suspect is None:
+        return suspect, evidence
     evidence.update(await _verify_candidate(candidate, suspect, mcp, time_range))
     return suspect, evidence
 
