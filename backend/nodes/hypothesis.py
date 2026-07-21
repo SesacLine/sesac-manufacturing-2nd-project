@@ -22,6 +22,8 @@ from __future__ import annotations
 from ..mcp_client import MCPClient
 from ..state import EvidenceEntry, GraphRAGCandidate, Hypothesis, RCAState
 from langgraph.prebuilt import create_react_agent    # 또는 수동 루프(LangGraph_fs.md 7.2)
+from langchain_core.messages import ToolMessage
+from ..mcp_client.client import _as_dict   # 도구 반환 정규화 헬퍼 재사용
 
 # --- 0713 Walking Skeleton: 팀 결정 3가지를 전부 "가장 단순한 선택"으로 하드코딩했다.
 # 나중에 팀원과 다시 짤 때 이 세 지점부터 보면 된다(personalspace/0713 work/skeleton_kickoff.md §5).
@@ -115,6 +117,43 @@ def _build_prompt(candidate: GraphRAGCandidate, suspect: str, time_range: tuple[
 - 검증에 필요한 도구를 호출한 뒤, 무엇을 확인했고 이 원인 가설을
 뒷받침하는지/반박하는지 한 문단으로 정리하라.
 """
+
+
+def _to_hypothesis(candidate, result, suspect, base_evidence) -> Hypothesis:
+    """에이전트 결과(result["messages"])에서 evidence를 재구성해 Hypothesis를 만든다 (옵션 A).
+
+    숫자(drift 등)는 LLM 서사가 아니라 도구 반환(ToolMessage)에서 결정론으로 뽑는다.
+    """
+    evidence = dict(base_evidence)          # pre-pass 값(commonality_ratio/normal_ratio) 이어받기
+
+    for m in result["messages"]:
+        if not isinstance(m, ToolMessage):
+            continue
+        data = _as_dict(m.content).get("data", {})
+        if m.name == "query_telemetry":
+            series = data.get("series", [])
+            normal_range = data.get("normal_ranges", {}).get(candidate["evidence"])
+            evidence["drift_detected"] = _detect_drift(series, normal_range)   # 기존 헬퍼 재사용
+            # §2.7 리치 보존 — 결정론 경로(_verify_candidate)와 동일 필드로 맞춤
+            evidence["telemetry_collected"] = True
+            evidence["telemetry_param"] = candidate["evidence"]
+            evidence["telemetry_series"] = [{"ts": p.get("ts"), "value": p.get("value")} for p in series]
+            evidence["telemetry_normal_range"] = list(normal_range) if normal_range else None
+            evidence["telemetry_summary"] = f"{candidate['evidence']} {len(series)}개 포인트, 정상범위 {normal_range}"
+
+    rationale = result["messages"][-1].content    # 마지막 AIMessage = 서사
+
+    return {
+        "cause": candidate["cause"],
+        "tier": candidate["tier"],
+        "stage": candidate["step"],
+        "equipment": suspect,
+        "evidence": evidence,
+        "citations": candidate.get("citations", []),
+        "sentence": candidate["sentence"],
+        "rationale": rationale,
+        "investigated": True,               # 에이전트가 실제 조사함 → ⑤가 판정, judge_unknown 아님
+    }
 
 
 async def _verify_unit(
