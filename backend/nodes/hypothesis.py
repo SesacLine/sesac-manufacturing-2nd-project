@@ -86,11 +86,11 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
     return {"hypotheses": {group_id: hypotheses}}
 
 
-async def verify_one(candidate, suspect, time_range, tools, model) -> dict:
+async def verify_one(candidate, suspect, base_evidence, time_range, tools, model) -> dict:
     agent = create_react_agent(model, tools)
     prompt = _build_prompt(candidate, suspect, time_range)     # 고정키 주입 + 소프트힌트
     result = await agent.ainvoke({"messages": [("user",prompt)]})
-    return _to_hypothesis(candidate, result)
+    return _to_hypothesis(candidate, result, suspect, base_evidence)
 
 
 def _build_prompt(candidate: GraphRAGCandidate, suspect: str, time_range: tuple[str, str]) -> str:
