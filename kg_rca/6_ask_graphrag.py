@@ -121,6 +121,51 @@ RETURN g.id            AS signature,
        e.consumable    AS consumable,
        vb.direction    AS direction,
        f.occurrence_prior AS occurrence_prior,
+       f.density          AS density,
+       f.continuity       AS continuity,
+       f.angular_coverage AS angular_coverage,
+       f.clock_positions  AS clock_positions,
+       (coalesce(f.extraction_confidence, 3)
+        + coalesce(cb.extraction_confidence, 3)
+        + coalesce(vb.extraction_confidence, 3)) / 3.0 AS confidence,
+       cb.quotes       AS quotes,
+       (coalesce(f.chunk_ids, []) + coalesce(cb.chunk_ids, [])
+        + coalesce(vb.chunk_ids, [])) AS chunk_ids
+"""
+
+# [Mode B] 형상 직접 진입 — pattern 없이 SpatialSignature(shape@zone)에서 순회를 시작한다.
+# SIGNATURE_QUERY와 꼬리는 같지만 진입이 다르다: 패턴을 거치지 않으므로(HAS_SIGNATURE 없음)
+# 미지 패턴(CNN=Unknown)에서도 형상만으로 조회 가능하고, ARISES_IN dedup에 형상 경로가 먹히지
+# 않아 **모든 FORMS_IN 엣지의 morphology가 후보에 보존된다**(angular 판별자의 전제).
+SIGNATURE_ENTRY_QUERY = """
+MATCH (g:SpatialSignature {id: $signature})-[f:FORMS_IN]->(s:ProcessStep)
+MATCH (fm:FailureMode)-[:OCCURS_IN]->(s)
+MATCH (fm)-[cb:CAUSED_BY]->(c:Cause)
+OPTIONAL MATCH (c)-[vb:VERIFIED_BY]->(e:Evidence)
+RETURN g.id            AS signature,
+       s.id            AS step,
+       fm.id           AS failure_mode,
+       fm.name         AS failure_mode_name,
+       c.id            AS cause,
+       c.name          AS cause_name,
+       c.description   AS cause_description,
+       c.unverifiable_signals AS unverifiable_signals,
+       coalesce(e.id, '근거없음')    AS evidence,
+       coalesce(e.name, '문헌 서술') AS evidence_name,
+       CASE
+         WHEN e:Parameter   THEN 'Parameter'
+         WHEN e:Maintenance THEN 'Maintenance'
+         WHEN e:Recipe      THEN 'Recipe'
+         ELSE 'None'
+       END             AS evidence_label,
+       coalesce(e.fab_table, '-') AS fab_table,
+       e.consumable    AS consumable,
+       vb.direction    AS direction,
+       f.occurrence_prior AS occurrence_prior,
+       f.density          AS density,
+       f.continuity       AS continuity,
+       f.angular_coverage AS angular_coverage,
+       f.clock_positions  AS clock_positions,
        (coalesce(f.extraction_confidence, 3)
         + coalesce(cb.extraction_confidence, 3)
         + coalesce(vb.extraction_confidence, 3)) / 3.0 AS confidence,
@@ -395,6 +440,7 @@ ROUTE_RANK = {"step": 2, "signature": 1, "direct": 0}
 
 
 def fetch_hypotheses(graph: Neo4jGraph, pattern: str) -> list[dict]:
+    """패턴 진입(①): ARISES_IN(step) + HAS_SIGNATURE→FORMS_IN(signature) + ATTRIBUTED_TO(direct)."""
     rows = graph.query(HYPOTHESIS_QUERY, params={"pattern": pattern})
     for row in rows:
         row["route"] = "step"
@@ -402,13 +448,38 @@ def fetch_hypotheses(graph: Neo4jGraph, pattern: str) -> list[dict]:
         row["route"] = "signature"
         rows.append(row)
     rows += graph.query(DIRECT_QUERY, params={"pattern": pattern})
+    return _rank_and_sort(rows, pattern)
 
+
+def fetch_hypotheses_by_signature(graph: Neo4jGraph, signature: str) -> list[dict]:
+    """형상 진입(②, Mode B): shape@zone에서 직접 순회. pattern 없이(미지 패턴 대응).
+
+    FORMS_IN 경로만 나오므로 morphology가 모든 후보에 보존된다. mapping_table 오버레이는
+    패턴 키가 없어 건너뛴다(pattern=None). backend 라이브 조회가 이 함수를 재사용한다.
+    """
+    rows = graph.query(SIGNATURE_ENTRY_QUERY, params={"signature": signature})
+    for row in rows:
+        row["route"] = "signature"
+    return _rank_and_sort(rows, pattern=None)
+
+
+def _rank_and_sort(rows: list[dict], pattern: str | None) -> list[dict]:
+    """진입 경로에서 나온 원시 행들을 dedup·점수화·정렬해 가설 목록으로 만든다.
+
+    pattern 진입(fetch_hypotheses)과 형상 진입(fetch_hypotheses_by_signature)이 공유한다.
+    pattern=None이면 mapping_table 오버레이를 건너뛴다.
+    """
     # 완전히 같은 경로 꼬리만 합친다. (원인, 검증신호)로만 묶으면 서로 다른 공정·고장 모드를
     # 거친 별개의 가설이 하나로 뭉개진다. route는 키에서 뺀다 — step 경유와 signature 경유가
     # 같은 꼬리에 닿으면 같은 가설이고, 더 강한 경로(ROUTE_RANK)의 것을 대표로 남긴다.
     best: dict[tuple, dict] = {}
     for row in rows:
         row.setdefault("signature", None)
+        # 모폴로지는 FORMS_IN(형상 경유) 엣지에만 있다. step/direct 경로엔 없으므로 기본값.
+        row.setdefault("density", None)
+        row.setdefault("continuity", None)
+        row.setdefault("angular_coverage", None)
+        row.setdefault("clock_positions", None)
         row["tier"] = TIER_OF_LABEL.get(row["evidence_label"], TIER_NONE)
         key = (row["step"], row["failure_mode"], row["cause"], row["evidence"])
         prior = PRIOR_RANK.get(row["occurrence_prior"], 1)
@@ -692,6 +763,14 @@ def main() -> None:
                 "scenario_hint": scenario_hint(row),
                 "path": {
                     "signature": row["signature"],
+                    # 형상 경유(FORMS_IN)일 때만 채워지는 모폴로지. VLM 관측과 소프트 매칭하는
+                    # 랭킹 신호로 backend가 사용한다(설계 B). 그 외 경로에서는 전부 null.
+                    "morphology": None if row["signature"] is None else {
+                        "density": row["density"],
+                        "continuity": row["continuity"],
+                        "angular_coverage": row["angular_coverage"],
+                        "clock_positions": row.get("clock_positions") or [],
+                    },
                     "step": row["step"],
                     "failure_mode": row["failure_mode"],
                     "cause": row["cause"],

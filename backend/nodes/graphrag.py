@@ -18,6 +18,13 @@ def fetch_graphrag_candidates(state: RCAState, kg_client: KGClient) -> dict:
     빈 리스트를 보고 UC-3(미매핑 패턴) 처리를 한다.
     """
     graphrag_candidates = {
-        group["group_id"]: kg_client.get_candidates(group["pattern"]) for group in state["groups"]
+        group["group_id"]: kg_client.get_candidates(
+            group["pattern"],
+            # 그룹 대표 관측 모폴로지 {density, continuity, angular_coverage, clock_positions}로
+            # angular 판별자 재정렬(설계 B). 아직 관측층(VLM/die-matrix)이 group에 이 값을
+            # 안 실으므로 지금은 None → kg_rca 순위 그대로. 관측이 붙는 순간 자동 작동한다.
+            observation=group.get("observation"),
+        )
+        for group in state["groups"]
     }
     return {"graphrag_candidates": graphrag_candidates}

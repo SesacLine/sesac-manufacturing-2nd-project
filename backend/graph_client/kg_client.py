@@ -13,17 +13,23 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .morphology_rank import rerank_by_observation
+
 
 class KGClient:
     def __init__(self, hypotheses_path: Path) -> None:
         self._hypotheses_path = hypotheses_path
 
-    def get_candidates(self, pattern: str) -> dict:
+    def get_candidates(self, pattern: str, observation: dict | None = None) -> dict:
         """패턴 이름 하나로 kg_rca가 이미 계산해 둔 가설 전체를 조회한다.
 
         반환 형태는 state.GraphRAGResult와 같다. Center/Edge-Ring/Scratch 3종 밖의
         패턴이 들어오면(UC-3, 미매핑 패턴) candidates=[]를 반환한다 — 이 경우 그래프의
         graphrag.py가 이 그룹의 ④~⑥을 건너뛴다.
+
+        observation을 주면(관측 모폴로지 {density, continuity, angular_coverage, clock_positions})
+        angular_coverage 판별자로 후보를 재정렬한다(설계 B, morphology_rank.py). 상충 후보만
+        아래로 내리는 감점 전용이라, 관측이 없으면(None) kg_rca 순위를 그대로 반환한다.
 
         필드 매핑(kg_rca 출력 -> state.GraphRAGCandidate)은 kg_rca/KG_output_명세.md(schema v2.4)가
         정본이다. 07-13 갱신으로 `route`/`score.confidence`가 출력에서 빠졌다 — 대신 `scenario_hint`,
@@ -33,10 +39,9 @@ class KGClient:
         for question in data.get("questions", []):
             if question.get("pattern") != pattern:
                 continue
-            return {
-                "pattern": pattern,
-                "candidates": [self._to_candidate(h) for h in question.get("hypotheses", [])],
-            }
+            candidates = [self._to_candidate(h) for h in question.get("hypotheses", [])]
+            candidates = rerank_by_observation(candidates, observation)
+            return {"pattern": pattern, "candidates": candidates}
         return {"pattern": pattern, "candidates": []}
 
     @staticmethod
@@ -49,6 +54,7 @@ class KGClient:
             "failure_mode": path["failure_mode"],
             "step": path["step"],
             "signature": path.get("signature"),
+            "morphology": path.get("morphology"),
             "scenario_hint": hypothesis.get("scenario_hint"),
             "tier": hypothesis["tier"],
             "evidence_label": path["evidence_label"],

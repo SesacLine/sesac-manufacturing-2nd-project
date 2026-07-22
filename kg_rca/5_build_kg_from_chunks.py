@@ -75,6 +75,15 @@ DefectPatternId = Literal["Center", "Scratch", "Edge-Ring"]
 ShapeId = Literal["ring", "cluster", "line", "blob", "global", "random"]
 ZoneId = Literal["center", "mid", "edge", "any"]
 
+# FORMS_IN 관계의 모폴로지 속성 (설계 B).
+# 노드 정체성은 여전히 shape@zone 하나뿐이고(파편화·clobber 방지), 아래 세 축은
+# SpatialSignature 노드가 아니라 FORMS_IN "엣지"에 실린다. VLM 관측(vlm-output-KG 연결)과
+# 문헌 목업이 공유하는 어휘 — 조회 시 shape@zone은 하드 매칭, 이 축들은 랭킹 가점(소프트)이라
+# 관측과 어긋나도 후보를 버리지 않는다. clock_positions는 angular_coverage=partial일 때만 채운다.
+Density = Literal["high", "medium", "low", "unknown"]
+Continuity = Literal["continuous", "intermittent", "discontinuous", "not_applicable", "unknown"]
+AngularCoverage = Literal["full", "partial", "unknown"]
+
 # grounding용: 이 형상을 말한다고 볼 수 있는 원문 표현들
 SHAPE_SURFACES = {
     "ring": ["ring", "annular", "donut", "circular"],
@@ -366,7 +375,24 @@ class Relationship(BaseModel):
         description="VERIFIED_BY + target_label=Parameter 전용: 변수 이상 방향",
     )
     occurrence_prior: Optional[Literal["high", "mid", "low"]] = Field(
-        default=None, description="ARISES_IN 전용: 문헌상 흔한 정도(commonly/rare)"
+        default=None, description="ARISES_IN/FORMS_IN 전용: 문헌상 흔한 정도(commonly/rare)"
+    )
+    density: Optional[Density] = Field(
+        default=None,
+        description="FORMS_IN 전용: 결함 밀도. dense→high, moderate→medium, sparse→low. 언급 없으면 null.",
+    )
+    continuity: Optional[Continuity] = Field(
+        default=None,
+        description="FORMS_IN 전용: 형상 연속성. continuous→continuous, broken/intermittent→intermittent, "
+                    "fragmented→discontinuous. 형상에 연속성 개념이 없으면(예: 중심 blob) not_applicable. 언급 없으면 null.",
+    )
+    angular_coverage: Optional[AngularCoverage] = Field(
+        default=None,
+        description="FORMS_IN 전용: 원주 방향 커버리지. 전방위/full circumference→full, 일부/한쪽/arc→partial. 언급 없으면 null.",
+    )
+    clock_positions: list[int] = Field(
+        default_factory=list,
+        description="FORMS_IN 전용: 시계 위치 1~12(중복 허용). angular_coverage=partial일 때만 채우고 full이면 빈 리스트.",
     )
     extraction_confidence: float = Field(description="추출 신뢰도 1~5. 애매하면 낮게.")
     description: str = Field(description="이 관계를 뒷받침하는 완결된 한 문장")
@@ -486,6 +512,15 @@ Maintenance와 Recipe는 문헌 표현으로 자유롭게 만드세요.
                  문헌이 패턴 클래스명 없이 **형상 서술**로 공정을 지목할 때 씁니다.
                  예: "This ring-shaped failure pattern at the outer edge reflects issues in cleaning steps"
                      -> FORMS_IN: ring@edge -> CLEAN
+                 문헌이 형상의 **모폴로지**를 함께 서술하면 아래 속성도 채우세요(FORMS_IN 전용):
+                   density: dense→high, moderate→medium, sparse/faint/thin→low
+                   continuity: continuous/unbroken→continuous, intermittent→intermittent,
+                               broken/fragmented→discontinuous, 중심 blob처럼 연속성 개념이 없으면 not_applicable
+                   angular_coverage: full circumference/전방위/closed all the way around→full,
+                                     arc/one side/partial/broken arc→partial
+                   clock_positions: angular_coverage=partial이고 시계 위치가 명시되면 그 숫자들(예: "5 to 7 o'clock"→[5,6,7]).
+                                    full이면 빈 리스트.
+                 서술에 없으면 비워 둡니다(density/continuity/angular_coverage=null, clock_positions=[]).
                  같은 문장이 패턴 클래스명(Center/Scratch/Edge-Ring)도 함께 말하면
                  ARISES_IN을 우선하고 FORMS_IN은 만들지 마세요(중복 방지).
 - ATTRIBUTED_TO: (DefectPattern) -> (Cause)        "이 불량 패턴의 원인은 저것이다"
@@ -939,6 +974,10 @@ def save_kg_to_neo4j(graph: Neo4jGraph, kg: RcaGraph, chunk: dict) -> None:
         MATCH (s:ProcessStep {{id: r.target}})
         MERGE (g)-[rel:FORMS_IN]->(s)
         SET rel.occurrence_prior = r.occurrence_prior,
+            rel.density = r.density,
+            rel.continuity = r.continuity,
+            rel.angular_coverage = r.angular_coverage,
+            rel.clock_positions = r.clock_positions,
             rel.extraction_confidence = r.extraction_confidence,
             rel.description = r.description,
             rel.quotes = r.quotes,

@@ -16,10 +16,13 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 BASE_DIR = Path(__file__).resolve().parent          # 프로젝트 루트
 
-# 원문 문헌. 하위 디렉토리(_reference/)는 읽지 않는다 — 교과서 본문을 거기 넣어 뒀다.
-# 본문 339KB는 물리 이론 서술이라 RCA 노이즈만 늘리고, 인과 서술은
-# _troubleshootingTABLE.md 에 100% 옮겨져 있다.
-DOCS_DIR = BASE_DIR / "data" / "raw"
+# 원문 문헌 폴더들. 각 폴더의 하위 디렉토리(_reference/ 등)는 읽지 않는다 — 교과서 본문을
+# 거기 넣어 뒀다. 본문 339KB는 물리 이론 서술이라 RCA 노이즈만 늘리고, 인과 서술은
+# table_sze_troubleshooting.md 에 100% 옮겨져 있다.
+#   - data/raw : 실문헌(교과서/논문 발췌)
+#   - data/docs: 전문가 암묵지 목업(doc_A~H). doc_H는 형상·모폴로지 진입점(FORMS_IN) 서술.
+DATA_DIR = BASE_DIR / "data"
+DOCS_DIRS = [DATA_DIR / "raw", DATA_DIR / "docs"]
 OUTPUT_DIR = BASE_DIR / "outputs"
 OUTPUT_PATH = OUTPUT_DIR / "parsed_docs.jsonl"
 
@@ -59,20 +62,24 @@ def clean_text(text: str) -> str:
 # 내용이 빈 파일은 건너뛴다.
 # =========================
 
-TEXT_SUFFIXES = {"", ".txt", ".md"}
+TEXT_SUFFIXES = {".txt", ".md"}
 
 
-def load_txt_documents(docs_dir: Path) -> list[Document]:
-    if not docs_dir.exists():
-        raise FileNotFoundError(f"문헌 폴더를 찾을 수 없습니다: {docs_dir}")
-
-    paths = sorted(
-        p for p in docs_dir.iterdir()
-        if p.is_file() and p.suffix.lower() in TEXT_SUFFIXES
-    )
+def load_txt_documents(docs_dirs: list[Path]) -> list[Document]:
+    # 여러 폴더를 순서대로(raw -> docs) 훑되, 각 폴더 안은 파일명 정렬.
+    # 없는 폴더는 건너뛰고, 어디에서도 파일을 못 찾았을 때만 실패한다.
+    paths: list[Path] = []
+    for docs_dir in docs_dirs:
+        if not docs_dir.exists():
+            print(f"  (건너뜀: 폴더 없음) {docs_dir}")
+            continue
+        paths.extend(sorted(
+            p for p in docs_dir.iterdir()
+            if p.is_file() and p.suffix.lower() in TEXT_SUFFIXES
+        ))
 
     if not paths:
-        raise FileNotFoundError(f"문헌 파일이 없습니다: {docs_dir}")
+        raise FileNotFoundError(f"문헌 파일이 없습니다: {[str(d) for d in docs_dirs]}")
 
     docs = []
 
@@ -129,9 +136,9 @@ def save_documents_to_jsonl(docs: list[Document], output_path: Path) -> None:
 # =========================
 
 def main() -> None:
-    print("문헌 폴더:", DOCS_DIR)
+    print("문헌 폴더:", ", ".join(str(d) for d in DOCS_DIRS))
 
-    docs = load_txt_documents(DOCS_DIR)
+    docs = load_txt_documents(DOCS_DIRS)
     print("불러온 문헌 수:", len(docs))
 
     for doc in docs:
