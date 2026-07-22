@@ -37,8 +37,6 @@ from langchain_openai import ChatOpenAI
 #        팀원과 다시 짤 때는 여기부터 손보는 게 좋다.
 # 결정② route="direct"(step=null) 후보 — 그냥 step=None으로 commonality를 불러서
 #        전체 공정 뭉뚱그린 결과를 그대로 쓴다(신호가 흐려지는 걸 감수).
-# 결정③ direction=null인 [자동] 후보 — 방향 상관없이 정상범위 이탈이면 drift_detected=True.
-#        (사실 모든 [자동] 후보에 이 규칙을 통일 적용한다 — candidate.direction 자체를 안 본다)
 # verify_one: 자동(Parameter) tier 후보를 에이전트(create_react_agent)로 검증한다.
 #   시그니처: verify_one(candidate, suspect, base_evidence, time_range, tools, model) -> Hypothesis
 #   base_evidence = Layer1 pre-pass(commonality/normal_ratio) 결과 — 에이전트는 그 위에 tier별 증거만 얹는다.
@@ -158,6 +156,8 @@ def _to_hypothesis(candidate, result, suspect, base_evidence) -> Hypothesis:
             normal_range = data.get("normal_ranges", {}).get(candidate["evidence"])
             evidence["drift_detected"] = _detect_drift(series, normal_range)   # 기존 헬퍼 재사용
             # §2.7 리치 보존 — 결정론 경로(_verify_candidate)와 동일 필드로 맞춤
+            evidence["drift_direction"] = _drift_direction(series, normal_range)
+            evidence["direction_match"] = _direction_match(evidence["drift_direction"], candidate.get("direction"))
             evidence["telemetry_collected"] = True
             evidence["telemetry_param"] = candidate["evidence"]
             evidence["telemetry_series"] = [{"ts": p.get("ts"), "value": p.get("value")} for p in series]
@@ -217,8 +217,11 @@ async def _verify_candidate(
         )
         series = telemetry["data"]["series"]
         normal_range = telemetry["data"]["normal_ranges"].get(candidate["evidence"])
+        direction = _drift_direction(series, normal_range)
         return {
-            "drift_detected": _detect_drift(series, normal_range),  # 결정③: direction 무시
+            "drift_detected": _detect_drift(series, normal_range),  # 이탈 여부(방향은 drift_direction으로 별도)
+            "drift_direction": direction,
+            "direction_match": _direction_match(direction, candidate.get("direction")),
             "telemetry_summary": f"{candidate['evidence']} {len(series)}개 포인트, 정상범위 {normal_range}",
             # §2.7 리치 보존 — 근거 모달 telemetry 섹션이 그대로 소비
             "telemetry_collected": True,
@@ -264,6 +267,8 @@ def _empty_evidence() -> EvidenceEntry:
     return {
         "commonality_ratio": None,
         "drift_detected": None,
+        "drift_direction": None,
+        "direction_match": None,
         "maintenance_hit": None,
         "maintenance_ts": None,
         "defect_ts": None,
@@ -309,6 +314,27 @@ def _detect_drift(series: list[dict], normal_range: list[float] | None) -> bool 
         return None
     lo, hi = normal_range
     return any(not (lo <= point["value"] <= hi) for point in series)
+
+
+def _drift_direction(series: list[dict], normal_range: list[float] | None) -> str | None:
+      """드리프트 방향 — hi 초과만 'high', lo 미만만 'low', 정상/양방향 혼재는 None."""
+      if not series or not normal_range:
+          return None
+      lo, hi = normal_range
+      above = any(p["value"] > hi for p in series)
+      below = any(p["value"] < lo for p in series)
+      if above and not below:
+          return "high"
+      if below and not above:
+          return "low"
+      return None
+
+
+def _direction_match(drift_direction: str | None, candidate_direction: str | None) -> bool | None:
+    """drift 방향 ↔ candidate.direction 대조. 둘 다 있어야 판정, 아니면 None(n/a)."""
+    if drift_direction is None or candidate_direction is None:
+        return None
+    return drift_direction == candidate_direction
 
 
 async def _group_time_range(lot_ids: list[str], mcp: MCPClient) -> tuple[str, str]:

@@ -94,6 +94,8 @@ class EvidenceEntry(TypedDict):
 
     commonality_ratio: float | None
     drift_detected: bool | None
+    drift_direction: str | None          # "high"/"low"/None — drift 방향 (S2-1)
+    direction_match: bool | None         # candidate.direction과 일치? True/False/None(n/a)
     maintenance_hit: bool | None
     maintenance_ts: str | None
     recipe_match: bool | None

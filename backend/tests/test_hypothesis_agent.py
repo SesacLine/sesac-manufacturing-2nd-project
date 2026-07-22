@@ -24,3 +24,14 @@ def test_to_hypothesis_reconstructs_drift():
     assert hyp["equipment"] == "CMP-01"
     assert hyp["investigated"] is True
     assert "drift" in hyp["rationale"]
+
+
+def test_drift_direction_and_match():
+    from backend.nodes.hypothesis import _drift_direction, _direction_match
+    nr = [195, 210]
+    assert _drift_direction([{"value": 250.0}], nr) == "high"     # hi 초과
+    assert _drift_direction([{"value": 100.0}], nr) == "low"      # lo 미만
+    assert _drift_direction([{"value": 200.0}], nr) is None       # 정상
+    assert _direction_match("high", "high") is True
+    assert _direction_match("high", "low") is False               # 반박
+    assert _direction_match("high", None) is None                 # candidate.direction 없음
