@@ -1,0 +1,75 @@
+WAFER MAP MORPHOLOGY HEURISTICS - EXPERT FIELD NOTES
+
+These are the rules of thumb a senior yield engineer uses to read a wafer map by
+its spatial signature alone - the geometric form, the morphology, and the shape
+of the failing-die distribution - before the defect class is even named. Each
+heuristic maps an observed shape, its location on the wafer, and its morphology
+to the process step that should be suspected first. They are meant to be used
+when the pattern class is uncertain or unknown: the shape itself, not the class
+label, narrows down where to look.
+
+For each shape we also record its morphology in three ways, because the same
+shape can look very different: how dense the failing dies are (dense, moderate,
+or sparse), whether the shape is continuous or broken (continuous, intermittent,
+or discontinuous), and how far it wraps around the wafer (full circumference,
+partial, or a specific clock direction). The morphology sharpens the reading but
+does not override the shape-to-step mapping; treat it as supporting evidence.
+
+Continuous ring at the wafer edge
+When the failing dies form a dense, continuous, circular ring that wraps the full
+circumference of the wafer edge, the shape most commonly points to the ETCH step.
+This annular ring at the edge reflects etch-rate nonuniformity that intensifies
+toward the wafer perimeter, so the etch chamber is the first place to look. The
+same dense, continuous, full-circumference edge ring can also arise in the DEPO
+step, where thin-film deposition thins out along the wafer edge. On seeing a
+dense continuous ring around the whole edge, suspect ETCH first and DEPO second.
+
+Broken arc on one side of the edge
+When the ring is not closed but appears as a sparse, broken, discontinuous arc
+covering only part of the edge - for example concentrated around the 5, 6, and 7
+o'clock positions on the lower edge rather than the full circumference - the shape
+points to the CMP step. This partial, one-sided edge arc reflects asymmetric edge
+handling or localized over-polish during chemical mechanical polishing, which
+attacks one side of the wafer edge more than the rest.
+
+Donut ring offset toward mid-radius
+When the failing dies form a dense, continuous donut band that is closed all the
+way around but sits at mid-radius - an annular ring offset inward from the
+perimeter, away from both the center and the edge - the shape commonly points to
+the DEPO step, where a radial deposition-rate band forms at an intermediate
+radius. This dense, continuous, full-circumference mid-radius ring can also
+reflect the CMP step, where zoned polishing pressure over-polishes an annular
+band partway out from the center.
+
+Concentrated cluster at the center
+When the failing dies form a dense, solid, continuous concentrated cluster - a
+tight blob at the geometric center of the wafer, the classic bulls-eye - the
+shape typically points to the DEPO step. A dense center-weighted cluster reflects
+deposition nonuniformity that peaks at the wafer center, so the deposition
+chamber is the first suspect. The cluster is solid rather than ring-shaped, so it
+has no circumferential direction.
+
+Linear streak across the wafer
+When the failing dies form a thin, continuous, low-density linear streak - an
+elongated directional line cutting across the wafer with no fixed zone - the shape
+most commonly points to the CMP step. The sparse continuous streak reflects
+mechanical abrasion during chemical mechanical polishing: the polish pad, or a
+hard particle trapped under it, gouges a thin continuous line into the wafer
+surface. A thin continuous linear streak can also arise in the CLEAN step, where
+wafer handling or excessive megasonic energy scratches the surface along a line.
+
+Global wafer-wide distribution
+When the failing dies are spread across the entire wafer with a diffuse,
+moderate-density, continuous coverage - a global, wafer-wide signature that
+touches the whole surface in every direction - the shape commonly points to the
+CLEAN step, where a chemical bath or particle excursion contaminates the entire
+wafer. This moderate, continuous, full-wafer form can also reflect the DEPO step,
+where a whole-wafer film nonuniformity degrades every die at once.
+
+Random scattered dies
+When the failing dies are sparse, discontinuous, and randomly scattered, with no
+geometric structure and no preferred location or direction, the shape commonly
+points to the CLEAN step. The sparse, broken, random scatter reflects random
+particulate contamination landing on the wafer surface during cleaning. A sparse
+random scatter rarely indicates a systematic process-parameter drift; it points
+to particle control in the CLEAN step first.
