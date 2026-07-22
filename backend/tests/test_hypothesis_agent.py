@@ -163,3 +163,69 @@ def test_investigate_group_batches_by_step(monkeypatch):
     assert all(h["evidence"]["normal_ratio"] == 0.2 for h in hyps)  # pre-pass 이어받음
     # 내부는 CMP[A,B]·DEPO[C] 배치로 묶여 돌지만, 반환은 입력 순서 그대로 (kg rank 보존 = D1 전제)
     assert [h["cause"] for h in hyps] == ["A", "C", "B"]
+
+
+def test_cluster_key_and_evidence_strength():
+    from backend.nodes.hypothesis import _cluster_key, _evidence_strength
+
+    fast = {"step": "CMP", "evidence_label": "Parameter", "evidence": "slurry_flow", "direction": "high"}
+    slow = {"step": "CMP", "evidence_label": "Parameter", "evidence": "slurry_flow", "direction": "high"}
+    low  = {"step": "CMP", "evidence_label": "Parameter", "evidence": "slurry_flow", "direction": "low"}
+    assert _cluster_key(fast) == _cluster_key(slow)   # 같은 unit+direction → 병합 (스모크 실측: fast/slow)
+    assert _cluster_key(fast) != _cluster_key(low)    # 방향 다름 → 경쟁 클러스터 (묶으면 안 됨)
+
+    # 확실성 우선 서수: telemetry(지지>불명>반대>음성) > maintenance > 무신호
+    assert _evidence_strength({"drift_detected": True, "direction_match": True}) == 5
+    assert _evidence_strength({"drift_detected": True, "direction_match": None}) == 4
+    assert _evidence_strength({"drift_detected": True, "direction_match": False}) == 3
+    assert _evidence_strength({"drift_detected": False}) == 2
+    assert _evidence_strength({"drift_detected": None, "maintenance_hit": True}) == 1
+    assert _evidence_strength({"drift_detected": None, "maintenance_hit": None}) == 0
+
+
+def test_annotate_clusters():
+    from backend.nodes.hypothesis import _annotate_clusters
+
+    # 후보 4개: fast/slow는 같은 unit+direction(병합), low는 방향 다름(분리),
+    # frag는 파편화 cause — fast와 같은 cause가 Maintenance unit에도 걸침
+    candidates = [
+        {"step": "CMP", "evidence_label": "Parameter", "evidence": "slurry_flow", "direction": "high"},
+        {"step": "CMP", "evidence_label": "Parameter", "evidence": "slurry_flow", "direction": "high"},
+        {"step": "CMP", "evidence_label": "Parameter", "evidence": "slurry_flow", "direction": "low"},
+        {"step": "CMP", "evidence_label": "Maintenance", "evidence": "pad_replace", "direction": None},
+    ]
+    hypotheses = [
+        {"cause": "fast", "evidence": {"drift_detected": True, "direction_match": True}},
+        {"cause": "slow", "evidence": {"drift_detected": True, "direction_match": True}},
+        {"cause": "too_low", "evidence": {"drift_detected": True, "direction_match": False}},
+        {"cause": "fast", "evidence": {"drift_detected": None, "maintenance_hit": True}},  # 파편화: fast의 2번째 unit
+    ]
+    _annotate_clusters(candidates, hypotheses)
+
+    # 병합/분리
+    assert hypotheses[0]["cluster_id"] == hypotheses[1]["cluster_id"]      # fast/slow 병합
+    assert hypotheses[0]["cluster_id"] != hypotheses[2]["cluster_id"]      # 방향 다름 → 분리
+    assert hypotheses[0]["cluster_id"] != hypotheses[3]["cluster_id"]      # 다른 unit → 분리
+    # 파편화 대표: fast는 telemetry 행(세기 5)이 maintenance 행(세기 1)을 이김
+    assert hypotheses[0]["is_primary"] is True
+    assert hypotheses[3]["is_primary"] is False
+    # 파편화 없는 cause는 자기 행이 대표
+    assert hypotheses[1]["is_primary"] is True
+    assert hypotheses[2]["is_primary"] is True
+
+
+def test_annotate_clusters_tie_keeps_prior_order():
+    from backend.nodes.hypothesis import _annotate_clusters
+
+    # 같은 cause가 두 unit에 걸쳤는데 증거 세기가 동률(둘 다 무신호 0) → 먼저 온 행이 대표
+    candidates = [
+        {"step": "DEPO", "evidence_label": "Maintenance", "evidence": "clean_a", "direction": None},
+        {"step": "DEPO", "evidence_label": "Maintenance", "evidence": "clean_b", "direction": None},
+    ]
+    hypotheses = [
+        {"cause": "contam", "evidence": {}},
+        {"cause": "contam", "evidence": {}},
+    ]
+    _annotate_clusters(candidates, hypotheses)
+    assert hypotheses[0]["is_primary"] is True     # prior(먼저 온) 행 유지
+    assert hypotheses[1]["is_primary"] is False

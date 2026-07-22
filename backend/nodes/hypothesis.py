@@ -397,18 +397,75 @@ def _direction_match(drift_direction: str | None, candidate_direction: str | Non
 
 
 def _series_by_param(series: list[dict]) -> dict[str, list[dict]]:
-      """배치 telemetry 응답의 섞인 series를 param별로 가른다 (S2-2 배치 판정의 입구).
+    """배치 telemetry 응답의 섞인 series를 param별로 가른다 (S2-2 배치 판정의 입구).
 
-      query_telemetry(params=[...]) 1콜 응답은 여러 param 포인트가 ts순 한 리스트로
-      섞여 온다(서버가 SELECT ts, param, value ... ORDER BY ts). param별로 갈라야
-      단일 param 전제인 기존 판정 헬퍼(_detect_drift/_drift_direction)를 그대로
-      재사용할 수 있다. ts 정렬은 원본 순서를 이어받는다(안정 append).
-      point["param"]은 서버 계약상 항상 존재 — 없으면 KeyError로 시끄럽게 죽는 게 맞다.
+    query_telemetry(params=[...]) 1콜 응답은 여러 param 포인트가 ts순 한 리스트로
+    섞여 온다(서버가 SELECT ts, param, value ... ORDER BY ts). param별로 갈라야
+    단일 param 전제인 기존 판정 헬퍼(_detect_drift/_drift_direction)를 그대로
+    재사용할 수 있다. ts 정렬은 원본 순서를 이어받는다(안정 append).
+    point["param"]은 서버 계약상 항상 존재 — 없으면 KeyError로 시끄럽게 죽는 게 맞다.
+    """
+    by_param: dict[str, list[dict]] = {}
+    for point in series:
+        by_param.setdefault(point["param"], []).append(point)
+    return by_param
+
+
+def _cluster_key(candidate: GraphRAGCandidate) -> str:
+    """클러스터 병합 키 = unit + direction (S2-3, terms §2-1 "함축의 바닥").
+
+    같은 (step, evidence_label, evidence)에 예상 방향까지 같으면 fab 증거로는 영원히
+    구분 불가한 경쟁 가설 묶음이다. 방향이 다르면 방향 대조(S2-1)로 갈리는 경쟁
+    클러스터라 묶지 않는다. direction은 실측(drift_direction)이 아니라 KG 예상
+    (candidate.direction) 기준 — "같은 질문 + 같은 기대"가 병합 조건이다.
+    """
+    return f"{candidate['step']}|{candidate['evidence_label']}|{candidate['evidence']}|{candidate.get('direction')}"
+
+
+def _evidence_strength(evidence: EvidenceEntry) -> int:
+    """cause 대표(주 증거) 행 선정용 서수 (S2-3, terms §5 파편화 대응).
+
+    확실성 우선: telemetry 판정(drift_detected가 not None) > maintenance 정황 > 무신호.
+    telemetry 안에서는 지지 세기 순. "정상범위(음성)"도 maintenance보다 위인 이유:
+    §5 "Parameter 핸들을 가진 cause는 그 Parameter가 주 증거"(telemetry가 더 확실) —
+    확실한 반박도 그 cause의 대표 검증 결과다. S2-4 랭킹 점수와 목적이 다르다
+    (이건 순위가 아니라 cause 내부의 대표 행 선정).
+    """
+    drift = evidence.get("drift_detected")
+    if drift is True:
+        match = evidence.get("direction_match")
+        return 5 if match is True else (4 if match is None else 3)
+    if drift is False:
+        return 2                       # telemetry 정직한 음성 — 그래도 telemetry 확실성
+    if evidence.get("maintenance_hit"):
+        return 1
+    return 0                           # 무신호/미조사
+
+
+def _annotate_clusters(candidates: list[GraphRAGCandidate], hypotheses: list[Hypothesis]) -> None:
+      """S2-3: 클러스터 id + cause 대표(주 증거) 행을 주석한다. 순서·행 수 불변(annotation only).
+  
+      candidates↔hypotheses는 같은 순서라는 전제(zip) — investigate_group의
+      "반환 순서 = 입력 순서" 계약과 build_hypotheses의 원순서 조립이 이를 보장한다.
+      정렬(클러스터 순위·prior 내부 정렬)은 여기서 하지 않는다 — S2-4의 몫.
+
+      - cluster_id: 같은 unit+direction(_cluster_key) 행들의 묶음 표식. 표시층(⑥/프론트)이
+        이 id로 원인군 카드를 묶는다(terms §6). 행 구조는 안 바꾼다(API §2.5 무변경).
+      - is_primary: 같은 cause가 여러 unit에 걸칠 때(파편화 32%, terms §5) 대표 행 1개만
+        True. 확실성 서수(_evidence_strength) 최강 행, 동률이면 먼저 온 행(= prior 순서,
+        "prior는 타이브레이커").
       """
-      by_param: dict[str, list[dict]] = {}
-      for point in series:
-          by_param.setdefault(point["param"], []).append(point)
-      return by_param
+      for candidate, hyp in zip(candidates, hypotheses):
+          hyp["cluster_id"] = _cluster_key(candidate)
+
+      best: dict[str, tuple[int, int]] = {}          # cause -> (최강 세기, 그 행 index)
+      for i, hyp in enumerate(hypotheses):
+          strength = _evidence_strength(hyp["evidence"])
+          cause = hyp["cause"]
+          if cause not in best or strength > best[cause][0]:   # 동률은 갱신 안 함 → 먼저 온 행 유지
+              best[cause] = (strength, i)
+      for i, hyp in enumerate(hypotheses):
+          hyp["is_primary"] = (best[hyp["cause"]][1] == i)
 
 
 async def _group_time_range(lot_ids: list[str], mcp: MCPClient) -> tuple[str, str]:
