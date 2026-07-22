@@ -141,42 +141,62 @@ def _build_prompt(candidate: GraphRAGCandidate, suspect: str, time_range: tuple[
 
 
 def _to_hypothesis(candidate, result, suspect, base_evidence) -> Hypothesis:
-    """에이전트 결과(result["messages"])에서 evidence를 재구성해 Hypothesis를 만든다 (옵션 A).
+    """단일 후보 재구성 — 배치(_to_hypotheses_batch)의 1개짜리 특수형 (S2-2에서 위임화)."""
+    return _to_hypotheses_batch([candidate], result, suspect, base_evidence)[0]
 
-    숫자(drift 등)는 LLM 서사가 아니라 도구 반환(ToolMessage)에서 결정론으로 뽑는다.
+
+def _to_hypotheses_batch(candidates, result, suspect, base_evidence) -> list[Hypothesis]:
+    """배치 에이전트 결과(result["messages"])에서 후보 N개의 Hypothesis를 재구성한다 (옵션 A).
+
+    query_telemetry 응답(들)을 param별로 갈라(_series_by_param) 각 후보의
+    param(candidate["evidence"]) 조각으로만 판정한다. 숫자는 전부 도구 반환에서
+    결정론으로 — LLM 서사는 rationale뿐 (옵션 A).
+
+    - "조회됐는가"의 기준은 normal_ranges 키: 서버가 요청 params 전부에 엔트리를
+    만들어 주므로(telemetry.py), param이 거기 있으면 series가 비어도
+    "조회했고 데이터 없음"(정상 결과)으로 기록한다.
+    - rationale(조사 서사)은 배치 1루프 공유 — 후보별 분담은 §5 미결(rationale 분담).
     """
-    evidence = dict(base_evidence)          # pre-pass 값(commonality_ratio/normal_ratio) 이어받기
-
+    by_param: dict[str, list[dict]] = {}
+    normal_ranges: dict = {}
     for m in result["messages"]:
-        if not isinstance(m, ToolMessage):
+        if not isinstance(m, ToolMessage) or m.name != "query_telemetry":
             continue
         data = _as_dict(m.content).get("data", {})
-        if m.name == "query_telemetry":
-            series = data.get("series", [])
-            normal_range = data.get("normal_ranges", {}).get(candidate["evidence"])
-            evidence["drift_detected"] = _detect_drift(series, normal_range)   # 기존 헬퍼 재사용
+        by_param.update(_series_by_param(data.get("series", [])))   # 재호출 시 같은 param은 뒤가 이김
+        normal_ranges.update(data.get("normal_ranges", {}))
+
+    rationale = result["messages"][-1].content    # 마지막 AIMessage = 그룹 조사 서사
+
+    hypotheses: list[Hypothesis] = []
+    for candidate in candidates:
+        param = candidate["evidence"]
+        evidence = dict(base_evidence)            # 후보마다 독립 사본 (pre-pass 값 이어받기)
+        if param in normal_ranges:                # 조회된 param만 telemetry 필드 기록
+            series = by_param.get(param, [])
+            normal_range = normal_ranges[param]
+            direction = _drift_direction(series, normal_range)
+            evidence["drift_detected"] = _detect_drift(series, normal_range)
+            evidence["drift_direction"] = direction
+            evidence["direction_match"] = _direction_match(direction, candidate.get("direction"))
             # §2.7 리치 보존 — 결정론 경로(_verify_candidate)와 동일 필드로 맞춤
-            evidence["drift_direction"] = _drift_direction(series, normal_range)
-            evidence["direction_match"] = _direction_match(evidence["drift_direction"], candidate.get("direction"))
             evidence["telemetry_collected"] = True
-            evidence["telemetry_param"] = candidate["evidence"]
+            evidence["telemetry_param"] = param
             evidence["telemetry_series"] = [{"ts": p.get("ts"), "value": p.get("value")} for p in series]
             evidence["telemetry_normal_range"] = list(normal_range) if normal_range else None
-            evidence["telemetry_summary"] = f"{candidate['evidence']} {len(series)}개 포인트, 정상범위 {normal_range}"
-
-    rationale = result["messages"][-1].content    # 마지막 AIMessage = 서사
-
-    return {
-        "cause": candidate["cause"],
-        "tier": candidate["tier"],
-        "stage": candidate["step"],
-        "equipment": suspect,
-        "evidence": evidence,
-        "citations": candidate.get("citations", []),
-        "sentence": candidate["sentence"],
-        "rationale": rationale,
-        "investigated": True,               # 에이전트가 실제 조사함 → ⑤가 판정, judge_unknown 아님
-    }
+            evidence["telemetry_summary"] = f"{param} {len(series)}개 포인트, 정상범위 {normal_range}"
+        hypotheses.append({
+            "cause": candidate["cause"],
+            "tier": candidate["tier"],
+            "stage": candidate["step"],
+            "equipment": suspect,
+            "evidence": evidence,
+            "citations": candidate.get("citations", []),
+            "sentence": candidate["sentence"],
+            "rationale": rationale,
+            "investigated": param in normal_ranges,   # 실제 조회된 param만 True — 미조회는 ⑤ judge_unknown 재료(§3-3 C3)
+        })
+    return hypotheses
 
 
 async def _prepass(candidate, lot_ids, mcp):
@@ -317,17 +337,17 @@ def _detect_drift(series: list[dict], normal_range: list[float] | None) -> bool 
 
 
 def _drift_direction(series: list[dict], normal_range: list[float] | None) -> str | None:
-      """드리프트 방향 — hi 초과만 'high', lo 미만만 'low', 정상/양방향 혼재는 None."""
-      if not series or not normal_range:
-          return None
-      lo, hi = normal_range
-      above = any(p["value"] > hi for p in series)
-      below = any(p["value"] < lo for p in series)
-      if above and not below:
-          return "high"
-      if below and not above:
-          return "low"
-      return None
+    """드리프트 방향 — hi 초과만 'high', lo 미만만 'low', 정상/양방향 혼재는 None."""
+    if not series or not normal_range:
+        return None
+    lo, hi = normal_range
+    above = any(p["value"] > hi for p in series)
+    below = any(p["value"] < lo for p in series)
+    if above and not below:
+        return "high"
+    if below and not above:
+        return "low"
+    return None
 
 
 def _direction_match(drift_direction: str | None, candidate_direction: str | None) -> bool | None:
@@ -335,6 +355,21 @@ def _direction_match(drift_direction: str | None, candidate_direction: str | Non
     if drift_direction is None or candidate_direction is None:
         return None
     return drift_direction == candidate_direction
+
+
+def _series_by_param(series: list[dict]) -> dict[str, list[dict]]:
+      """배치 telemetry 응답의 섞인 series를 param별로 가른다 (S2-2 배치 판정의 입구).
+
+      query_telemetry(params=[...]) 1콜 응답은 여러 param 포인트가 ts순 한 리스트로
+      섞여 온다(서버가 SELECT ts, param, value ... ORDER BY ts). param별로 갈라야
+      단일 param 전제인 기존 판정 헬퍼(_detect_drift/_drift_direction)를 그대로
+      재사용할 수 있다. ts 정렬은 원본 순서를 이어받는다(안정 append).
+      point["param"]은 서버 계약상 항상 존재 — 없으면 KeyError로 시끄럽게 죽는 게 맞다.
+      """
+      by_param: dict[str, list[dict]] = {}
+      for point in series:
+          by_param.setdefault(point["param"], []).append(point)
+      return by_param
 
 
 async def _group_time_range(lot_ids: list[str], mcp: MCPClient) -> tuple[str, str]:
