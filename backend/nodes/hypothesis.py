@@ -114,6 +114,37 @@ async def verify_one(candidate, suspect, base_evidence, time_range, tools, model
     return _to_hypothesis(candidate, result, suspect, base_evidence)
 
 
+async def investigate_group(
+    candidates: list[GraphRAGCandidate], lot_ids: list[str], mcp: MCPClient,
+    time_range: tuple[str, str], tools, model,
+) -> list[Hypothesis]:
+    """그룹 조사관 본체 (S2-2): 자동 tier 후보 전부를 step 배치로 조사한다.
+
+    step별로 묶어 pre-pass(공통조회) 1회 → suspect 확정 → 에이전트 1루프가
+    query_telemetry 1콜(params 전부) → _to_hypotheses_batch로 후보별 분배.
+    suspect가 없으면(공통 장비 특정 불가) 그 배치는 결정론 폴백(investigated=False).
+    루프 상한/중단 기준은 S2-5에서 — 지금은 step 배치 순회 1패스.
+    """
+    hypotheses: list[Hypothesis] = []
+    by_step: dict = {}
+    for c in candidates:
+        by_step.setdefault(c["step"], []).append(c)   # step=None(결정②)도 자기들끼리 한 배치
+
+    for step, batch in by_step.items():
+        suspect, base_evidence = await _prepass(batch[0], lot_ids, mcp)  # step 공통 → 대표 1개로 1회
+        if suspect is None:                    # 조사할 장비 없음 → 배치 전체 미조사 폴백
+            hypotheses.extend(
+                _det_hypothesis(c, suspect, dict(base_evidence), investigated=False) for c in batch
+            )
+            continue
+        params = list(dict.fromkeys(c["evidence"] for c in batch))   # 중복 제거 + 순서 보존
+        agent = create_react_agent(model, tools)
+        prompt = _build_group_prompt(batch, suspect, params, time_range)
+        result = await agent.ainvoke({"messages": [("user", prompt)]})
+        hypotheses.extend(_to_hypotheses_batch(batch, result, suspect, base_evidence))
+    return hypotheses
+
+
 def _build_prompt(candidate: GraphRAGCandidate, suspect: str, time_range: tuple[str, str]) -> str:
     return f"""너는 웨이퍼 결함의 원인 가설을 fab 운영데이터로 검증하는 에이전트다.
 
@@ -137,6 +168,43 @@ def _build_prompt(candidate: GraphRAGCandidate, suspect: str, time_range: tuple[
 - 조회 결과 데이터가 없으면 "없음"으로 보고하라. 없는 것을 있는 것처럼 말하지 마라.
 - 검증에 필요한 도구를 호출한 뒤, 무엇을 확인했고 이 원인 가설을
 뒷받침하는지/반박하는지 한 문단으로 정리하라.
+"""
+
+def _build_group_prompt(
+    candidates: list[GraphRAGCandidate], suspect: str, params: list[str], time_range: tuple[str, str]
+) -> str:
+    """배치 조사 프롬프트 — 후보 N개(같은 step·suspect)를 한 루프로 (S2-2, _build_prompt의 그룹판).
+
+    B층 고정키(suspect/params/time_range/후보 목록)는 코드가 주입 — 날조 금지.
+    max_points 상향은 downsample 함정 대응: 서버(telemetry.py)의 균일 다운샘플이
+    param 섞인 리스트 전체에 걸리므로, 배치에선 500×param수로 올려 특정 param이
+    샘플에서 통째로 빠지는 것을 막는다.
+    후보별 KG sentence는 프롬프트 폭발 방지로 뺐다(옵션 A라 evidence 무영향, 서사 재료만 축소).
+    """
+    cause_lines = "\n".join(
+        f"  - {c['cause']}: 확인할 신호={c['evidence']}, 예상 방향={c.get('direction')}"
+        for c in candidates
+    )
+    max_points = 500 * len(params)
+    return f"""너는 웨이퍼 결함의 원인 가설들을 fab 운영데이터로 검증하는 에이전트다.
+
+[검증 대상 — 아래 값은 확정된 사실이다. 바꾸거나 지어내지 마라]
+- 의심 장비(equipment_id): {suspect}
+- 공정 단계(step): {candidates[0]['step']}
+- 검증 시간창(time_range): {time_range[0]} ~ {time_range[1]}
+- 조사할 원인 가설 목록 (신호=telemetry param):
+{cause_lines}
+
+[도구 호출 규칙]
+- query_telemetry는 반드시 **한 번만** 호출하라: params={params!r} 전부를 한 리스트에 담고,
+  max_points={max_points}로 호출한다. param마다 따로 부르지 마라.
+- 도구 인자로는 위의 equipment_id / params / time_range / max_points 만 사용하라.
+
+[보고 규칙]
+- 인용하는 수치는 반드시 도구가 반환한 값이어야 한다. 값을 추정하거나 지어내지 마라.
+- 조회 결과 데이터가 없는 param은 "없음"으로 보고하라. 없는 것을 있는 것처럼 말하지 마라.
+- 호출을 마친 뒤, param별로 무엇을 확인했고 어느 가설을 뒷받침하는지/반박하는지
+  한 문단으로 정리하라.
 """
 
 

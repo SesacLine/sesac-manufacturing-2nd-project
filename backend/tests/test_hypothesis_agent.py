@@ -102,3 +102,62 @@ def test_to_hypotheses_batch_splits_params():
     # 공통: base 이어받기 + 배치 서사 공유
     assert all(h["evidence"]["normal_ratio"] == 0.1 for h in hyps)
     assert all(h["rationale"] == "배치 조사 서사" for h in hyps)
+
+
+def test_investigate_group_batches_by_step(monkeypatch):
+    import asyncio
+    from backend.nodes import hypothesis as H
+
+    candidates = [
+        {"cause": "A", "tier": "자동", "step": "CMP", "evidence": "slurry_flow",
+        "direction": "high", "sentence": "...", "citations": []},
+        {"cause": "B", "tier": "자동", "step": "CMP", "evidence": "down_force",
+        "direction": "low", "sentence": "...", "citations": []},
+        {"cause": "C", "tier": "자동", "step": "DEPO", "evidence": "susceptor_temp",
+        "direction": None, "sentence": "...", "citations": []},
+    ]
+
+    class FakeMCP:
+        async def run_commonality_analysis(self, lot_ids, step=None):
+            eq = {"CMP": "CMP-01", "DEPO": "DEPO-02"}[step]
+            return {"data": {"n_lots": 2, "commonality": {"equipment_id": [
+                {"value": eq, "lot_count": 2, "ratio": 1.0}]}}}
+        async def get_normal_lot_ratio(self, equipment_id):
+            return {"data": {"normal_ratio": 0.2}}
+
+    prompts = []
+    class FakeAgent:
+        async def ainvoke(self, inp):
+            prompt = inp["messages"][0][1]
+            prompts.append(prompt)
+            if "CMP-01" in prompt:   # CMP 배치: 두 param이 한 응답에
+                fake = {"data": {"series": [
+                    {"ts": "t1", "param": "slurry_flow", "value": 250.0},
+                    {"ts": "t1", "param": "down_force", "value": 5.0},
+                ], "normal_ranges": {"slurry_flow": [195, 210], "down_force": [4.5, 5.5]}}}
+            else:                    # DEPO 배치
+                fake = {"data": {"series": [{"ts": "t1", "param": "susceptor_temp", "value": 400.0}],
+                                "normal_ranges": {"susceptor_temp": [390, 410]}}}
+            return {"messages": [
+                ToolMessage(content=json.dumps(fake), name="query_telemetry", tool_call_id="t"),
+                AIMessage(content="배치 서사"),
+            ]}
+
+    monkeypatch.setattr(H, "create_react_agent", lambda model, tools: FakeAgent())
+
+    hyps = asyncio.run(H.investigate_group(
+        candidates, ["LOT1", "LOT2"], FakeMCP(),
+        ("2026-03-04 00:00:00", "2026-03-05 00:00:00"), tools=None, model=None,
+    ))
+
+    assert len(hyps) == 3
+    assert len(prompts) == 2                      # ← 배치의 핵심: step 2종 = 루프 2회 (후보 3회 아님)
+    by_cause = {h["cause"]: h for h in hyps}
+    assert by_cause["A"]["equipment"] == "CMP-01"
+    assert by_cause["A"]["evidence"]["drift_detected"] is True    # 250 > 210
+    assert by_cause["A"]["evidence"]["direction_match"] is True
+    assert by_cause["B"]["evidence"]["drift_detected"] is False   # 같은 1콜에서 동시 판정
+    assert by_cause["C"]["equipment"] == "DEPO-02"
+    assert by_cause["C"]["evidence"]["drift_detected"] is False   # 400 ∈ [390,410]
+    assert all(h["investigated"] for h in hyps)
+    assert all(h["evidence"]["normal_ratio"] == 0.2 for h in hyps)  # pre-pass 이어받음
