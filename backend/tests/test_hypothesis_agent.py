@@ -111,10 +111,10 @@ def test_investigate_group_batches_by_step(monkeypatch):
     candidates = [
         {"cause": "A", "tier": "자동", "step": "CMP", "evidence": "slurry_flow",
         "direction": "high", "sentence": "...", "citations": []},
-        {"cause": "B", "tier": "자동", "step": "CMP", "evidence": "down_force",
-        "direction": "low", "sentence": "...", "citations": []},
         {"cause": "C", "tier": "자동", "step": "DEPO", "evidence": "susceptor_temp",
         "direction": None, "sentence": "...", "citations": []},
+        {"cause": "B", "tier": "자동", "step": "CMP", "evidence": "down_force",
+        "direction": "low", "sentence": "...", "citations": []},
     ]
 
     class FakeMCP:
@@ -161,3 +161,5 @@ def test_investigate_group_batches_by_step(monkeypatch):
     assert by_cause["C"]["evidence"]["drift_detected"] is False   # 400 ∈ [390,410]
     assert all(h["investigated"] for h in hyps)
     assert all(h["evidence"]["normal_ratio"] == 0.2 for h in hyps)  # pre-pass 이어받음
+    # 내부는 CMP[A,B]·DEPO[C] 배치로 묶여 돌지만, 반환은 입력 순서 그대로 (kg rank 보존 = D1 전제)
+    assert [h["cause"] for h in hyps] == ["A", "C", "B"]

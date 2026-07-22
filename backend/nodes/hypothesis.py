@@ -37,10 +37,10 @@ from langchain_openai import ChatOpenAI
 #        팀원과 다시 짤 때는 여기부터 손보는 게 좋다.
 # 결정② route="direct"(step=null) 후보 — 그냥 step=None으로 commonality를 불러서
 #        전체 공정 뭉뚱그린 결과를 그대로 쓴다(신호가 흐려지는 걸 감수).
-# verify_one: 자동(Parameter) tier 후보를 에이전트(create_react_agent)로 검증한다.
-#   시그니처: verify_one(candidate, suspect, base_evidence, time_range, tools, model) -> Hypothesis
-#   base_evidence = Layer1 pre-pass(commonality/normal_ratio) 결과 — 에이전트는 그 위에 tier별 증거만 얹는다.
+# investigate_group(S2-2): 자동(Parameter) tier 후보 전부를 그룹 조사관(에이전트)이 step 배치로 검증한다.
+#   step당 pre-pass(commonality/normal_ratio) 1회 → query_telemetry 1콜(params 전부) → 후보별 분배.
 #   evidence는 LLM이 아니라 도구 반환(ToolMessage)에서 재구성한다(옵션 A). 반자동·근거없음은 결정론 경로 유지.
+#   (슬라이스1의 verify_one/_build_prompt는 배치로 흡수·삭제 — 필요하면 git 히스토리 참고)
 
 
 async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> dict:
@@ -58,34 +58,31 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
     time_range = await _group_time_range(lot_ids, mcp)
     defect_ts = await _group_defect_ts(lot_ids, mcp)
 
-# 슬라이스1: 자동 후보 1개만 에이전트로 (경로 증명). 나머지는 결정론.
-    agent_target = next((c for c in candidates if c["tier"] == "자동"), None)
-    tools = model = None
+    # S2-2: 자동 tier 전부 → 그룹 조사관(에이전트, step 배치). 반자동·근거없음 → 결정론 유지.
+    auto = [c for c in candidates if c["tier"] == "자동"]
+    agent_hyps: dict[int, Hypothesis] = {}
+    if auto:
+        tools = await mcp.get_agent_tools()            # 그룹당 1회
+        model = _make_model()
+        results = await investigate_group(auto, lot_ids, mcp, time_range, tools, model)
+        agent_hyps = dict(zip((id(c) for c in auto), results))  # 반환 순서 = 입력 순서 계약
 
     # 같은 (step, evidence_label, evidence)는 결과 재사용 — 결정①.
+    # 이제 반자동·근거없음 전용 (자동 tier의 캐시 역할은 배치 telemetry 1콜이 흡수).
     verify_cache: dict[tuple, tuple] = {}
     hypotheses: list[Hypothesis] = []
-    for candidate in candidates:
-        if candidate is agent_target:                          # ── 에이전트 경로
-            if tools is None:
-                tools = await mcp.get_agent_tools()            # 그룹당 1회
-                model = _make_model()
-            suspect, base_evidence = await _prepass(candidate, lot_ids, mcp)
-            if suspect is None:                                # 조사할 장비 없음 → 미조사
-                base_evidence["defect_ts"] = defect_ts
-                hypotheses.append(_det_hypothesis(candidate, suspect, base_evidence, investigated=False))
-                continue
-            hyp = await verify_one(candidate, suspect, base_evidence, time_range, tools, model)
-            hyp["evidence"]["defect_ts"] = defect_ts
-            hypotheses.append(hyp)                             # verify_one이 investigated=True 세팅
-        else:                                                  # ── 결정론 경로
-            key = (candidate["step"], candidate["evidence_label"], candidate["evidence"])
-            if key not in verify_cache:
-                verify_cache[key] = await _verify_unit(candidate, lot_ids, mcp, time_range)
-            suspect, evidence = verify_cache[key]
-            evidence = dict(evidence)
-            evidence["defect_ts"] = defect_ts
-            hypotheses.append(_det_hypothesis(candidate, suspect, evidence, investigated=False))
+    for candidate in candidates:          # 원래 순서(kg rank) 보존 — D1/§2.5 정렬 불변식
+        if id(candidate) in agent_hyps:
+            hypotheses.append(agent_hyps[id(candidate)])
+            continue
+        key = (candidate["step"], candidate["evidence_label"], candidate["evidence"])
+        if key not in verify_cache:
+            verify_cache[key] = await _verify_unit(candidate, lot_ids, mcp, time_range)
+        suspect, evidence = verify_cache[key]
+        hypotheses.append(_det_hypothesis(candidate, suspect, dict(evidence), investigated=False))
+
+    for hyp in hypotheses:                # 시간정합 기준(defect_ts) 일괄 스탬프 — ④가 수집(firewall)
+        hyp["evidence"]["defect_ts"] = defect_ts
 
     return {"hypotheses": {group_id: hypotheses}}
 
@@ -107,12 +104,6 @@ def _det_hypothesis(candidate, suspect, evidence, investigated: bool) -> Hypothe
     }
 
 
-async def verify_one(candidate, suspect, base_evidence, time_range, tools, model) -> dict:
-    agent = create_react_agent(model, tools)
-    prompt = _build_prompt(candidate, suspect, time_range)     # 고정키 주입 + 소프트힌트
-    result = await agent.ainvoke({"messages": [("user",prompt)]})
-    return _to_hypothesis(candidate, result, suspect, base_evidence)
-
 
 async def investigate_group(
     candidates: list[GraphRAGCandidate], lot_ids: list[str], mcp: MCPClient,
@@ -124,51 +115,31 @@ async def investigate_group(
     query_telemetry 1콜(params 전부) → _to_hypotheses_batch로 후보별 분배.
     suspect가 없으면(공통 장비 특정 불가) 그 배치는 결정론 폴백(investigated=False).
     루프 상한/중단 기준은 S2-5에서 — 지금은 step 배치 순회 1패스.
+
+    반환 순서 = 입력 candidates 순서(kg rank 보존). build_hypotheses가 zip으로
+    후보↔가설을 맞추는 전제이자, D1/§2.5 정렬 불변식 유지 장치(S2-4 재랭킹 전까지).
     """
-    hypotheses: list[Hypothesis] = []
     by_step: dict = {}
     for c in candidates:
         by_step.setdefault(c["step"], []).append(c)   # step=None(결정②)도 자기들끼리 한 배치
 
+    pairs: list[tuple[GraphRAGCandidate, Hypothesis]] = []
     for step, batch in by_step.items():
         suspect, base_evidence = await _prepass(batch[0], lot_ids, mcp)  # step 공통 → 대표 1개로 1회
         if suspect is None:                    # 조사할 장비 없음 → 배치 전체 미조사 폴백
-            hypotheses.extend(
-                _det_hypothesis(c, suspect, dict(base_evidence), investigated=False) for c in batch
+            pairs.extend(
+                (c, _det_hypothesis(c, suspect, dict(base_evidence), investigated=False)) for c in batch
             )
             continue
         params = list(dict.fromkeys(c["evidence"] for c in batch))   # 중복 제거 + 순서 보존
         agent = create_react_agent(model, tools)
         prompt = _build_group_prompt(batch, suspect, params, time_range)
         result = await agent.ainvoke({"messages": [("user", prompt)]})
-        hypotheses.extend(_to_hypotheses_batch(batch, result, suspect, base_evidence))
-    return hypotheses
+        pairs.extend(zip(batch, _to_hypotheses_batch(batch, result, suspect, base_evidence)))
 
+    order = {id(c): i for i, c in enumerate(candidates)}
+    return [h for _, h in sorted(pairs, key=lambda p: order[id(p[0])])]
 
-def _build_prompt(candidate: GraphRAGCandidate, suspect: str, time_range: tuple[str, str]) -> str:
-    return f"""너는 웨이퍼 결함의 원인 가설을 fab 운영데이터로 검증하는 에이전트다.
-
-[검증 대상 — 아래 값은 확정된 사실이다. 바꾸거나 지어내지 마라]
-- 의심 원인(cause): {candidate['cause']}
-- 의심 장비(equipment_id): {suspect}
-- 확인할 신호(evidence): {candidate['evidence']}
-- 공정 단계(step): {candidate['step']}
-- 조회 테이블(fab_table): {candidate['fab_table']}
-- 예상 방향(direction): {candidate.get('direction')}
-- 검증 시간창(time_range): {time_range[0]} ~ {time_range[1]}
-- KG 문헌 근거: {candidate['sentence']}
-
-[참고 힌트 — 조사 방향 참고용, 절대 사실로 인용하지 마라]
-- 검증등급(tier): {candidate['tier']}  (자동 = query_telemetry로 센서 시계열 확인)
-- 시나리오 힌트: {candidate.get('scenario_hint')}
-
-[규칙]
-- 도구 인자로는 위의 equipment_id / evidence / time_range 만 사용하라.
-- 인용하는 수치는 반드시 도구가 반환한 값이어야 한다. 값을 추정하거나 지어내지 마라.
-- 조회 결과 데이터가 없으면 "없음"으로 보고하라. 없는 것을 있는 것처럼 말하지 마라.
-- 검증에 필요한 도구를 호출한 뒤, 무엇을 확인했고 이 원인 가설을
-뒷받침하는지/반박하는지 한 문단으로 정리하라.
-"""
 
 def _build_group_prompt(
     candidates: list[GraphRAGCandidate], suspect: str, params: list[str], time_range: tuple[str, str]
