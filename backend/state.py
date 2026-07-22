@@ -131,7 +131,8 @@ class Hypothesis(TypedDict):
     # judge_unknown = 근거없음(P5) + 반자동 미조사(SEMI_AUTO). ④는 이 필드를 직접 안 채운다.
     verdict: NotRequired[str]
     investigated: NotRequired[bool]          # investigate_group이 실제 조사(도구호출/unit판정 상속)했으면 True, 미조사 False → judge_unknown
-
+    cluster_id: NotRequired[str]             # unit+direction 병합 키(_cluster_key) — 같은 id = 같은 원인군
+    is_primary: NotRequired[bool]            # 파편화 cause의 대표(주 증거) 행 — cause당 1행만 True
 
 class CriticResult(TypedDict):
     """⑤ Critic 노드 출력."""

@@ -81,6 +81,9 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
         suspect, evidence = verify_cache[key]
         hypotheses.append(_det_hypothesis(candidate, suspect, dict(evidence), investigated=False))
 
+    # 클러스터 id + cause 대표 행 주석 — 순서·행 수 불변
+    _annotate_clusters(candidates, hypotheses)
+
     for hyp in hypotheses:                # 시간정합 기준(defect_ts) 일괄 스탬프 — ④가 수집(firewall)
         hyp["evidence"]["defect_ts"] = defect_ts
 
