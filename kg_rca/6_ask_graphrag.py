@@ -463,6 +463,20 @@ def fetch_hypotheses_by_signature(graph: Neo4jGraph, signature: str) -> list[dic
     return _rank_and_sort(rows, pattern=None)
 
 
+def fetch_hypotheses_step_direct(graph: Neo4jGraph, pattern: str) -> list[dict]:
+    """패턴 진입에서 **형상 경로만 뺀** 것: ARISES_IN(step) + ATTRIBUTED_TO(direct).
+
+    (A) 방식용 — 기지 패턴에서 형상 경로는 NL이 고른 시그니처의 순회로 대체하되,
+    패턴 레벨 원인(공정 경유·문헌 직결)은 이 함수로 유지한다. signature 경로는 여기서 빼서
+    NL-선정 시그니처의 morphology 보존 후보와 dedup 충돌하지 않게 한다.
+    """
+    rows = graph.query(HYPOTHESIS_QUERY, params={"pattern": pattern})
+    for row in rows:
+        row["route"] = "step"
+    rows += graph.query(DIRECT_QUERY, params={"pattern": pattern})
+    return _rank_and_sort(rows, pattern)
+
+
 def _rank_and_sort(rows: list[dict], pattern: str | None) -> list[dict]:
     """진입 경로에서 나온 원시 행들을 dedup·점수화·정렬해 가설 목록으로 만든다.
 

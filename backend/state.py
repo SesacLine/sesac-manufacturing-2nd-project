@@ -1,7 +1,7 @@
 """RCAState — LangGraph 파이프라인 전체가 공유하는 상태.
 
 필드 정의는 산출물_데이터모델설계.md §3/§3.0(Semiconductor/personalspace/0708 work/)이 정본이다.
-GraphRAG 후보(candidates) 필드 구조는 kg_rca schema v2.4(SesacLine_SemiRCA/docs/KG_schema_v1.2.md,
+GraphRAG 후보(candidates) 필드 구조는 kg_rca schema v2.5(docs/KG_schema_v1.3.md,
 출력 필드 상세는 kg_rca/KG_output_명세.md)의 hypotheses.json 출력을 그대로 따른다 —
 cause/failure_mode 문자열은 fab.db와 join key가 아니다.
 """
@@ -31,6 +31,27 @@ class VLMResult(TypedDict):
     ambiguity: bool
 
 
+class Observation(TypedDict):
+    """③ 관측 — 그룹(스택맵) 단위 1건. KG 조회(get_candidates)의 관측 입력.
+
+    CNN 라벨 + VLM 자연어(스택 이미지 판독) + die-matrix(스택맵 통계)를 합친 것.
+    웨이퍼별 판독을 합치는 집계 과정은 **없다** — VLM/die-matrix가 같은 CNN 라벨 웨이퍼들의
+    die_map을 오버레이한 스택맵에 1회 적용되므로 애초에 그룹 단위로 생산된다.
+    location_text/morphology_text(자연어)는 의미 진입(임베딩)에, angular 등(구조화)은 판별자에 쓰인다.
+    """
+
+    pattern_candidate: str                       # CNN 라벨 (3종 or "Unknown"). = Group["pattern"]
+    location_text: str                           # VLM 자연어 (공간 분포)
+    morphology_text: str                         # VLM 자연어 (형상)
+    angular_coverage: NotRequired[str]           # die-matrix: full|partial|unknown
+    clock_positions: NotRequired[list[int]]      # die-matrix: 1~12 (partial일 때만)
+    density: NotRequired[str]                    # high|medium|low|unknown
+    continuity: NotRequired[str]                 # continuous|intermittent|discontinuous|not_applicable|unknown
+    defect_die_ratio: NotRequired[float]         # die-matrix 정량값
+    description: NotRequired[str]                # location+morphology 대체용 단일 서술(폴백)
+    signature: NotRequired[str | None]           # 규칙 정규화가 shape@zone을 직접 줄 때만(선택)
+
+
 class Group(TypedDict):
     """② Grouper 노드 출력."""
 
@@ -38,6 +59,9 @@ class Group(TypedDict):
     pattern: str
     lot_ids: list[str]
     status: str
+    # ③ VLM+die-matrix(스택맵)가 채우는 그룹 단위 관측 1건. 미배선 시 없음/None.
+    # nodes/graphrag.py가 group.get("observation")으로 읽어 get_candidates에 넘긴다.
+    observation: NotRequired[Observation | None]
 
 
 class Citation(TypedDict):

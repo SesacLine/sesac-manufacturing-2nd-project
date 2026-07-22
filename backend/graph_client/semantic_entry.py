@@ -78,12 +78,17 @@ class SemanticSignatureIndex:
         self._index = index
         self._embed = embed_fn
 
-    def match(self, query_text: str, k: int = 3) -> list[tuple[str, float]]:
-        """(sig_id, cosine) 상위 k개. 결정적(같은 임베딩이면 같은 순서)."""
+    def match(self, query_text: str, k: int = 3, allowed: set | None = None) -> list[tuple[str, float]]:
+        """(sig_id, cosine) 상위 k개. 결정적(같은 임베딩이면 같은 순서).
+
+        allowed가 주어지면 그 시그니처 집합으로 매칭 범위를 제한한다((A) 방식: pattern_candidate가
+        HAS_SIGNATURE 시그니처로 좁힌 범위). None이면 인덱스 전체(미지 패턴).
+        """
         query_vec = self._embed(query_text)
         scored = [
             (sig, _cosine(query_vec, entry["embedding"]))
             for sig, entry in self._index.items()
+            if allowed is None or sig in allowed
         ]
         scored.sort(key=lambda pair: (-pair[1], pair[0]))  # 유사도 내림차순, 동점은 id로 결정적
         return scored[:k]
