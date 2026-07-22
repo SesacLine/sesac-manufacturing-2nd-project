@@ -58,6 +58,8 @@ kg_rca/data/raw/_reference/
 kg_rca/outputs/chunks.jsonl
 kg_rca/outputs/extracted_kg.jsonl
 kg_rca/outputs/parsed_docs.jsonl
+# 의미 진입(옵션2) 시그니처 임베딩 인덱스 — 그래프에서 재생성 가능(semantic_entry.build_signature_index)
+kg_rca/outputs/signature_index.json
 
 # 개인 작업공간
 personalspace_rca/

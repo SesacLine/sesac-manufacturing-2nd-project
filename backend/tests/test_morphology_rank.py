@@ -1,0 +1,63 @@
+"""angular_coverage 판별자 재정렬(설계 B) 단위 테스트.
+
+LLM/Neo4j 없이 결정적으로 도는 순수 함수 검증.
+"""
+
+from __future__ import annotations
+
+from backend.graph_client.morphology_rank import (
+    morphology_penalty,
+    rerank_by_observation,
+)
+
+
+def _cand(cause, morphology):
+    return {"cause": cause, "morphology": morphology}
+
+
+FULL = {"density": "high", "continuity": "continuous", "angular_coverage": "full", "clock_positions": []}
+PARTIAL = {"density": "low", "continuity": "discontinuous", "angular_coverage": "partial", "clock_positions": [5, 6, 7]}
+
+
+def test_no_observation_preserves_order():
+    cands = [_cand("a", FULL), _cand("b", PARTIAL)]
+    out = rerank_by_observation(cands, None)
+    assert [c["cause"] for c in out] == ["a", "b"]
+
+
+def test_angular_mismatch_demotes_contradicting_candidate():
+    # 관측 = partial arc. full-ring 후보(a)는 상충 → 아래로, partial 후보(b)는 유지.
+    obs = PARTIAL
+    cands = [_cand("a", FULL), _cand("b", PARTIAL)]
+    out = rerank_by_observation(cands, obs)
+    assert [c["cause"] for c in out] == ["b", "a"]
+    assert out[0]["morphology_score"] == 0.0        # partial 일치 → 무벌점
+    assert out[1]["morphology_score"] <= -10.0      # full vs partial → 강한 강등
+
+
+def test_demote_only_never_promotes_over_evidence():
+    # 완전 일치해도 점수는 0(중립). 근거 기반 원래 순서를 인위적으로 끌어올리지 않는다.
+    obs = FULL
+    cands = [_cand("strong_step_route", None), _cand("matching_signature", FULL)]
+    out = rerank_by_observation(cands, obs)
+    assert [c["cause"] for c in out] == ["strong_step_route", "matching_signature"]
+    assert all(c["morphology_score"] == 0.0 for c in out)
+
+
+def test_no_morphology_candidate_is_neutral():
+    # step/direct 경로(morphology=None)는 어떤 관측에도 0점 → 순서에 영향 없음.
+    assert morphology_penalty(PARTIAL, None) == 0.0
+
+
+def test_partial_clock_disjoint_small_penalty():
+    obs = {"angular_coverage": "partial", "clock_positions": [1, 2]}
+    cand = {"angular_coverage": "partial", "clock_positions": [7, 8]}
+    # angular 일치(partial==partial)라 판별자 무벌점, 시계만 완전히 어긋나 소폭 감점.
+    assert morphology_penalty(obs, cand) == -3.0
+
+
+def test_unknown_is_skipped():
+    obs = {"angular_coverage": "unknown", "density": "high", "continuity": "unknown"}
+    cand = {"angular_coverage": "full", "density": "low", "continuity": "continuous"}
+    # angular/continuity는 unknown이라 건너뛰고, density만 상충 → -1.
+    assert morphology_penalty(obs, cand) == -1.0
