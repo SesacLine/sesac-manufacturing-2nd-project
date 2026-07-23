@@ -49,7 +49,7 @@ def test_process_stream_item_outer_signal_returns_state_delta():
 def test_process_stream_item_inner_signal_returns_no_state_delta():
     from backend.batch_runner import process_stream_item
 
-    new_step, delta = process_stream_item(
+    _, delta = process_stream_item(
         namespace=("run_groups:abc123", "fetch_graphrag_candidates:xyz"),
         update={"fetch_graphrag_candidates": {"candidates": []}},
         current_step=2,
