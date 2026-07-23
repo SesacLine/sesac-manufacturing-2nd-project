@@ -13,7 +13,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from .graph_client import KGClient, LiveKGClient
-from .graph_client.semantic_entry import EMBEDDING_MODEL, SemanticSignatureIndex, load_index
+from .graph_client.semantic_entry import (
+    EMBEDDING_MODEL,
+    MIN_MATCH_SCORE,
+    SemanticSignatureIndex,
+    load_index,
+)
 from .mcp_client import MCPClient
 
 load_dotenv()
@@ -70,7 +75,8 @@ def _semantic_index() -> SemanticSignatureIndex | None:
         # 인덱스를 만든 모델과 반드시 동일해야 한다 (semantic_entry.EMBEDDING_MODEL).
         from langchain_openai import OpenAIEmbeddings
         embedder = OpenAIEmbeddings(model=EMBEDDING_MODEL)
-        _semantic = SemanticSignatureIndex(load_index(path), embedder.embed_query)
+        min_score = float(os.getenv("KG_SEMANTIC_MIN_SCORE", MIN_MATCH_SCORE))
+        _semantic = SemanticSignatureIndex(load_index(path), embedder.embed_query, min_score=min_score)
     except Exception as exc:   # noqa: BLE001 — 키 미설정 등 어떤 초기화 실패도 기동은 살린다
         print(f"[deps] 의미 진입 초기화 실패({exc!r}) — enum/패턴 진입만 사용")
         _semantic = None

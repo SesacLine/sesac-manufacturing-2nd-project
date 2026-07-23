@@ -71,6 +71,26 @@ def test_valid_index_wires_semantic(monkeypatch, tmp_path):
     assert deps._semantic_index() is sem                                  # 싱글턴 캐시
 
 
+def test_min_score_env_override(monkeypatch, tmp_path):
+    index_path = tmp_path / "signature_index.json"
+    index_path.write_text(json.dumps({"ring@edge": {"text": "t", "embedding": [1.0, 0.0]}}))
+    monkeypatch.delenv("KG_SEMANTIC", raising=False)
+    monkeypatch.setenv("KG_SIGNATURE_INDEX_PATH", str(index_path))
+    monkeypatch.setenv("KG_SEMANTIC_MIN_SCORE", "0.99")
+
+    class _FakeEmbeddings:
+        def __init__(self, model): ...
+        def embed_query(self, text):
+            return [0.7, 0.7]   # ring@edge와 코사인 ≈0.707 — 0.99 하한엔 미달
+
+    import langchain_openai
+    monkeypatch.setattr(langchain_openai, "OpenAIEmbeddings", _FakeEmbeddings)
+
+    sem = deps._semantic_index()
+    assert sem is not None
+    assert sem.match("whatever", k=1) == []   # env 하한이 실제로 적용됨
+
+
 def test_default_index_path_points_to_kg_rca_outputs(monkeypatch):
     monkeypatch.delenv("KG_SIGNATURE_INDEX_PATH", raising=False)
     p = deps._signature_index_path()

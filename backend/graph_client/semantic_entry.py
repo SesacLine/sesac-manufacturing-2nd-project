@@ -18,6 +18,14 @@ from pathlib import Path
 # 모델이 다르면 벡터 공간이 달라 코사인 비교가 무의미해진다. 양쪽 다 이 상수를 참조할 것.
 EMBEDDING_MODEL = "text-embedding-3-small"
 
+# 매칭 하한 — 이보다 덜 닮으면 진입 시그니처로 인정하지 않는다.
+# top-k는 "안 닮아도 무조건 k개"를 돌려주므로, 하한 없이는 어떤 형상과도 무관한 관측이
+# 그럴듯한 후보를 달고 나온다(환각 억제 원칙 위배). 하한 미달이면 빈 결과를 내고,
+# 호출부(LiveKGClient)는 기지 패턴이면 패턴 레벨 원인만, Unknown이면 candidates=[]
+# (→ insufficient_evidence 흐름)로 처리한다.
+# 실측 근거(text-embedding-3-small, 07-23): 정답 매칭 0.53~0.71, 오답 상위 0.44~0.48.
+MIN_MATCH_SCORE = 0.4
+
 # 각 시그니처의 매칭용 서술 재료를 그래프에서 모은다.
 SIGNATURE_TEXT_QUERY = """
 MATCH (sg:SpatialSignature)
@@ -78,21 +86,24 @@ def _cosine(a: list[float], b: list[float]) -> float:
 class SemanticSignatureIndex:
     """빌드된 인덱스 + 임베더로 자연어 질의를 top-k 시그니처로 매칭한다."""
 
-    def __init__(self, index: dict, embed_fn) -> None:
+    def __init__(self, index: dict, embed_fn, min_score: float = MIN_MATCH_SCORE) -> None:
         self._index = index
         self._embed = embed_fn
+        self._min_score = min_score
 
     def match(self, query_text: str, k: int = 3, allowed: set | None = None) -> list[tuple[str, float]]:
-        """(sig_id, cosine) 상위 k개. 결정적(같은 임베딩이면 같은 순서).
+        """(sig_id, cosine) 상위 k개 — 단 min_score 미달은 제외라 k개 미만·빈 리스트일 수 있다.
+        결정적(같은 임베딩이면 같은 순서).
 
         allowed가 주어지면 그 시그니처 집합으로 매칭 범위를 제한한다((A) 방식: pattern_candidate가
         HAS_SIGNATURE 시그니처로 좁힌 범위). None이면 인덱스 전체(미지 패턴).
         """
         query_vec = self._embed(query_text)
         scored = [
-            (sig, _cosine(query_vec, entry["embedding"]))
+            (sig, score)
             for sig, entry in self._index.items()
-            if allowed is None or sig in allowed
+            if (allowed is None or sig in allowed)
+            and (score := _cosine(query_vec, entry["embedding"])) >= self._min_score
         ]
         scored.sort(key=lambda pair: (-pair[1], pair[0]))  # 유사도 내림차순, 동점은 id로 결정적
         return scored[:k]

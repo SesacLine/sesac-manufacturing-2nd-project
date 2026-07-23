@@ -53,6 +53,33 @@ def test_match_is_deterministic_and_topk():
     assert out == sem.match("ring ring center", k=2)   # 재현성
 
 
+def test_min_score_filters_dissimilar():
+    sem = SemanticSignatureIndex(INDEX, _fake_embed)
+    # 어떤 형상 키워드도 없는 서술 → 전 시그니처와 코사인 0 → 하한 미달 → 빈 결과
+    assert sem.match("completely unrelated telemetry noise", k=3) == []
+    # 하한을 낮추면 다시 나온다 (하한이 실제로 걸러냈다는 증거)
+    loose = SemanticSignatureIndex(INDEX, _fake_embed, min_score=-1.0)
+    assert len(loose.match("ring", k=3)) == 3
+
+
+def test_unknown_with_garbage_description_returns_empty():
+    # Unknown + 아무 형상과도 안 닮은 서술 → 진입 0 → candidates=[] (insufficient_evidence 흐름)
+    sem = SemanticSignatureIndex(INDEX, _fake_embed)
+    client = LiveKGClient(graph=FakeGraph(), semantic_index=sem, semantic_k=3)
+    out = client.get_candidates("Unknown", observation={"description": "unrelated noise"})
+    assert out["candidates"] == []
+    assert "entry_signatures" not in out
+
+
+def test_known_with_garbage_description_keeps_pattern_level_only():
+    # 기지 패턴 + 안 닮은 서술 → 형상 진입은 0이지만 패턴 레벨(step/direct) 원인은 유지
+    sem = SemanticSignatureIndex(INDEX, _fake_embed)
+    client = LiveKGClient(graph=KnownPatternFakeGraph(), semantic_index=sem, semantic_k=3)
+    out = client.get_candidates("Edge-Ring", observation={"description": "unrelated noise"})
+    assert "entry_signatures" not in out
+    assert {c["step"] for c in out["candidates"]} == {"DEPO"}   # step 경로만 (형상 경로 없음)
+
+
 # --- LiveKGClient 의미 진입 브랜치 ---
 
 def _sig_row(step, angular, clock):
