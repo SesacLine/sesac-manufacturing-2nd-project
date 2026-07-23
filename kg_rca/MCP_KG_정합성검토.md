@@ -64,8 +64,8 @@
 | OK-6 | B1(negative evidence)은 KG와 독립 — 출력이 방해하지 않음 | — |
 | OK-7 | Scratch 원인 실제 겹침 — 패드 마모·슬러리 대입자가 문서 매핑표와 KG 양쪽에 존재 | 교과서 CMP 표 |
 | OK-8 | MCP 3.1 매핑표와 직접 연동 — `mapping_table.yaml`을 오버레이로 소비, `prob`·`citation`·신호가 가설에 실림 | 매핑 오버레이 |
-| OK-9 | 순위가 측정값 기반 — `(occurrence_prior, evidence_docs, evidence_chunks)`. "그럴듯한 순서"(rank)와 "확인 방법"(tier)이 독립 | v2.4 출력 |
-| OK-10 | 미지 패턴 대응 기반 — 형상 관측을 shape/zone enum으로 분류하면 `SpatialSignature`부터 순회 가능 (A0 분기 2 지원) | v2.4 형상 레이어 |
+| OK-9 | 순위가 측정값 기반 — `(occurrence_prior, evidence_docs, evidence_chunks)`. "그럴듯한 순서"(rank)와 "확인 방법"(tier)이 독립 | 현행 출력 |
+| OK-10 | 미지 패턴 대응 기반 — 형상 관측을 shape/zone enum으로 분류하면 `SpatialSignature`부터 순회 가능 (A0 분기 2 지원) | 형상 레이어 |
 | OK-11 | **Edge-bead removal 취소선 삭제** — KG가 스코프 밖으로 버려온 판단과 문서가 일치하게 됨 | 개정판 §3.1 |
 | OK-12 | **Center-세정 행의 역할 합의** — 취소선 해제로 복원하되 문헌 무근거 큐레이션 항목(함정 후보)으로 위치 확정. yaml과 재정렬 (N4 해소) | 07-13 결정 |
 | OK-13 | **§6 Agent 결합 1단계와 부합** — "KG/문헌에서 후보 원인 공정 확보"는 `hypotheses.json`의 `pattern`→`path.step`/`cause`로 충족 | 개정판 §6 |

@@ -1,7 +1,7 @@
 """RCAState — LangGraph 파이프라인 전체가 공유하는 상태.
 
 필드 정의는 산출물_데이터모델설계.md §3/§3.0(Semiconductor/personalspace/0708 work/)이 정본이다.
-GraphRAG 후보(candidates) 필드 구조는 kg_rca schema v2.5(docs/KG_schema_v1.3.md,
+GraphRAG 후보(candidates) 필드 구조는 kg_rca 스키마(docs/KG_schema_v1.4.md,
 출력 필드 상세는 kg_rca/KG_output_명세.md)의 hypotheses.json 출력을 그대로 따른다 —
 cause/failure_mode 문자열은 fab.db와 join key가 아니다.
 """

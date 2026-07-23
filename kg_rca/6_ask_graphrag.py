@@ -1,14 +1,16 @@
-"""
-관측된 불량 패턴 → 근본 원인 가설 3건.
+"""관측된 불량 패턴 → 근본 원인 가설 목록 (outputs/hypotheses.json).
 
-질문이 "{패턴} 결함 패턴이 나타나는 근본 원인은 무엇인가요?" 하나로 고정이므로
-Cypher를 LLM에게 생성시키지 않는다(구 버전은 6_ask_graphrag_backup.py).
-그래프 순회는 결정적으로 하고, LLM은 뽑아온 사실을 가설 문장으로 옮기기만 한다.
+그래프 순회는 손으로 쓴 고정 Cypher로 결정적으로 한다 — LLM이 Cypher를 생성하지 않는다
+(구 Text2Cypher 버전은 backup/6_ask_graphrag_backup.py). LLM은 순회로 뽑은 사실을 한국어
+가설 문장으로 옮길 때만 쓴다.
 
-가설 1건 = DefectPattern -ARISES_IN-> ProcessStep <-OCCURS_IN- FailureMode
-            -CAUSED_BY-> Cause -INVOLVES_PARAMETER-> Parameter
+가설 1건 = 그래프 경로 1개. 세 경로:
+  공정 경유: DefectPattern -ARISES_IN-> ProcessStep <-OCCURS_IN- FailureMode -CAUSED_BY-> Cause -VERIFIED_BY-> Evidence
+  형상 경유: DefectPattern -HAS_SIGNATURE-> SpatialSignature -FORMS_IN-> ProcessStep -> ...
+  문헌 직결: DefectPattern -ATTRIBUTED_TO-> Cause
+Evidence(Parameter/Maintenance/Recipe)에 닿지 않는 Cause도 [근거없음] 가설로 낸다(버리지 않는다).
 
-Parameter까지 이어지지 않는 경로는 가설로 치지 않는다. fab SQL로 검증할 수 없기 때문이다.
+스키마 정본: ../docs/KG_schema_v1.4.md · 출력 필드 명세: KG_output_명세.md
 """
 
 import os
@@ -673,7 +675,6 @@ def main() -> None:
             "model": OPENAI_MODEL,
             "neo4j_database": NEO4J_DATABASE,
             "top_k": TOP_K,
-            "question_template": "{pattern} 결함 패턴이 나타나는 근본 원인은 무엇인가요?",
             "tier_legend": {
                 "자동": "Parameter. telemetry.param과 결정적 조인 + 정상범위 판정. agent가 결론까지.",
                 "반자동": "Maintenance/Recipe. fab 테이블 조회는 되지만 판정은 사람 몫.",
@@ -688,12 +689,11 @@ def main() -> None:
 
     for pattern in load_pattern_ids():
         print("=" * 80)
-        print(f"질문: {pattern} 결함 패턴이 나타나는 근본 원인은 무엇인가요?")
+        print(f"패턴: {pattern}")
         print()
 
         rows = fetch_hypotheses(graph, pattern)
 
-        # question 문자열은 meta.question_template + pattern으로 유도되므로 싣지 않는다.
         entry = {
             "pattern": pattern,
             "counts": {},

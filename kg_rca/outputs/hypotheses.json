@@ -4,7 +4,6 @@
     "model": "gpt-5.4-mini",
     "neo4j_database": "neo4j",
     "top_k": null,
-    "question_template": "{pattern} 결함 패턴이 나타나는 근본 원인은 무엇인가요?",
     "tier_legend": {
       "자동": "Parameter. telemetry.param과 결정적 조인 + 정상범위 판정. agent가 결론까지.",
       "반자동": "Maintenance/Recipe. fab 테이블 조회는 되지만 판정은 사람 몫.",
