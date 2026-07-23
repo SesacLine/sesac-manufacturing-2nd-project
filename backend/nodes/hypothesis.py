@@ -23,9 +23,11 @@ from ..mcp_client import MCPClient
 from ..state import EvidenceEntry, GraphRAGCandidate, Hypothesis, RCAState
 from langgraph.prebuilt import create_react_agent    # 또는 수동 루프(LangGraph_fs.md 7.2)
 from langchain_core.messages import ToolMessage
+from langgraph.errors import GraphRecursionError
 from ..mcp_client.client import _as_dict   # 도구 반환 정규화 헬퍼 재사용
 import os
 from langchain_openai import ChatOpenAI
+
 
 # --- 0713 Walking Skeleton: 팀 결정 3가지를 전부 "가장 단순한 선택"으로 하드코딩했다.
 # 나중에 팀원과 다시 짤 때 이 세 지점부터 보면 된다(personalspace/0713 work/skeleton_kickoff.md §5).
@@ -93,6 +95,12 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
     return {"hypotheses": {group_id: hypotheses}}
 
 
+# S2-5: 배치당 에이전트 루프 스텝 상한 (기획안 §9 "검증 라운드 상한" 이행).
+# 정상 경로 = agent→tools(1콜)→agent 3스텝. 8이면 예상 밖 재호출 2~3번까지 허용하되
+# 폭주(1콜 지시 불이행 반복)는 끊는다. 초과 시 그 배치는 미조사 폴백(아래 investigate_group).
+AGENT_RECURSION_LIMIT = 8
+
+
 def _make_model():
       return ChatOpenAI(model=os.environ["OPENAI_MODEL"], temperature=0)   # temp=0 = 재현성(§8-7)
 
@@ -120,7 +128,8 @@ async def investigate_group(
     step별로 묶어 pre-pass(공통조회) 1회 → suspect 확정 → 에이전트 1루프가
     query_telemetry 1콜(params 전부) → _to_hypotheses_batch로 후보별 분배.
     suspect가 없으면(공통 장비 특정 불가) 그 배치는 결정론 폴백(investigated=False).
-    루프 상한/중단 기준은 S2-5에서 — 지금은 step 배치 순회 1패스.
+    배치당 에이전트 스텝 상한 = AGENT_RECURSION_LIMIT(S2-5) — 초과(폭주) 시에도
+    같은 미조사 폴백으로 안전하게 무너진다. 조기 종료는 없음(후보 전량이 증거를 받아야 함).
 
     반환 순서 = 입력 candidates 순서. build_hypotheses의 원순서 조립과
     _annotate_clusters의 zip이 이 계약을 전제한다 — S2-4 재랭킹이 생긴 뒤에도
@@ -141,7 +150,18 @@ async def investigate_group(
         params = list(dict.fromkeys(c["evidence"] for c in batch))   # 중복 제거 + 순서 보존
         agent = create_react_agent(model, tools)
         prompt = _build_group_prompt(batch, suspect, params, time_range)
-        result = await agent.ainvoke({"messages": [("user", prompt)]})
+        try:
+            result = await agent.ainvoke(
+                {"messages": [("user", prompt)]},
+                {"recursion_limit": AGENT_RECURSION_LIMIT},
+            )
+        except GraphRecursionError:
+            # 상한 초과 = 폭주. "조사됐다 거짓 표시" 대신 배치 전체 미조사 폴백 —
+            # suspect None 폴백과 같은 안전한 무너짐(⑤ judge_unknown 재료).
+            pairs.extend(
+                (c, _det_hypothesis(c, suspect, dict(base_evidence), investigated=False)) for c in batch
+            )
+            continue
         pairs.extend(zip(batch, _to_hypotheses_batch(batch, result, suspect, base_evidence)))
 
     order = {id(c): i for i, c in enumerate(candidates)}

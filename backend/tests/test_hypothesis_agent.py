@@ -127,7 +127,7 @@ def test_investigate_group_batches_by_step(monkeypatch):
 
     prompts = []
     class FakeAgent:
-        async def ainvoke(self, inp):
+        async def ainvoke(self, inp, config=None):
             prompt = inp["messages"][0][1]
             prompts.append(prompt)
             if "CMP-01" in prompt:   # CMP 배치: 두 param이 한 응답에
@@ -162,6 +162,61 @@ def test_investigate_group_batches_by_step(monkeypatch):
     assert all(h["investigated"] for h in hyps)
     assert all(h["evidence"]["normal_ratio"] == 0.2 for h in hyps)  # pre-pass 이어받음
     # 내부는 CMP[A,B]·DEPO[C] 배치로 묶여 돌지만, 반환은 입력 순서 그대로 (kg rank 보존 = D1 전제)
+    assert [h["cause"] for h in hyps] == ["A", "C", "B"]
+
+
+def test_investigate_group_recursion_limit_fallback(monkeypatch):
+    import asyncio
+    from langgraph.errors import GraphRecursionError
+    from backend.nodes import hypothesis as H
+
+    candidates = [
+        {"cause": "A", "tier": "자동", "step": "CMP", "evidence": "slurry_flow",
+        "direction": "high", "sentence": "...", "citations": []},
+        {"cause": "C", "tier": "자동", "step": "DEPO", "evidence": "susceptor_temp",
+        "direction": None, "sentence": "...", "citations": []},
+        {"cause": "B", "tier": "자동", "step": "CMP", "evidence": "down_force",
+        "direction": "low", "sentence": "...", "citations": []},
+    ]
+
+    class FakeMCP:
+        async def run_commonality_analysis(self, lot_ids, step=None):
+            eq = {"CMP": "CMP-01", "DEPO": "DEPO-02"}[step]
+            return {"data": {"n_lots": 2, "commonality": {"equipment_id": [
+                {"value": eq, "lot_count": 2, "ratio": 1.0}]}}}
+        async def get_normal_lot_ratio(self, equipment_id):
+            return {"data": {"normal_ratio": 0.2}}
+
+    class FakeAgent:
+        async def ainvoke(self, inp, config=None):
+            prompt = inp["messages"][0][1]
+            if "CMP-01" in prompt:            # CMP 배치만 폭주 → 상한 초과
+                raise GraphRecursionError("recursion limit reached")
+            fake = {"data": {"series": [{"ts": "t1", "param": "susceptor_temp", "value": 400.0}],
+                            "normal_ranges": {"susceptor_temp": [390, 410]}}}
+            return {"messages": [
+                ToolMessage(content=json.dumps(fake), name="query_telemetry", tool_call_id="t"),
+                AIMessage(content="배치 서사"),
+            ]}
+
+    monkeypatch.setattr(H, "create_react_agent", lambda model, tools: FakeAgent())
+
+    hyps = asyncio.run(H.investigate_group(
+        candidates, ["LOT1", "LOT2"], FakeMCP(),
+        ("2026-03-04 00:00:00", "2026-03-05 00:00:00"), tools=None, model=None,
+    ))
+
+    by_cause = {h["cause"]: h for h in hyps}
+    # 폭주 배치(CMP): "조사됐다 거짓 표시" 없이 미조사 폴백 — telemetry 없음, pre-pass 값은 보존
+    assert by_cause["A"]["investigated"] is False
+    assert by_cause["B"]["investigated"] is False
+    assert by_cause["A"]["evidence"]["drift_detected"] is None
+    assert by_cause["A"]["evidence"]["normal_ratio"] == 0.2   # pre-pass 이어받음
+    assert by_cause["A"]["equipment"] == "CMP-01"             # suspect 확정까지는 유효
+    # 정상 배치(DEPO)는 영향 없음 — 폭주가 배치 단위로 격리됨
+    assert by_cause["C"]["investigated"] is True
+    assert by_cause["C"]["evidence"]["drift_detected"] is False
+    # 폴백이 섞여도 반환 순서 = 입력 순서 계약 유지
     assert [h["cause"] for h in hyps] == ["A", "C", "B"]
 
 
