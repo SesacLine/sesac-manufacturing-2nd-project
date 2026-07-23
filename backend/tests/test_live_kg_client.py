@@ -99,3 +99,23 @@ def test_candidate_shape_has_required_fields():
     assert c["tier"] == "자동"                # Parameter -> 자동
     assert c["scenario_hint"] == "A3"          # Parameter -> A3
     assert isinstance(c["sentence"], str) and c["sentence"]
+
+
+def test_matched_cause_filled_when_mapping_table_hits():
+    # 정적 KGClient와의 패리티: 라이브 행엔 mapping 블록이 없으므로 q.match_mapping을
+    # 조회 시점에 수행한다. cause id가 mapping_table(Center)의 엔트리와 정확 일치하면
+    # 부분일치 score 1.0 >= threshold(0.55) — 어휘 변환값이 결정적으로 채워진다.
+    rows = [_row("CLEAN", "clean_nozzle_clog", "full", [], "high", "continuous")]
+    client = LiveKGClient(graph=FakeGraph(rows))
+    out = client.get_candidates("Center", observation={"signature": "ring@edge"})
+    c = next(x for x in out["candidates"] if x["cause"] == "clean_nozzle_clog")
+    assert c["matched_cause"] == "clean_nozzle_clog"   # entry의 "cause" 키가 matched_cause로
+    assert c["mapped_process"] == "CLEAN"
+
+
+def test_matched_cause_none_for_unknown_pattern():
+    # 미지 패턴은 mapping_table에 패턴 키 자체가 없어 매칭 시도 없이 None — 안전 폴백.
+    client = LiveKGClient(graph=FakeGraph(ROWS))
+    out = client.get_candidates("Unknown", observation=OBS_PARTIAL)
+    assert all(c["matched_cause"] is None for c in out["candidates"])
+    assert all(c["mapped_process"] is None for c in out["candidates"])
