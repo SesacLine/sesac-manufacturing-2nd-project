@@ -61,8 +61,12 @@ kg_rca/outputs/parsed_docs.jsonl
 # 의미 진입(옵션2) 시그니처 임베딩 인덱스 — 그래프에서 재생성 가능(semantic_entry.build_signature_index)
 kg_rca/outputs/signature_index.json
 
+# 웨이퍼맵 판독 — 학습 체크포인트 (모델 바이너리 커밋 금지, 재학습으로 재생성)
+wafer_reading/classifier/checkpoints/
+
 # 개인 작업공간
-personalspace_rca/
+sdoubleoj/
+*.backup
 
 
 # frontend
