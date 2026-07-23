@@ -25,6 +25,7 @@ dependencies = [
     "numpy>=1.26",
     "pandas>=2.2",
     "pillow>=10.0",       # 웨이퍼맵 PNG 렌더링
+    "scipy>=1.11",        # 스택맵 기하 통계 (연결요소 라벨링 — wafer_reading.quantitative)
     "ruptures>=1.1",      # change point detection (detect_change_points)
     # 공통
     "pydantic>=2.6",
