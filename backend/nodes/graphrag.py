@@ -1,4 +1,4 @@
-"""③ GraphRAG 원인후보 조회. 결정적 조회, 그룹당 1회. LLM 호출 없음(kg_rca가 빌드타임에 이미 순회 완료).
+"""③ KG 원인후보 조회. 결정적 조회, 그룹당 1회. LLM 호출 없음(kg_rca가 빌드타임에 이미 순회 완료).
 
 DefectPattern이 Center/Edge-Ring/Scratch 3종 밖이면 candidates가 빈 리스트로 남고,
 이 그룹은 ④~⑥을 건너뛴다(UC-3, 미매핑 패턴 흐름).

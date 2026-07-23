@@ -4,7 +4,7 @@
 문헌 기반 **원인 가설 생성용** 그래프. 가설 검증은 별도 fab 데이터(SQL)가 담당하며,
 KG는 **evidence 노드**로 그 SQL과 연결된다.
 
-> **이 문서가 정본이다.** `KG_schema_v1.2.md`(스키마 v2.4)는 직전 버전 기록용, `kg_rca/backup/schema.md`는 v1 기록용.
+> ⚠ **이 문서는 기록용이다 — 정본은 `KG_schema_v1.4.md`로 대체됐다.** `KG_schema_v1.2.md`·`kg_rca/backup/schema.md`는 더 옛 기록.
 > 구현: `5_build_kg_from_chunks.py`(추출·검증), `4_ingest_chunks_to_neo4j.py`(시딩), `6_ask_graphrag.py`(순회),
 > `backend/graph_client/`(런타임 라이브 조회 — live_kg_client / morphology_rank / semantic_entry).
 > 관측 입력 계약: `kg_rca/VLM_output - KG 연결.md`, 데이터 모델: `kg_rca/데이터 모델 설계_v3.0.md`.

@@ -18,7 +18,7 @@ data/raw/ + data/docs/ 문헌 (표·산문·전문가 암묵지 목업)
   -> 결정적 순회 + 가설 출력 (6_ask_graphrag.py)  -> stdout + outputs/hypotheses.json
 ```
 
-## 그래프 구조 (schema v2.3)
+## 그래프 구조
 
 ```text
                 ┌──ATTRIBUTED_TO───────────────────────────┐   (문헌이 공정을 안 밝힐 때)
@@ -61,7 +61,7 @@ SpatialSignature ──FORMS_IN─────┘                        Cause
 | `[반자동]` | `Maintenance` / `Recipe` | fab 조회는 되지만 조인 키·기대값이 없어 판정은 사람 몫 |
 | `[근거없음]` | 없음 | 문헌 서술로만 존재 (예: RTP 원인 — fab 6스텝 밖) |
 
-전체 명세는 [`KG_schema_v1.3.md`](../docs/KG_schema_v1.3.md) (정본, v2.5), fab 데이터 스키마는
+전체 명세는 [`KG_schema_v1.4.md`](../docs/KG_schema_v1.4.md) (정본), fab 데이터 스키마는
 [`fab.md`](fab.md) 참조. [`backup/schema.md`](backup/schema.md)는 v1 기록용.
 
 ## 준비

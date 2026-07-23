@@ -39,7 +39,7 @@
 |---|---|---|
 | `backend/` | FastAPI + LangGraph 오케스트레이션. 파이프라인 ⓪~⑥ 실행 + API 8종 제공 | API 8종 구현 완료 |
 | `frontend/` | React + TypeScript 대시보드 3화면 + 근거 모달 | 구현 완료 |
-| `kg_rca/` | GraphRAG. 도메인 문헌 → Neo4j 적재 → LLM KG 추출 → 결정적 순회로 원인 후보 생성 | 완성, 계속 갱신 중(v2.4) |
+| `kg_rca/` | GraphRAG. 도메인 문헌 → Neo4j 적재 → LLM KG 추출 → 결정적 순회로 원인 후보 생성 | 완성, 계속 갱신 중 |
 | `secsgem-mcp/` | MCP 서버. SECS/GEM 시뮬레이터가 만든 가상 fab 데이터(`fab.db`)를 9종 도구로 조회 | 완성 |
 
 ### 데이터가 흐르는 방식
@@ -144,7 +144,7 @@ Base URL `http://localhost:8000/api/v1` (+ `GET /health`). 계약 정본은 `doc
 | 계약 밖 내부 정책 결정 12건 | `docs/BACKEND_DECISIONS.md` |
 | 남은 갭 목록 | `docs/BACKEND_GAP.md` |
 | 기획 전체(배경·차별점·평가방법·타임라인) | `docs/semiconductor_proposal.md` |
-| KG 스키마 (정본) | `docs/KG_schema_v1.3.md` (v2.5) |
+| KG 스키마 (정본) | `docs/KG_schema_v1.4.md` |
 | `hypotheses.json` 출력 필드 명세 | `kg_rca/KG_output_명세.md` |
 | KG 진행상황·남은 문제 | `kg_rca/STATUS.md` |
 | MCP 9종 도구 상세 계약·fab.db 스키마 | `secsgem-mcp/README.md` |

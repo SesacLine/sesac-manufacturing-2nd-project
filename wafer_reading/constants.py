@@ -3,7 +3,7 @@
 quantitative.py가 스택맵 → KG 어휘(shape/zone/angular/clock/density/continuity)로
 정량화할 때 쓰는 상수. 임계는 합성/실팹 맵 실측으로 조정 대상이며, 여기 한곳에 모아둔다.
 
-출력 어휘는 KG 스키마(docs/KG_schema_v1.3.md)의 고정 enum에 맞춘다:
+출력 어휘는 KG 스키마(docs/KG_schema_v1.4.md)의 고정 enum에 맞춘다:
   shape ∈ {ring, cluster, line, blob, global, random}
   zone  ∈ {center, mid, edge, any}
   angular_coverage ∈ {full, partial, unknown}

@@ -1,6 +1,6 @@
 # KG Output (`outputs/hypotheses.json`) 구조 명세
 
-> 생성: `6_ask_graphrag.py` · 기준: schema v2.4 · hypo agent 입력용
+> 생성: `6_ask_graphrag.py` · 스키마 정본: `../docs/KG_schema_v1.4.md` · hypothesis agent 입력용
 
 ## 대표 키 역할
 
@@ -37,7 +37,6 @@
 | `meta.model` | `gpt-5.4-mini` | 추출·합성 품질의 재현 조건 기록 |
 | `meta.neo4j_database` | `neo4j` | 어느 그래프 스냅샷에서 나왔는지 |
 | `meta.top_k` | `null` | 상한 여부 — `null`이면 전건 출력 (잘린 목록인지 판별) |
-| `meta.question_template` | `"{pattern} 결함 패턴이..."` | 고정 질문 계약 (패턴별 question 문자열은 여기서 유도) |
 | `meta.tier_legend` | 등급별 설명 | 등급 의미를 소비 측이 재해석하지 않도록 동봉 |
 | `meta.score_note` | 순위 규칙 설명 | 순위 계약의 명시 |
 | `questions[].pattern` | `Edge-Ring` | VLM 클래스 출력과 조인하는 키 (A0 진입점) |
