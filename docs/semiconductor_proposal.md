@@ -483,6 +483,22 @@ erDiagram
 **반환: accept / reject(사유) / insufficient_evidence**
 ```
 
+> **구현 갱신 (2026-07-23, 슬라이스2·3 — 위 §7.1·§7.2 워크플로의 정련).** 정본은
+> `personalspace_rca`의 hypo_critic_py.md·terms_of_reference.md·hypo_critic_test_result.md.
+> - **판정 책임 경계**: 자동 tier도 ④에서 "즉시 채택/기각"하지 않는다. ④는 tier 무관하게 증거
+>   수집·검증·**랭킹(soft)**만 하고, **채택/기각은 전부 ⑤ Critic**이 한다(위 §7.2 [3]·반환 줄의
+>   "[자동] 즉시 판정"은 이 경계로 정리됨).
+> - **④ 자동 tier = LLM 그룹 조사관**(`create_react_agent`): 후보 1개씩이 아니라 같은 step의 param을
+>   **배치 telemetry 1콜**로 조사(호출수↓). drift **방향 대조**(KG 예상↔실측)로 경쟁 가설 판별,
+>   fab으로 구분 불가한 후보는 **cause 클러스터**로 묶고, fab 증거로 **재랭킹**(대표원인=최상위).
+>   에이전트 폭주 방지 스텝 상한. 숫자는 도구 반환에서 코드가 재구성, LLM은 rationale만(옵션 A).
+> - **⑤ Critic**: 위 4규칙에 더해 **미조사(investigated=False) 분기**를 둔다 — 반자동·자동 폴백은
+>   기각이 아니라 `judge_unknown` 보류(안 봤으면 판정 안 함). verdict는 accepted/rejected/judge_unknown
+>   3버킷. Critic이 규칙 기반·결정론·fab 재조회 0(firewall)인 점은 유지.
+> - **검증(슬라이스3)**: ground truth 시나리오로 ③~⑥ E2E 관통 — **SC-CENTER-01 근본원인 top-1
+>   달성**(정답 193위 rejected→top-1 accepted, 함정 P2 시간역전 명시 기각). 평가로 발견한 결함 4개의
+>   처방은 BACKEND_DECISIONS.md D13~D16(maintenance 비대칭 창·step 폴백·합집합 시간창·commonality 랭킹).
+
 ## **8. 기대효과**
 
 - 사용자

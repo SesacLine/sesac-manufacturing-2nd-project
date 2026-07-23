@@ -1,12 +1,16 @@
 """⑤ Critic 노드. 결정적 함수(룰베이스), LLM 미사용 — 2026-07-09 노드화 결정.
 
-4개 규칙을 순서대로 확인한다(semiconductor_proposal.md §7.2 Critic Workflow 정본):
+규칙을 순서대로 확인한다(semiconductor_proposal.md §7.2 Critic Workflow 정본). Critic은 결정론 —
+fab 재조회 없이 ④가 채운 evidence만 읽는다(faithfulness firewall). 처음 걸리는 규칙이 판정을 정하고,
+끝까지 안 걸리면 채택:
     ① 시간 정합    — 원인 시각 < 결함 시각 아니면 reject("선후 뒤집힘") (함정 PM 필터링)
-    ② 반대근거     — get_normal_lot_ratio를 안 돌렸으면(against is None) reject
-    ③ faithfulness — 조회 안 된 값을 사실처럼 인용했으면 reject
-    ④ KG 메커니즘 연결 — VERIFIED_BY 경로가 없으면 insufficient_evidence
+    ② 반대근거     — get_normal_lot_ratio를 안 돌렸으면(normal_ratio is None) reject
+    ③ faithfulness — 자동 tier & 조사됨(investigated)인데 drift 판정이 비었으면 reject (미조사는 제외 — S2-6)
+    ④ KG 메커니즘 연결 — 근거없음 tier면 judge_unknown 보류(P5)
+    ⑤ 미조사      — investigated=False면 judge_unknown 보류 (S2-6 C3): 반자동 SEMI_AUTO_PENDING /
+                    자동 폴백 NOT_INVESTIGATED. "안 봤다"는 기각이 아니라 판단 보류
 
-채택 가능한 후보가 0개면 재시도 없이 즉시 insufficient_evidence를 반환한다.
+채택 가능한 후보가 0개면 재시도 없이 즉시 insufficient_evidence를 반환한다(그룹 status).
 재계획(replan) 루프는 없다(personalspace/0710 work/metadata.md §3.1).
 """
 
@@ -17,9 +21,10 @@ from ..state import CriticResult, Hypothesis, RCAState
 
 # 고정 사유 토큰(사유코드) — API가 verdict 3-state 승격을 이 토큰으로만 분기한다
 # (API 명세 §2.7 "verdict 매핑 주의": 자연어 reject_reason 본문 매칭 금지).
-# 내부 3버킷(adopt/reject/judge_unknown)을 프론트 3값에 매핑한다(hypo_critic_py.md §13-1 C1·C2):
+# 내부 3버킷(adopt/reject/judge_unknown)을 프론트 verdict 3값에 매핑한다(hypo_critic_py.md §13-1 C1·C2):
 #   P2/P3/P4 = reject → verdict="rejected"
-#   P5(근거없음)·SEMI_AUTO(반자동 미조사) = judge_unknown → verdict="insufficient"
+#   P5(근거없음)·SEMI_AUTO_PENDING(반자동 미조사)·NOT_INVESTIGATED(자동 폴백) → verdict="judge_unknown"
+# (그룹 status "insufficient"와는 다른 층 — verdict는 가설 1건, status는 그룹 전체.)
 TOKEN_TIME_ORDER = "P2_TIME_ORDER"
 TOKEN_NO_COUNTER_EVIDENCE = "P3_NO_COUNTER_EVIDENCE"
 TOKEN_FAITHFULNESS = "P4_FAITHFULNESS"

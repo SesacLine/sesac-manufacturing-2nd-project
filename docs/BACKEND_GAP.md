@@ -13,7 +13,7 @@
 | 대상 필드/섹션 | 현재 상태 | 필요한 변경 | 관련 절 |
 |---|---|---|---|
 | `description` (VLM 서술) | VLM 미연동 — API는 `description: null`을 반환하고 프론트는 `summary_line`으로 fallback 중(구현됨). 그룹 대표 서술을 만드는 단계(=§2.4 `vlm_describe`)가 코드에 없다 | 그룹 대표 서술 정의(대표 웨이퍼 선정 vs 그룹 단위 재생성) 후 그룹화 **뒤** 단계로 VLM 연동 | §2.5 · §2.4 · §3.2 |
-| `tier: semi_auto` 판정 | Critic이 잠정 자동 기각(`SEMI_AUTO_AUTO_REJECT` 토큰, `critic.py` — BACKEND_DECISIONS.md D8) | 사람 판정 수신 엔드포인트는 §4-2 미결정이라 **구현 금지**(3등급 "정지"). 경로가 생기면 자동 기각 분기 제거 | §2.5 · §4-2 |
+| `tier: semi_auto` 판정 | Critic이 judge_unknown **보류**(`SEMI_AUTO_PENDING` 토큰, `investigated` 마커 기반 — BACKEND_DECISIONS.md D8). 기각 아님 | 사람 판정 수신 엔드포인트는 §4-2 미결정이라 **구현 금지**(3등급 "정지"). 경로가 생기면 반자동을 fab 증거로 조사해 보류 해소 | §2.5 · §4-2 |
 | `events`(alarm) | 미연동 — `get_alarm_history` 호출 지점이 파이프라인에 없다(events 섹션은 maintenance rows만 담김) | 파이프라인에 알람 조회 추가(단서: fab.db 알람은 `lot_id=NULL`이라 `equipment_id`로 조회). 미연동 동안 events에 alarm rows 없음 — 미구현을 계약으로 노출하지 않는다 | §2.7 |
 | `unverified[]` | 추적 필드 없음 — API는 항상 `[]` 반환(계약상 유효) | ⑤Hypothesis·⑥Critic에서 "인용은 했으나 검증 제외" 항목을 `{ref, reason}`으로 기록 | §2.7 |
 | `next_actions[]` | 생성 주체 없음 — API는 항상 `[]` 반환(계약상 유효, 키 생략 아님) | kg_rca candidate 또는 ⑦응답생성에서 생성해 주입 | §2.5 · §2.7 |

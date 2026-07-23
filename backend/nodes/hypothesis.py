@@ -1,4 +1,7 @@
-"""④ Hypothesis 노드. 결정적 함수(룰베이스), LLM 미사용 — 2026-07-09 노드화 결정.
+"""④ Hypothesis 노드. tier별 하이브리드 — 자동(Parameter) tier는 LLM 에이전트(그룹 조사관,
+create_react_agent), 반자동·근거없음은 결정론 룰베이스 (S2-2, 2026-07-22). 단 숫자(evidence)는
+도구 반환에서 코드가 재구성하고 LLM은 rationale만 쓴다(옵션 A) — ⑤ Critic이 evidence만 읽어
+판정하는 firewall이 성립한다. ④는 증거 수집·검증·랭킹(soft)만 하고 채택/기각은 ⑤가 한다.
 
 kg_rca가 이미 순회해 둔 candidate마다, candidate.tier가 어떤 MCP 도구를 부를지 결정한다.
 candidate.cause/failure_mode 문자열은 fab.db와 join key가 아니다 — 실제 join은
@@ -6,10 +9,10 @@ candidate.evidence(Parameter/Maintenance/Recipe id)로만 이루어진다
 (personalspace/0711 work/qna_0711.md Q5).
 
 호출 규칙(모두 personalspace/0708 work/산출물_데이터모델설계.md §3.0/3.1 정본):
-    - 모든 candidate 공통: run_commonality_analysis, get_normal_lot_ratio
-    - tier == "자동"    (evidence_label == "Parameter") : + query_telemetry, 즉시 채택/기각까지
-    - tier == "반자동"  (evidence_label == "Maintenance"): + get_maintenance_history, 사람 판정 필요
-    - tier == "반자동"  (evidence_label == "Recipe")     : + get_lot_history(recipe_id 비교), 사람 판정 필요
+    - 모든 candidate 공통: run_commonality_analysis, get_normal_lot_ratio (pre-pass 결정론)
+    - tier == "자동"    (evidence_label == "Parameter") : 에이전트가 query_telemetry(step 배치) — evidence 수집·랭킹만(채택/기각은 ⑤)
+    - tier == "반자동"  (evidence_label == "Maintenance"): + get_maintenance_history (⑤에서 judge_unknown 보류)
+    - tier == "반자동"  (evidence_label == "Recipe")     : 기대 레시피가 KG에 없어 비교 스킵 → recipe_match=None (⑤ 보류)
     - tier == "근거없음"                                  : MCP 호출 없음
 
 주의: mapping_table.yaml(fab.db 시나리오 근거)과 kg_rca cause 어휘가 대부분 안 겹친다.
@@ -38,8 +41,9 @@ from datetime import datetime, timedelta
 #        같은 (step, evidence_label, evidence)는 결과를 재사용하는 캐싱만 최소로 넣었다
 #        (아래 verify_cache). "검증 단위로 제대로 설계"까지는 아니고 응급 처치 수준 —
 #        팀원과 다시 짤 때는 여기부터 손보는 게 좋다.
-# 결정② route="direct"(step=null) 후보 — 그냥 step=None으로 commonality를 불러서
-#        전체 공정 뭉뚱그린 결과를 그대로 쓴다(신호가 흐려지는 걸 감수).
+# 결정② step=None 후보 — mapping.process로 step 폴백(_with_step_fallback, BACKEND_DECISIONS D14,
+#        07-23). 이전엔 step=None을 그대로 commonality에 넘겨 전체공정 최다통과 장비(함정 포함)로
+#        쏠렸음(SC-CENTER-01 실측). 근본 교정은 kg_rca 6번(kg_step보충_제안.md 전달).
 # investigate_group(S2-2): 자동(Parameter) tier 후보 전부를 그룹 조사관(에이전트)이 step 배치로 검증한다.
 #   step당 pre-pass(commonality/normal_ratio) 1회 → query_telemetry 1콜(params 전부) → 후보별 분배.
 #   evidence는 LLM이 아니라 도구 반환(ToolMessage)에서 재구성한다(옵션 A). 반자동·근거없음은 결정론 경로 유지.
