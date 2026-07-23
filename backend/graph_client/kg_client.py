@@ -28,7 +28,7 @@ class KGClient:
         graphrag.py가 이 그룹의 ④~⑥을 건너뛴다.
 
         observation을 주면(관측 모폴로지 {density, continuity, angular_coverage, clock_positions})
-        angular_coverage 판별자로 후보를 재정렬한다(설계 B, morphology_rank.py). 상충 후보만
+        angular_coverage 판별자로 후보를 재정렬한다(morphology_rank.py). 상충 후보만
         아래로 내리는 감점 전용이라, 관측이 없으면(None) kg_rca 순위를 그대로 반환한다.
 
         필드 매핑(kg_rca 출력 -> state.GraphRAGCandidate)은 kg_rca/KG_output_명세.md(schema v2.4)가

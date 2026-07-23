@@ -36,7 +36,7 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.5")
 
 
 # =========================
-# 2. KG 스키마 정의 (../docs/KG_schema_v1.2.md)
+# 2. KG 스키마 정의 (../docs/KG_schema_v1.3.md)
 # -------------------------
 # 문헌에서 자유롭게 만드는 노드는 FailureMode / Cause / Maintenance / Recipe.
 # DefectPattern / ProcessStep / Parameter 는 고정 vocabulary(앵커)이며
@@ -75,7 +75,7 @@ DefectPatternId = Literal["Center", "Scratch", "Edge-Ring"]
 ShapeId = Literal["ring", "cluster", "line", "blob", "global", "random"]
 ZoneId = Literal["center", "mid", "edge", "any"]
 
-# FORMS_IN 관계의 모폴로지 속성 (설계 B).
+# FORMS_IN 관계의 모폴로지 속성 — 노드가 아니라 엣지에 두는 이유는 아래 주석 참조.
 # 노드 정체성은 여전히 shape@zone 하나뿐이고(파편화·clobber 방지), 아래 세 축은
 # SpatialSignature 노드가 아니라 FORMS_IN "엣지"에 실린다. VLM 관측(vlm-output-KG 연결)과
 # 문헌 목업이 공유하는 어휘 — 조회 시 shape@zone은 하드 매칭, 이 축들은 랭킹 가점(소프트)이라

@@ -4,7 +4,9 @@
 GraphRAG(문서/도메인 지식) 기반의 **원인 가설 생성용** 그래프.
 가설 검증은 별도 fab 데이터(SQL)가 담당하며, KG는 **evidence 노드**로 그 SQL과 연결된다.
 
-> 이 문서가 정본이다. `schema.md`는 v1 기록용.
+> ⚠ **이 문서는 v2.4 시점 기록이다. 정본은 `KG_schema_v1.3.md`(스키마 v2.5)로 대체됐다**
+> (2026-07-22 — FORMS_IN 모폴로지 속성, 형상 직접/의미 진입, data/docs 소스, 순위 개편 반영).
+> `schema.md`는 v1 기록용.
 구현: `5_build_kg_from_chunks.py`(추출·검증), `4_ingest_chunks_to_neo4j.py`(시딩), `6_ask_graphrag.py`(순회).
 > 
 

@@ -154,7 +154,7 @@ async def _verify_candidate(
         return result
 
     if candidate["evidence_label"] == "Recipe":
-        # 기대 레시피가 KG에 없어 비교 불가(docs/KG_schema_v1.2.md에 명시된 한계) — 조회는 스킵,
+        # 기대 레시피가 KG에 없어 비교 불가(docs/KG_schema_v1.3.md에 명시된 한계) — 조회는 스킵,
         # recipe_match=None으로 "판정은 사람 몫"임을 그대로 남긴다.
         return {"recipe_match": None}
 

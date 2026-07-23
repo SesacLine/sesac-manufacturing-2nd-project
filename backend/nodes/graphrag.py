@@ -20,9 +20,9 @@ def fetch_graphrag_candidates(state: RCAState, kg_client: KGClient) -> dict:
     graphrag_candidates = {
         group["group_id"]: kg_client.get_candidates(
             group["pattern"],
-            # 그룹 대표 관측 모폴로지 {density, continuity, angular_coverage, clock_positions}로
-            # angular 판별자 재정렬(설계 B). 아직 관측층(VLM/die-matrix)이 group에 이 값을
-            # 안 실으므로 지금은 None → kg_rca 순위 그대로. 관측이 붙는 순간 자동 작동한다.
+            # 그룹 단위 관측(state.Observation) — ③ observe_groups가 채운다(현재는 패턴별
+            # 스켈레톤 템플릿, 실제 VLM/스택맵 die-matrix 연동 시 교체. 웨이퍼별 집계 없음).
+            # location/morphology_text는 의미 진입에, angular 등 구조화는 판별자 재정렬에 쓰인다.
             observation=group.get("observation"),
         )
         for group in state["groups"]
