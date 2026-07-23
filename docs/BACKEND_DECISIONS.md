@@ -6,7 +6,7 @@
 
 | # | 결정 | 근거 / 되돌릴 조건 |
 |---|---|---|
-| D1 | **대표 원인(`hypotheses[0]`) = accepted 중 ④ fab 재랭킹 최상위** — ④ `hypothesis.py`의 `_rank_hypotheses`가 클러스터(unit+direction) 단위로 증거 세기 내림차순(동률: normal_ratio 오름차순 → kg rank) 정렬해 내보내고, ⑤ Critic·⑥ response는 순서를 보존만 한다(`accepted[0]` = ④의 1위). kg_rca 순위(`rank` = candidates 배열 순서)는 조사 순서·동률 타이브레이커로만 쓴다. 비채택 후보는 accepted 뒤에 같은 순서로 잇고, 정렬 확정 후 `h{n}` 부여 | 명세 §4-1 미결정 — 07-23 개정(S2-4): "문헌 순위(prior)는 조사 순서, 최종 순위는 fab 증거"로 재정의. 팀이 다른 규칙을 정하면 `_rank_hypotheses`만 교체(response.py는 순서 보존이라 무변경) |
+| D1 | **대표 원인(`hypotheses[0]`) = accepted 중 ④ fab 재랭킹 최상위** — ④ `hypothesis.py`의 `_rank_hypotheses`가 클러스터(unit+direction) 단위로 증거 세기 내림차순(동률: commonality_ratio 내림차순 → normal_ratio 오름차순 → kg rank) 정렬해 내보내고, ⑤ Critic·⑥ response는 순서를 보존만 한다(`accepted[0]` = ④의 1위). kg_rca 순위(`rank` = candidates 배열 순서)는 조사 순서·동률 타이브레이커로만 쓴다. 비채택 후보는 accepted 뒤에 같은 순서로 잇고, 정렬 확정 후 `h{n}` 부여 | 명세 §4-1 미결정 — 07-23 개정(S2-4): "문헌 순위(prior)는 조사 순서, 최종 순위는 fab 증거"로 재정의. 팀이 다른 규칙을 정하면 `_rank_hypotheses`만 교체(response.py는 순서 보존이라 무변경) |
 | D2 | **첫 배치의 누적 스코프 = 데이터축 처음(EPOCH 2026-01-01)부터 전부**. 커서는 (직전 배치가 처리한 마지막 날짜, exclusive) → 데이터축 `max(ts)` (inclusive)로 전진 | 명세 §2.3 "직전 배치 이후 누적" — 직전 배치가 없으면 전체가 누적분. 구 `_FIRST_CURSOR_DATE=2026-03-04` 하드코딩은 폐기 |
 | D3 | **`low_yield_eq` 선정 기준 = 7일 창 내 평균 수율 최저 장비 1개** (`backend/api/yield_summary.py`) | 명세 §2.1은 "장비별 yield 최저 1개 선정"만 규정, 창 기준은 미규정. 일별 최저(매일 다른 장비)로 바꾸려면 이 파일만 수정 |
 | D4 | **같은 정규화 패턴으로 접히는 그룹이 여럿이면 unmapped끼리 로트 병합해 1건 저장** (`batch_runner._persist_results`) | `analysis_id`가 패턴+배치 단위 유니크(§3)라 비매핑 결함 여러 종(Donut·Loc…→전부 Unknown)이 충돌하는 것 방지. VLM이 실제 다패턴을 내기 시작하면 grouper 단계에서 정규화하는 방안 재검토 |
