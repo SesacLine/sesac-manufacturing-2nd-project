@@ -369,3 +369,33 @@ def test_maintenance_range_extends_past_defect():
     # ③ 창은 절대 줄지 않는다: defect+14d < 공정 끝이면 공정 끝 유지 (max의 존재 이유)
     long_tr = ("2026-03-01 00:00:00", "2026-04-20 00:00:00")
     assert _maintenance_range(long_tr, "2026-03-05 00:00:00") == long_tr
+
+def test_with_step_fallback():
+    from backend.nodes.hypothesis import _with_step_fallback
+
+    candidates = [
+        {"cause": "a", "step": None, "mapped_process": "CLEAN"},   # 보충 대상
+        {"cause": "b", "step": "DEPO", "mapped_process": "CLEAN"}, # step 정본 유지 (불가침)
+        {"cause": "c", "step": None, "mapped_process": None},      # 보충 재료 없음 → 그대로
+    ]
+    out = _with_step_fallback(candidates)
+    assert [c["step"] for c in out] == ["CLEAN", "DEPO", None]
+    assert candidates[0]["step"] is None          # 원본 무변형(사본 생성 확인)
+
+
+def test_group_time_range_union():
+    import asyncio
+    from backend.nodes.hypothesis import _group_time_range
+
+    class FakeMCP:
+        async def get_lot_history(self, lot_id):
+            windows = {
+                "L1": [{"ts_in": "2026-03-16 07:00:00", "ts_out": "2026-03-17 02:00:00"}],
+                "L2": [{"ts_in": "2026-03-13 22:00:00", "ts_out": "2026-03-14 16:00:00"}],
+                "L3": [],                                          # 이력 없는 로트는 건너뜀
+                "L4": [{"ts_in": "2026-03-17 15:00:00", "ts_out": "2026-03-18 09:00:00"}],
+            }
+            return {"data": windows[lot_id]}
+
+    tr = asyncio.run(_group_time_range(["L1", "L2", "L3", "L4"], FakeMCP()))
+    assert tr == ("2026-03-13 22:00:00", "2026-03-18 09:00:00")   # 전체 합집합 (첫 로트 아님)

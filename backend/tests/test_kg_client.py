@@ -25,9 +25,11 @@ def _hyp() -> dict:
 def test_matched_cause_extraction(tmp_path):
     # mapping 세 상태: 정상 / 명시적 null / 키 자체 없음 — 전부 안 죽고 값만 갈려야 한다
     hyps = [
-        _hyp() | {"mapping": {"matched_cause": "clean_nozzle_clog", "score": 1.0}},
+        _hyp() | {"mapping": {"matched_cause": "clean_nozzle_clog", "score": 1.0, "process": "CLEAN"}},
         _hyp() | {"mapping": None},
         _hyp(),
     ]
     candidates = _client(tmp_path, hyps).get_candidates("Center")["candidates"]
     assert [c["matched_cause"] for c in candidates] == ["clean_nozzle_clog", None, None]
+    assert candidates[0]["mapped_process"] is None or isinstance(candidates[0]["mapped_process"], str)
+    assert [c["mapped_process"] for c in candidates] == ["CLEAN", None, None]

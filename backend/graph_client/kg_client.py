@@ -49,6 +49,9 @@ class KGClient:
             # 평가 전용: kg cause → mapping_table(ground truth) 어휘 번역(kg_rca mapping 블록).
             # 정답이 아니라 어휘 대응표라 정답 누출 아님 — 표시·판정엔 안 쓰고 E2E 평가만 쓴다.
             "matched_cause": (hypothesis.get("mapping") or {}).get("matched_cause"),
+            # 처방2-b: cause의 fab 공정 소속(mapping.process). step=None 후보의 폴백으로만
+            # 런타임 사용(hypothesis._with_step_fallback) — KG path.step이 있으면 안 씀.
+            "mapped_process": (hypothesis.get("mapping") or {}).get("process"),
             "failure_mode": path["failure_mode"],
             "step": path["step"],
             "signature": path.get("signature"),

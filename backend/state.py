@@ -59,6 +59,7 @@ class GraphRAGCandidate(TypedDict):
 
     cause: str
     matched_cause: NotRequired[str | None]  # kg cause→mapping_table 어휘 번역(mapping.matched_cause). E2E 평가 전용 — 표시·판정 불사용
+    mapped_process: NotRequired[str | None]  # mapping.process — step=None 폴백 전용(처방2-b). path.step이 정본
     failure_mode: str | None
     step: str | None
     signature: NotRequired[str | None]

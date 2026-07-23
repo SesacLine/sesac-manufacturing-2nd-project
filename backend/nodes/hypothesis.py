@@ -57,6 +57,7 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
     candidates = graphrag_result["candidates"] if graphrag_result else []
     if not candidates:
         return {"hypotheses": {group_id: []}}
+    candidates = _with_step_fallback(candidates)   # 처방2-b: step=None → mapping.process 보충
 
     time_range = await _group_time_range(lot_ids, mcp)
     defect_ts = await _group_defect_ts(lot_ids, mcp)
@@ -537,12 +538,25 @@ def _rank_hypotheses(hypotheses: list[Hypothesis]) -> list[Hypothesis]:
 
 
 async def _group_time_range(lot_ids: list[str], mcp: MCPClient) -> tuple[str, str]:
-    """그룹 대표(첫 로트)의 공정 진행 구간을 검증 시간창으로 쓴다."""
-    history = await mcp.get_lot_history(lot_ids[0])
-    rows = history["data"]
-    if not rows:
+    """그룹 전체 로트의 공정 구간 합집합을 검증 시간창으로 쓴다 (처방3, 원인 D).
+
+    이전엔 대표(첫 로트) 구간만 썼는데, SC-CENTER-01 실측에서 첫 로트 창(19시간)이
+    시나리오의 telemetry 공백(coverage_gap)과 정확히 겹쳐 원인 장비 시계열이 0포인트
+    → 정답이 P4로 죽는 취약성이 드러났다. 로트들은 며칠에 걸쳐 흩어져 지나가므로
+    합집합이 그룹의 검증 창이다 — 공백 하나에 전멸하지 않는다.
+    비용: get_lot_history 그룹당 1콜 → 로트 수만큼(시나리오 8콜) — 수용 범위.
+    """
+    starts: list[str] = []
+    ends: list[str] = []
+    for lot_id in lot_ids:
+        history = await mcp.get_lot_history(lot_id)
+        rows = history["data"]
+        if rows:
+            starts.append(min(r["ts_in"] for r in rows))
+            ends.append(max(r["ts_out"] for r in rows))
+    if not starts:
         return ("2026-01-01 00:00:00", "2026-12-31 00:00:00")
-    return (min(r["ts_in"] for r in rows), max(r["ts_out"] for r in rows))
+    return (min(starts), max(ends))
 
 
 def _maintenance_range(time_range: tuple[str, str], defect_ts: str | None) -> tuple[str, str]:
@@ -556,6 +570,22 @@ def _maintenance_range(time_range: tuple[str, str], defect_ts: str | None) -> tu
           return time_range
       end = datetime.fromisoformat(defect_ts) + timedelta(days=MAINT_LOOKAHEAD_DAYS)
       return (time_range[0], max(time_range[1], end.strftime("%Y-%m-%d %H:%M:%S")))
+
+
+def _with_step_fallback(candidates: list[GraphRAGCandidate]) -> list[GraphRAGCandidate]:
+    """처방2-b(결정② 보완): step=None 후보에 한해 mapping.process를 step으로 보충한다.
+
+    step=None이면 commonality가 전체 공정을 뭉뚱그려 최다 통과 장비(함정 포함)로 쏠리고,
+    그 장비엔 해당 param이 없어 drift=None → P4로 죽는다(SC-CENTER-01 실측: 정답 후보가
+    이 경로로 사망, step=None 161건 전원 LITHO-01 쏠림). mapping.process는 kg_rca 빌드타임
+    산출물(cause의 fab 공정 소속 정규화)이라 시나리오 정답이 아니다.
+    step이 이미 있으면 절대 안 건드린다 — path.step이 KG 정본이고, 그 교정은 kg_rca
+    재생성(팀 영역)의 몫. KG가 교정되면(kg_step보충_제안.md) None이 사라져 자연 무동작.
+    """
+    return [
+        {**c, "step": c["mapped_process"]} if c["step"] is None and c.get("mapped_process") else c
+        for c in candidates
+    ]
 
 
 async def _group_defect_ts(lot_ids: list[str], mcp: MCPClient) -> str | None:
