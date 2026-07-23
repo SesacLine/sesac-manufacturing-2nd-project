@@ -162,3 +162,37 @@ def test_known_pattern_scopes_signatures_and_keeps_pattern_level():
     assert out["candidates"][0]["step"] == "CMP"           # partial arc -> CMP 최상위
     depo = next(c for c in out["candidates"] if c["step"] == "DEPO")
     assert depo["morphology"] is None                      # 패턴 레벨 경로는 morphology 없음(드롭 대상 아님)
+
+
+def test_natural_language_takes_priority_over_signature():
+    # VLM이 메인 — 관측에 signature(geometry)와 자연어가 둘 다 있으면 자연어(의미 진입)가 우선.
+    sem = SemanticSignatureIndex(INDEX, _fake_embed)
+    client = LiveKGClient(graph=FakeGraph(), semantic_index=sem, semantic_k=1)
+    obs = {"signature": "line@any",                       # geometry가 준 폴백값
+           "description": "a broken ring at the edge",     # VLM 자연어(메인)
+           "angular_coverage": "partial", "clock_positions": [5, 6, 7]}
+    out = client.get_candidates("Unknown", observation=obs)
+    assert out["entry_signatures"] == ["ring@edge"]        # 자연어로 진입 — signature(line@any) 무시
+
+
+def test_signature_used_when_no_natural_language():
+    # 자연어가 없으면(VLM 미연동) signature(geometry) 폴백으로 진입.
+    sem = SemanticSignatureIndex(INDEX, _fake_embed)
+    client = LiveKGClient(graph=FakeGraph(), semantic_index=sem)
+    obs = {"signature": "ring@edge", "angular_coverage": "partial", "clock_positions": [5, 6, 7]}
+    out = client.get_candidates("Unknown", observation=obs)
+    assert out["entry_signatures"] == ["ring@edge"]        # NL 없음 → signature 폴백
+
+
+def test_exact_signature_on_known_pattern_keeps_pattern_level():
+    # quantitative가 signature를 직접 준 경우(die-matrix 규칙 진입). 기지 패턴이면 형상 경로 +
+    # 패턴 레벨(ARISES_IN/ATTRIBUTED_TO)을 둘 다 내야 한다(자연어 진입과 대칭 — 비대칭 수정).
+    client = LiveKGClient(graph=KnownPatternFakeGraph())   # semantic_index 없이도 동작
+    obs = {"signature": "ring@edge", "angular_coverage": "full",
+           "clock_positions": [], "density": "high", "continuity": "continuous"}
+    out = client.get_candidates("Edge-Ring", observation=obs)
+    assert out["entry_signatures"] == ["ring@edge"]
+    steps = {c["step"] for c in out["candidates"]}
+    assert "DEPO" in steps                                 # 패턴 레벨 원인 유지(비대칭 수정)
+    assert "ETCH" in steps                                 # full 관측과 일치하는 형상 후보
+    assert "CMP" not in steps                              # partial 형상은 full 관측과 상충 → 드롭

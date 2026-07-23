@@ -54,15 +54,17 @@ class LiveKGClient:
     )
 
     def get_candidates(self, pattern: str, observation: dict | None = None) -> dict:
-        """VLM 자연어(location_text+morphology_text)가 진입 쿼리를 이끈다.
+        """VLM 자연어(location_text+morphology_text)가 진입 쿼리를 이끈다 — 진입의 **메인**.
         CNN 패턴은 검색 "범위"를 좁히고, 자연어가 그 범위 안에서 진입 시그니처를 고른다.
 
-        - pattern_candidate(CNN)가 3종이면 그 패턴의 HAS_SIGNATURE 시그니처로 **범위를 좁히고**,
-          자연어 임베딩이 그 안에서 진입 시그니처를 고른다. 패턴 레벨 원인(공정 경유·문헌 직결)도 유지.
-        - Unknown이면 자연어가 전체 시그니처에서 진입을 고른다(범위 제한 없음).
-        - 관측이 shape@zone(enum)을 직접 주면 그대로 정확 진입. 자연어/의미 인덱스가 없으면
-          기지 패턴은 패턴 진입으로 폴백.
-        그 뒤 morphology 판별자로 재랭킹한다.
+        진입 우선순위 (VLM이 메인이라 자연어를 최우선):
+        1. **자연어(의미 진입)** — location/morphology_text가 있고 의미 인덱스가 있으면.
+           known이면 그 패턴의 HAS_SIGNATURE로 범위를 좁히고, Unknown이면 전체에서 고른다.
+        2. **signature(형상 정확 진입)** — 자연어가 없을 때의 폴백. die-matrix(quantitative)가
+           결정적으로 산출한 shape@zone. VLM 병합 전까지 이 폴백이 진입을 담당한다.
+        3. **pattern 진입** — 자연어·signature 다 없는 기지 패턴.
+        어느 경로든 known이면 패턴 레벨 원인(ARISES_IN/ATTRIBUTED_TO)을 함께 낸다.
+        그 뒤 morphology 판별자로 재랭킹한다(구조화값 angular 등은 진입과 무관하게 항상 사용).
         """
         q = _query_layer()
         obs = observation or {}
@@ -73,12 +75,8 @@ class LiveKGClient:
         entry_signatures: list[str] = []
         rows: list[dict] = []
 
-        if exact_sig:
-            # enum 정확 진입 (관측이 shape@zone을 직접 준 경우)
-            rows = q.fetch_hypotheses_by_signature(self._graph, exact_sig)
-            entry_signatures = [exact_sig]
-        elif query_text and self._semantic is not None:
-            # 자연어 진입: known이면 패턴의 시그니처로 범위 제한, 아니면 전체
+        if query_text and self._semantic is not None:
+            # 1. 자연어 의미 진입(메인): known이면 패턴의 시그니처로 범위 제한, 아니면 전체
             scope = self._pattern_signatures(pattern) if known else None
             matches = self._semantic.match(query_text, k=self._semantic_k, allowed=scope)
             for sig, score in matches:
@@ -88,10 +86,16 @@ class LiveKGClient:
                     rows.append(row)
             entry_signatures = [sig for sig, _ in matches]
             if known:
-                # 형상 경로는 위 NL-선정 시그니처로 대체했으니, 패턴 레벨 원인만 더한다
+                rows += q.fetch_hypotheses_step_direct(self._graph, pattern)
+        elif exact_sig:
+            # 2. 형상 정확 진입(폴백): die-matrix가 준 shape@zone. VLM 없을 때 진입 담당.
+            rows = q.fetch_hypotheses_by_signature(self._graph, exact_sig)
+            entry_signatures = [exact_sig]
+            if known:
+                # 형상 경로 + 패턴 레벨 원인(자연어 진입과 대칭)
                 rows += q.fetch_hypotheses_step_direct(self._graph, pattern)
         elif known:
-            # 자연어/의미 인덱스 없을 때 폴백: 패턴 진입(기존)
+            # 3. 자연어·signature 다 없는 기지 패턴: 패턴 진입
             rows = q.fetch_hypotheses(self._graph, pattern)
         else:
             return {"pattern": pattern, "candidates": []}
