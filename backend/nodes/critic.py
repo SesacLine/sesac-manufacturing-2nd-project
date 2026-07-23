@@ -24,10 +24,12 @@ TOKEN_TIME_ORDER = "P2_TIME_ORDER"
 TOKEN_NO_COUNTER_EVIDENCE = "P3_NO_COUNTER_EVIDENCE"
 TOKEN_FAITHFULNESS = "P4_FAITHFULNESS"
 TOKEN_NO_KG_MECHANISM = "P5_NO_KG_MECHANISM"
-# 반자동(Maintenance/Recipe)은 fab 증거로 아직 조사되지 않은 상태 = judge_unknown(미조사).
-# 기각(reject)이 아니라 "판단 보류"로 남긴다 — investigate_group 에이전트가 붙으면 이 분기를 걷어내고
-# 에이전트가 adopt/reject를 판정한다(hypo_critic_py.md §13-4 step2).
+# 미조사 분기는 tier가 아니라 investigated 마커 기반이다(S2-6 C3). 반자동은 아직 조사
+# 경로가 없어 항상 미조사 → SEMI_AUTO_PENDING. 반자동 조사가 붙으면 이 토큰만 걷어낸다.
 TOKEN_SEMI_AUTO_PENDING = "SEMI_AUTO_PENDING"
+# S2-6(C3): 미조사 일반 토큰 — 반자동이 아닌데 investigated=False인 행(자동 tier의
+# suspect-None/에이전트 폭주 폴백). "안 봤다"는 기각이 아니라 판단 보류(judge_unknown).
+TOKEN_NOT_INVESTIGATED = "NOT_INVESTIGATED"
 
 
 async def review_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> dict:
@@ -66,14 +68,15 @@ async def review_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> d
                 "reject_token": TOKEN_NO_KG_MECHANISM,
                 "reject_reason": "KG 메커니즘 연결(VERIFIED_BY) 없음",
             })
-        elif h["tier"] == "반자동":
-            # 반자동은 fab 증거로 아직 조사되지 않았다 = judge_unknown(미조사) → "판단 보류".
-            # 기각이 아니다(hypo_critic_py.md §13-1 C1). rejected 리스트에 담되 토큰이
-            # verdict="insufficient"로 승격시킨다. investigate_group 에이전트가 붙으면 이 분기 제거.
+        elif not h.get("investigated", False):
+            # S2-6(C3): ④가 실제로 조사 못 한 행(반자동 전부 + 자동 폴백)은 판단 보류.
+            # 여기 도달 전에 ①시간정합은 이미 통과 검사됨 — 미조사여도 수집된 사실
+            # (maintenance_ts)에 의한 반박은 유효하다(함정 사살 유지, §1-3).
+            token = TOKEN_SEMI_AUTO_PENDING if h["tier"] == "반자동" else TOKEN_NOT_INVESTIGATED
             rejected.append({
                 **h,
-                "reject_token": TOKEN_SEMI_AUTO_PENDING,
-                "reject_reason": "반자동 등급 — fab 증거 미조사로 판단 보류(judge_unknown)",
+                "reject_token": token,
+                "reject_reason": "fab 증거 미조사로 판단 보류(judge_unknown)",
             })
         else:
             accepted.append(h)
@@ -105,11 +108,12 @@ def _check_negative_evidence(hypothesis: Hypothesis) -> bool:
 def _check_faithfulness(hypothesis: Hypothesis) -> bool:
     """조회 실패/미확인 값을 사실처럼 인용했는지 확인. 위반 시 False(reject).
 
-    0713 단순화: `[자동]` 후보인데 query_telemetry는 불렀지만 정상범위 자체가 없어
-    drift_detected를 못 정한 경우만 위반으로 본다. 실제 문장 단위 사실 대조는
-    스텝7(response.py, LLM)이 붙은 뒤 다시 설계해야 한다.
+    0713 단순화: `[자동]` 후보를 실제로 조사했는데(investigated=True) 정상범위 부재로
+    drift_detected를 못 정한 경우만 위반으로 본다. 미조사 행은 위반이 아니라 "판단
+    보류" 대상이라 여기서 걸지 않는다(S2-6 C3 — 가짜 reject 오염 방지). 실제 문장
+    단위 사실 대조는 스텝7(response.py, LLM)이 붙은 뒤 다시 설계해야 한다.
     """
-    if hypothesis["tier"] == "자동":
+    if hypothesis["tier"] == "자동" and hypothesis.get("investigated"):
         return hypothesis["evidence"].get("drift_detected") is not None
     return True
 

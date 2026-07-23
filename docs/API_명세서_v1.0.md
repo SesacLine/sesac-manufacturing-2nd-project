@@ -299,8 +299,9 @@
 
 - **`tier` (검증등급)**: `auto`(자동·즉시 채택/기각까지) | `semi_auto`(반자동·사람 판정 필요) | `none`(근거없음·문헌 서술만, MCP 증거 없음)
   - 🔲 **`semi_auto` 판정 처리(잠정·결정 필요)**: 반자동 등급은 fab 증거로 아직 조사되지 않아, **현재는 Critic이 판단 보류(`judge_unknown`, 미조사)** 처리한다(기각 아님). 추후 investigate_group 에이전트가 반자동을 fab 증거로 조사해 `verdict`를 `accepted`/`rejected`로 판정하면 이 잠정 처리를 걷어낸다(hypo_critic_py.md §13). ⤷ 4장 미결정 "`semi_auto` 사람 판정 결과 API 수신 경로"와도 연동.
+    - **미조사 판정은 tier가 아니라 `investigated` 마커 기반**(S2-6): Critic은 `investigated=False`인 행을 `judge_unknown`으로 보류한다. 반자동은 조사 경로가 없어 항상 여기 해당(`SEMI_AUTO_PENDING`)하고, `auto` 행도 조사에 실패하면(공통 장비 미특정 / 에이전트 폭주 폴백) `NOT_INVESTIGATED`로 같은 보류 버킷에 들어간다. 즉 `verdict:"judge_unknown"`은 `semi_auto` 전용이 아니다.
 - **`verdict` (Critic 판정)**: `accepted`(채택) | `rejected`(기각) | `judge_unknown`(미판정) — 비채택 사유는 `verdict_reason`이 담는다. (그룹 `status`의 `insufficient`와는 다른 층 — verdict는 가설 1건, status는 그룹 전체.)
-  - **`verdict_reason` (비채택 사유, Nullable)**: `accepted`이면 `null`, `rejected`/`judge_unknown`이면 문자열. 값은 기획안 v1.5 Critic Workflow(§7.2) 규칙에 대응한다 — `rejected`는 ①시간 선후(P2)·②반대근거(P3, `get_normal_lot_ratio`)·③faithfulness, `judge_unknown`은 ④KG 메커니즘 연결 없음(P5) + 반자동 미조사(SEMI_AUTO_PENDING).
+  - **`verdict_reason` (비채택 사유, Nullable)**: `accepted`이면 `null`, `rejected`/`judge_unknown`이면 문자열. 값은 기획안 v1.5 Critic Workflow(§7.2) 규칙에 대응한다 — `rejected`는 ①시간 선후(P2)·②반대근거(P3, `get_normal_lot_ratio`)·③faithfulness, `judge_unknown`은 ④KG 메커니즘 연결 없음(P5) + 미조사(반자동 SEMI_AUTO_PENDING / 자동 tier의 조사 실패 폴백 NOT_INVESTIGATED).
 - `stage` (공정, 고정 6종 **또는 `null`**): `LITHO` | `ETCH` | `DEPO` | `CMP` | `CLEAN` | `EDS` | `null`
   - **출처**: 각 `cause`가 KG(`kg_rca`/Neo4j)에서 매달린 **`ProcessStep` 노드값**(`hypotheses.json`의 `path.step`)이다. 기획안 v1.5 §6.2 스키마 `DefectPattern→ProcessStep→FailureMode→Cause→Evidence`에서 `ProcessStep`은 **고정 vocabulary 6종**(fab.db `EQUIPMENT.step_group`과 동일 집합). ④지식그래프(KG) 조회 시 candidate가 `cand.step`으로 이미 달고 나오고(§7.2 `suspect = top_equipment_for(comm, cand.step)` — stage로 장비를 찾는 것이지 장비에서 역산하지 않음), ⑤Hypothesis·⑥Critic·API는 전달만 한다. 빌드타임에 확정되는 그래프 구조 속성이라 fab.db·장비에서 계산하는 값이 아니다(데이터 모델 §3 Hypothesis 저장소 = Neo4j와 일치).
   - **`null` 가능**: 문헌직결 후보(`path.step` 없음)는 `stage: null`이다(`KG_output_명세.md:50`). 이 필드는 **가설 카드 표시용**이며, 프론트가 파생하는 한 줄 요약(부록 3.2)의 공정 조각 입력으로도 쓰인다. `stage=null`(실측 6~9%, 순위 꼬리)이면 그 요약은 "공정 미상"으로 fallback한다.
@@ -549,7 +550,7 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
   "note": null
 }
 ```
-> **`verdict` 매핑 주의(🔲 백엔드 갭)**: 현재 Critic은 그룹 단위 `accepted[]`/`rejected[]` 두 리스트만 낸다. API는 조회된 가설이 어느 리스트에 있는지로 `accepted`/`rejected`를 정하고, `rejected` 중 **judge_unknown 계열 토큰(KG 메커니즘 없음 P5·반자동 미조사 SEMI_AUTO_PENDING)** 이 붙은 것을 `verdict:"judge_unknown"`으로 승격해 내린다(3-state 계약 유지).
+> **`verdict` 매핑 주의(🔲 백엔드 갭)**: 현재 Critic은 그룹 단위 `accepted[]`/`rejected[]` 두 리스트만 낸다. API는 조회된 가설이 어느 리스트에 있는지로 `accepted`/`rejected`를 정하고, `rejected` 중 **judge_unknown 계열 토큰(KG 메커니즘 없음 `P5_NO_KG_MECHANISM`·반자동 미조사 `SEMI_AUTO_PENDING`·자동 tier 조사실패 폴백 `NOT_INVESTIGATED`)** 이 붙은 것을 `verdict:"judge_unknown"`으로 승격해 내린다(3-state 계약 유지).
 > - **승격 판정 앵커**: 이 승격은 `verdict_reason` **자유서술 문자열 본문을 매칭하지 않는다**. Critic/파이프라인이 사유에 **고정 토큰(사유코드, 예 `P5_NO_KG_MECHANISM`)**을 부여하고 API는 그 토큰으로만 분기한다(Critic이 자연어 문구를 바꿔도 배지가 안 깨진다). `verdict_reason` 자연어는 **표시용**이다.
 > - **`semi_auto` 최종 판정**: 조회 시점 `verdict`는 항상 3종 중 최종값이며 "검토 대기" 상태를 두지 않는다(2.5 "종료상태만 반환" 전제와 정합). ⤷ **단서**: 기획안상 반자동은 사람 판정이 필요할 수 있어, **사람 판정 결과를 서버로 되받는 별도 엔드포인트**가 신설되면 이 계약이 바뀐다(그 응답으로 `verdict`가 뒤집히거나 "미확정 대기" 상태가 필요해짐). 그 경로는 아직 없어 현재는 Critic 자동 확정으로 둔다 — 4장 미결항목 및 2.5 `tier` 🔲와 연동.
 
@@ -654,7 +655,7 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
 | `events`(alarm) | 미연동(`get_alarm_history` 미호출) | 파이프라인에 알람 조회 추가. 미연동 동안 events엔 alarm rows 없음 — 미구현 상태를 계약(`coverage`/`not_implemented`)으로 노출하지 않음 |
 | `unverified[]` | 추적 필드 없음 | ⑤/⑥에서 미검증 인용 기록 |
 | `next_actions[]` | NotRequired인데 미충전 | kg_rca candidate 또는 ⑦에서 생성해 주입 |
-| `verdict` 3-state | Critic은 accepted/rejected 2리스트, judge_unknown 계열을 rejected에 넣음 | Critic이 사유에 **고정 토큰**(`P5_NO_KG_MECHANISM`·`SEMI_AUTO_PENDING`) 부여 → API가 그 토큰으로 `judge_unknown` 승격(`verdict_reason` 문자열 본문 매칭 금지) |
+| `verdict` 3-state | Critic은 accepted/rejected 2리스트, judge_unknown 계열을 rejected에 넣음 | Critic이 사유에 **고정 토큰**(`P5_NO_KG_MECHANISM`·`SEMI_AUTO_PENDING`·`NOT_INVESTIGATED`) 부여 → API가 그 토큰으로 `judge_unknown` 승격(`verdict_reason` 문자열 본문 매칭 금지) |
 
 > **필드 존재 계약(2.7)** — 이 응답은 `available`·`type`에 따라 **섹션 내부** 형태가 바뀐다. 키 존재 규칙을 층위별로 못 박는다(판단 기준: **Optional = 키 자체 부재 / Nullable = 키는 있고 값이 `null`**).
 >
