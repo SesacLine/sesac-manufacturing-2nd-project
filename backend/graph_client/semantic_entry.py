@@ -14,6 +14,10 @@ import json
 import math
 from pathlib import Path
 
+# 인덱스 빌드와 런타임 질의는 반드시 같은 임베딩 모델을 써야 한다 —
+# 모델이 다르면 벡터 공간이 달라 코사인 비교가 무의미해진다. 양쪽 다 이 상수를 참조할 것.
+EMBEDDING_MODEL = "text-embedding-3-small"
+
 # 각 시그니처의 매칭용 서술 재료를 그래프에서 모은다.
 SIGNATURE_TEXT_QUERY = """
 MATCH (sg:SpatialSignature)

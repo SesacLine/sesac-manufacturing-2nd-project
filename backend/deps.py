@@ -13,6 +13,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from .graph_client import KGClient, LiveKGClient
+from .graph_client.semantic_entry import EMBEDDING_MODEL, SemanticSignatureIndex, load_index
 from .mcp_client import MCPClient
 
 load_dotenv()
@@ -20,6 +21,8 @@ load_dotenv()
 _kg_client: KGClient | LiveKGClient | None = None
 _mcp_client: MCPClient | None = None
 _graph = None
+_semantic: SemanticSignatureIndex | None = None
+_semantic_loaded = False   # 결과가 None이어도 유효하므로, "시도했는가"를 따로 기억한다
 
 
 def _neo4j_graph():
@@ -36,14 +39,53 @@ def _neo4j_graph():
     return _graph
 
 
+def _signature_index_path() -> Path:
+    """의미 진입 인덱스 파일 경로. 기본값은 kg_rca 산출물 위치(hypotheses.json 옆)."""
+    env = os.getenv("KG_SIGNATURE_INDEX_PATH")
+    if env:
+        return Path(env)
+    return Path(__file__).resolve().parents[1] / "kg_rca" / "outputs" / "signature_index.json"
+
+
+def _semantic_index() -> SemanticSignatureIndex | None:
+    """의미 진입 인덱스(지연 싱글턴). KG_LIVE일 때 LiveKGClient에 주입된다.
+
+    실패해도 서버 기동을 막지 않는다 — None이면 LiveKGClient가 의미 진입 없이
+    (enum signature/패턴 진입만으로) 동작한다. KG_SEMANTIC=0으로 명시적으로 끌 수 있다.
+    """
+    global _semantic, _semantic_loaded
+    if _semantic_loaded:
+        return _semantic
+    _semantic_loaded = True
+
+    if os.getenv("KG_SEMANTIC", "1").lower() in ("0", "false", "no"):
+        return None
+
+    path = _signature_index_path()
+    if not path.exists():
+        print(f"[deps] signature index 없음({path}) — 의미 진입 비활성. "
+              f"생성: semantic_entry.build_signature_index (그래프 재빌드 후 갱신 필요)")
+        return None
+    try:
+        # 인덱스를 만든 모델과 반드시 동일해야 한다 (semantic_entry.EMBEDDING_MODEL).
+        from langchain_openai import OpenAIEmbeddings
+        embedder = OpenAIEmbeddings(model=EMBEDDING_MODEL)
+        _semantic = SemanticSignatureIndex(load_index(path), embedder.embed_query)
+    except Exception as exc:   # noqa: BLE001 — 키 미설정 등 어떤 초기화 실패도 기동은 살린다
+        print(f"[deps] 의미 진입 초기화 실패({exc!r}) — enum/패턴 진입만 사용")
+        _semantic = None
+    return _semantic
+
+
 def kg_client() -> KGClient | LiveKGClient:
-    """KG 조회 클라이언트. KG_LIVE=1이면 Neo4j 라이브 순회(LiveKGClient),
-    아니면 hypotheses.json 파일 조회(KGClient, 기본값). 둘 다 get_candidates 인터페이스 동일.
+    """KG 조회 클라이언트. KG_LIVE=1이면 Neo4j 라이브 순회(LiveKGClient) + 의미 진입
+    (signature index가 있으면 자동, KG_SEMANTIC=0으로 끔), 아니면 hypotheses.json
+    파일 조회(KGClient, 기본값). 둘 다 get_candidates 인터페이스 동일.
     """
     global _kg_client
     if _kg_client is None:
         if os.getenv("KG_LIVE", "").lower() in ("1", "true", "yes"):
-            _kg_client = LiveKGClient(graph=_neo4j_graph())
+            _kg_client = LiveKGClient(graph=_neo4j_graph(), semantic_index=_semantic_index())
         else:
             _kg_client = KGClient(hypotheses_path=Path(os.environ["KG_HYPOTHESES_PATH"]))
     return _kg_client
