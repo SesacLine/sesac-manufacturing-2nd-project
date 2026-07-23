@@ -23,7 +23,7 @@ from typing import Any
 from . import store
 from .assembler import build_analysis_payload
 from .config import DATA_EPOCH, EVENT_DATE_COMPACT, fab_db_path
-from .graph import build_graph
+from .graph import _CURRENT_GROUP, build_graph
 from .graph_client import KGClient
 from .mcp_client import MCPClient
 from .schemas import NODE_TO_STEP_INDEX, normalize_pattern, pattern_slug
@@ -50,6 +50,40 @@ def _now_hms() -> str:
     return datetime.datetime.now().strftime("%H:%M:%S")
 
 
+def _tag_message(message: str) -> str:
+    """진행 로그 메시지 앞에 현재 그룹 태그를 붙인다(§8.1·§8.3).
+
+    run_groups가 그룹마다 _CURRENT_GROUP(contextvars)에 pattern을 걸어두므로, 여기서 읽어
+    "[Center] run_commonality_analysis — 12건"처럼 앞에 붙인다. 그룹 밖(⓪~③ 배치 구간)이면
+    태그 없이 그대로 둔다. contextvars라 Send 병렬화 후에도 그룹 로그가 안 섞인다.
+    """
+    group = _CURRENT_GROUP.get()
+    return f"[{group}] {message}" if group else message
+
+
+def process_stream_item(
+    namespace: tuple, update: dict, current_step: int
+) -> tuple[int, dict | None]:
+    """astream(subgraphs=True)의 (namespace, update) 한 쌍을 처리한다(§8.2).
+
+    - **안쪽 신호**(namespace 비어있지 않음): 서브그래프 내부 노드 완료 → **진행 표시 전용**.
+      state_delta=None 을 돌려 부모 state를 GroupState 부분상태로 덮어쓰지 않는다(§8.2b).
+    - **바깥 신호**(namespace 빔): 배치 노드 완료 → state_delta=부분상태(결과 누적용).
+    - **current_step**: 완료 노드명을 NODE_TO_STEP_INDEX로 조회해 max(현재, 조회값)(단조 증가, §8.1).
+      바깥 이름과 서브그래프 내부 이름(④~⑦)이 같은 표를 공유한다(내부명=옛 바깥명, §8.2c).
+      표에 없는 노드(observe_groups·run_groups)는 current_step을 그대로 둔다.
+    """
+    is_inner = bool(namespace)
+    new_step = current_step
+    delta: dict | None = None
+    for node_name, partial in update.items():
+        if node_name in NODE_TO_STEP_INDEX:
+            new_step = max(new_step, NODE_TO_STEP_INDEX[node_name])
+        if not is_inner and isinstance(partial, dict):
+            delta = {**(delta or {}), **partial}
+    return new_step, delta
+
+
 class LoggingMCP:
     """MCPClient 위임 프록시 — 도구 호출 1건마다 batch.logs에 트레이스를 남긴다(§2.4 logs)."""
 
@@ -69,12 +103,12 @@ class LoggingMCP:
             except Exception as exc:
                 store.append_batch_log(
                     self._batch_id,
-                    {"time": _now_hms(), "tool": name, "message": f"{message} — {exc}", "status": "error"},
+                    {"time": _now_hms(), "tool": name, "message": _tag_message(f"{message} — {exc}"), "status": "error"},
                 )
                 raise
             store.append_batch_log(
                 self._batch_id,
-                {"time": _now_hms(), "tool": name, "message": message, "status": "done"},
+                {"time": _now_hms(), "tool": name, "message": _tag_message(message), "status": "done"},
             )
             return result
 
@@ -155,18 +189,18 @@ async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -
         "final_response": {},
     }
 
-    # astream(updates): 노드 하나가 끝날 때마다 {노드명: 부분상태}가 온다.
-    # 완료된 노드의 "다음" 노드 스텝으로 current_step을 전진시킨다(vlm_describe(3)는
-    # 대응 노드가 없어 건너뛴다 — AGENT_GUIDE §5).
-    node_order = list(NODE_TO_STEP_INDEX)
-    async for update in graph.astream(state, stream_mode="updates"):
-        for node_name, partial in update.items():
-            if isinstance(partial, dict):
-                state.update(partial)
-            if node_name in NODE_TO_STEP_INDEX:
-                idx = node_order.index(node_name)
-                if idx + 1 < len(node_order):
-                    store.update_batch_step(batch_id, NODE_TO_STEP_INDEX[node_order[idx + 1]])
+    # astream(subgraphs=True): 바깥 노드뿐 아니라 그룹 서브그래프(④~⑦) 안쪽 노드 완료도
+    # (namespace, update)로 받는다(§8.2). 안쪽 신호는 진행 표시 전용(process_stream_item이
+    # delta=None), 바깥 신호만 결과 누적. current_step은 완료 노드의 인덱스로 단조 증가한다.
+    # (observe_groups=인덱스3 매핑은 #33/step7 몫 — 지금은 그 자리가 비어 3을 건너뛴다.)
+    current_step = 0
+    async for namespace, update in graph.astream(state, stream_mode="updates", subgraphs=True):
+        new_step, delta = process_stream_item(namespace, update, current_step)
+        if delta:
+            state.update(delta)
+        if new_step > current_step:
+            current_step = new_step
+            store.update_batch_step(batch_id, current_step)
 
     seq = int(batch_id.rsplit("_", 1)[1])
     result_ids = _persist_results(batch_id, seq, state)

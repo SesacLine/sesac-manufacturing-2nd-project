@@ -12,6 +12,7 @@ step 2(행위 보존): ④⑤⑥⑦ 노드 함수는 **아직 옛 시그니처**
 
 from __future__ import annotations
 
+import contextvars
 import logging
 
 from langgraph.graph import END, StateGraph
@@ -22,6 +23,12 @@ from .nodes import critic, graphrag, grouper, hypothesis, lowyield, observe, res
 from .state import GroupState, RCAState
 
 logger = logging.getLogger(__name__)
+
+# 진행 로그 그룹 태그(§8.3). 비동기 작업마다 각자 값을 갖는 ContextVar라 순차·Send 병렬 양쪽에서
+# 안 섞인다. run_groups가 그룹마다 set하고, batch_runner._tag_message가 읽어 로그 앞에 [Center]처럼 붙인다.
+_CURRENT_GROUP: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "current_group", default=None
+)
 
 
 def _to_group_state(group: dict, state: RCAState) -> dict:
@@ -174,7 +181,12 @@ async def run_groups(state: RCAState, group_graph) -> dict:
         if group["pattern"] == "Normal":
             logger.info("Normal 그룹 유입 — 건너뜀 (②에서 걸러졌어야 함): %s", gid)
             continue
-        out = await group_graph.ainvoke(_to_group_state(group, state))
+        # 이 그룹 처리 동안의 MCP 로그에 [pattern] 태그가 붙도록 contextvar를 건다(§8.3).
+        token = _CURRENT_GROUP.set(group["pattern"])
+        try:
+            out = await group_graph.ainvoke(_to_group_state(group, state))
+        finally:
+            _CURRENT_GROUP.reset(token)
         merged["graphrag_candidates"][gid] = {
             "pattern": group["pattern"],
             "candidates": out.get("candidates", []),
