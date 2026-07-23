@@ -19,7 +19,7 @@ from langgraph.graph import END, StateGraph
 
 from .graph_client import KGClient
 from .mcp_client import MCPClient
-from .nodes import critic, graphrag, grouper, hypothesis, lowyield, observe, response, vlm
+from .nodes import cnn, critic, graphrag, grouper, hypothesis, lowyield, response, vlm_describe
 from .state import GroupState, RCAState
 
 logger = logging.getLogger(__name__)
@@ -212,10 +212,10 @@ def build_graph(kg_client: KGClient, mcp: MCPClient):
 
     workflow = StateGraph(RCAState)
     workflow.add_node("select_low_yield_lots", lowyield.select_low_yield_lots)
-    workflow.add_node("read_wafer_maps", vlm.read_wafer_maps)
+    workflow.add_node("read_wafer_maps", cnn.read_wafer_maps)
     workflow.add_node("group_by_pattern", grouper.group_by_pattern)
     # ③ 관측 생산(v1.5: VLM은 Grouper 뒤, 스택맵에 1회, #25 배치 노드).
-    workflow.add_node("observe_groups", observe.observe_groups)
+    workflow.add_node("observe_groups", vlm_describe.observe_groups)
     workflow.add_node("run_groups", _run_groups)
 
     workflow.set_entry_point("select_low_yield_lots")

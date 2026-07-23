@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from backend.nodes import graphrag
-from backend.nodes.observe import (
+from backend.nodes.vlm_describe import (
     _build_observation,
     _observation_from_die_maps,
     observe_groups,

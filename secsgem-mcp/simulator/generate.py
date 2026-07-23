@@ -3,7 +3,7 @@
 사용법:
   python -m simulator.generate --wm811k datasets/raw/WM811K.pkl --out datasets --seed 20260101
 
-시드 고정 배치 생성: 같은 인자 → byte-identical 산출물
+시드 고정 배치 생성: 같은 인자 -> byte-identical 산출물
 산출물: <out>/fab.db, <out>/raw_secs_logs/, <out>/ground_truth/ (서버는 ground_truth 미접근)
 """
 import argparse, io, json, pathlib, sqlite3
@@ -17,7 +17,7 @@ from server import _seed
 from server._seed import rng
 from preprocess.wm811k_loader import load_wm811k
 
-EPOCH = datetime(2026, 1, 1)          # 가상 타임라인 기점
+EPOCH = datetime(2026, 1, 1) # 가상 타임라인 기점
 
 
 def ts(days: float) -> str:
@@ -136,6 +136,8 @@ def main():
     ap.add_argument("--n-single", type=int, default=9)   # 3클래스 × 원인 3종 커버
     ap.add_argument("--n-unmatched", type=int, default=2)   # 전체의 10~20%
     ap.add_argument("--n-background", type=int, default=800)
+    # 라벨 웨이퍼의 split 제한 — 기본 Test (CNN이 Training으로 학습되므로 누출 차단, 07-23 팀 결정)
+    ap.add_argument("--labeled-split", default="Test", choices=["Test", "Training", "all"])
     args = ap.parse_args()
     _seed.GLOBAL_SEED = args.seed
 
@@ -150,8 +152,11 @@ def main():
     eqmap = equipment_instances(fab)
     days = fab["timeline_days"]
 
-    print("[1/5] WM-811K 로드 ...")
-    wm = load_wm811k(args.wm811k)
+    print(f"[1/5] WM-811K 로드 (labeled_split={args.labeled_split}) ...")
+    wm = load_wm811k(
+        args.wm811k,
+        labeled_split=None if args.labeled_split == "all" else args.labeled_split,
+    )
     wm = wm[wm.scope != "excluded"]                  # 제외된 6클래스 타임라인 미유입
     labeled = wm[wm.has_label]
     # 패턴별 lot 후보: 해당 라벨 wafer를 2장 이상 가진 lot (실제 lot 구조 활용)

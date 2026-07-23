@@ -37,6 +37,7 @@ _SKELETON_OBSERVATIONS: dict[str, Observation] = {
         "pattern_candidate": "Center",
         "location_text": "a concentrated cluster of failing dies at the geometric center of the wafer",
         "morphology_text": "a dense, solid, continuous blob — the classic bulls-eye",
+        "total_description": "A localized, high-density amorphous blob of failing dies concentrated at the wafer center, with density decreasing sharply outward.",
         "angular_coverage": "unknown",
         "clock_positions": [],
         "density": "high",
@@ -46,6 +47,7 @@ _SKELETON_OBSERVATIONS: dict[str, Observation] = {
         "pattern_candidate": "Edge-Ring",
         "location_text": "failing dies distributed around the entire wafer edge",
         "morphology_text": "a dense, nearly unbroken circular ring wrapping the full circumference",
+        "total_description": "A continuous, high-density circumferential band of failing dies along the wafer periphery, sharply contrasted against a clean interior.",
         "angular_coverage": "full",
         "clock_positions": [],
         "density": "high",
@@ -55,6 +57,7 @@ _SKELETON_OBSERVATIONS: dict[str, Observation] = {
         "pattern_candidate": "Scratch",
         "location_text": "an elongated line of failing dies cutting across the wafer",
         "morphology_text": "a thin, continuous, low-density linear streak",
+        "total_description": "A continuous filamentary string of failing dies tracing a jagged linear trajectory across adjacent die fields.",
         "angular_coverage": "unknown",
         "clock_positions": [],
         "density": "low",
@@ -135,9 +138,100 @@ def _build_observation(pattern: str, lot_ids: list[str]) -> Observation:
 
 
 def observe_groups(state: RCAState) -> dict:
-    """groups 각각에 그룹 단위 관측 1건을 붙인다. 결정적, 그룹당 1건, 집계 없음."""
-    groups = [
-        {**group, "observation": _build_observation(group["pattern"], group["lot_ids"])}
-        for group in state["groups"]
-    ]
+    """groups 각각에 그룹 단위 관측 1건을 붙인다. 그룹당 1건, 집계 없음.
+
+    분기 flag `VLM_LIVE`(KG_LIVE와 같은 관례): 미설정(기본)이면 결정적 관측만
+    (quantitative die-matrix 통계, 자연어 빈 값 — 위 기본 경로 그대로), 1/true/yes면
+    같은 결정적 관측 위에 **실제 VLM 자연어(location/morphology_text)를 오버레이**한다
+    (wafer_reading.vlm.VLMReader — 트랙은 VLM_TRACK open|pty). VLM 실패 시 결정적 관측만
+    으로 이어간다(자연어 없이도 signature enum 진입이 성립하므로 배치는 죽지 않는다).
+    """
+    if os.getenv("VLM_LIVE", "").lower() in ("1", "true", "yes"):
+        groups = [_observe_group_live(group, state) for group in state["groups"]]
+    else:
+        groups = [
+            {**group, "observation": _build_observation(group["pattern"], group["lot_ids"])}
+            for group in state["groups"]
+        ]
     return {"groups": groups}
+
+
+# --- VLM_LIVE 분기 — 기본(결정적) 경로는 위를 그대로 유지, 아래는 opt-in 전용 ---
+
+_vlm_reader = None  # 모델/클라이언트 로드가 무거워 프로세스당 1회만
+
+
+def _get_vlm_reader():
+    global _vlm_reader
+    if _vlm_reader is None:
+        from wafer_reading.vlm import VLMReader
+
+        _vlm_reader = VLMReader()  # 트랙은 VLM_TRACK 환경변수 (기본 open)
+    return _vlm_reader
+
+
+def _observe_group_live(group: dict, state: RCAState) -> dict:
+    """결정적 관측(quantitative) + VLM 자연어 오버레이.
+
+    스태킹 멤버 규칙(팀 확정): 개별 판독 pattern이 그룹 pattern과 일치하는 웨이퍼만 —
+    vlm_results로 필터한다(기본 경로는 로트 전체를 쓰지만, VLM 입력 이미지는 신호 희석을
+    피해야 하므로 여기서는 규칙을 적용). VLM 이미지 분기(Scratch 단일)는 어댑터가 처리.
+    """
+    from wafer_reading.vlm.adapter import VLMCallError
+
+    member_lots = set(group["lot_ids"])
+    keys = [
+        (r["lot_id"], r["wafer_id"])
+        for r in state["vlm_results"]
+        if r["lot_id"] in member_lots and r["pattern"] == group["pattern"]
+    ]
+    die_maps = _fetch_die_maps_by_keys(keys)
+    if not die_maps:
+        return {**group, "observation": _build_observation(group["pattern"], group["lot_ids"])}
+
+    try:
+        observation = _observation_from_die_maps(group["pattern"], die_maps)
+    except Exception:  # noqa: BLE001 — 기본 경로와 같은 폴백 정책
+        observation = _skeleton(group["pattern"])
+
+    try:
+        vlm = _get_vlm_reader().describe_group(group["pattern"], die_maps)
+    except VLMCallError:
+        return {**group, "observation": observation}  # 자연어 없이 결정적 관측만
+
+    observation = {
+        **observation,
+        "location_text": vlm["location_text"],
+        "morphology_text": vlm["morphology_text"],
+    }
+    return {
+        **group,
+        "observation": observation,
+        "total_description": vlm["total_description"],
+        "vlm_track": vlm["vlm_track"],
+        "image_mode": vlm["image_mode"],
+    }
+
+
+def _fetch_die_maps_by_keys(keys: list[tuple[str, str]]) -> list[np.ndarray]:
+    """(lot_id, wafer_id) 목록의 die_map만 로드 — 멤버 규칙 적용판 _fetch_die_maps."""
+    db = os.environ.get("FAB_DB")
+    if not keys or not db or not os.path.exists(db):
+        return []
+    con = sqlite3.connect(db)
+    try:
+        maps: list[np.ndarray] = []
+        for lot_id, wafer_id in keys:
+            row = con.execute(
+                "SELECT die_map FROM wafer WHERE lot_id = ? AND wafer_id = ? AND die_map IS NOT NULL",
+                (lot_id, wafer_id),
+            ).fetchone()
+            if row is None:
+                continue
+            try:
+                maps.append(np.load(io.BytesIO(row[0]), allow_pickle=False))
+            except Exception:  # noqa: BLE001 — 손상 맵 한 장이 그룹을 막지 않게
+                continue
+        return maps
+    finally:
+        con.close()
