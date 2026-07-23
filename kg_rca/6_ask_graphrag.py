@@ -422,6 +422,12 @@ def apply_mapping_fill(pattern: str, rows: list[dict]) -> int:
             "param_in_fab_vocab": param in FAB_PARAM_IDS,
         }
 
+        # 문헌직결(direct) 행은 step=NULL(DIRECT_QUERY) — 매칭이 특정한 공정으로 보충한다.
+        # 신호(param/drift)만 채우고 조사 장소를 비워두면 backend가 엉뚱한 장비에서 param을
+        # 찾다 기각된다(0723 E2E 실측: 정답 가설 사망 경로). step 있는 행(path 정본)은 안 건드림.
+        if row["step"] is None and entry.get("process"):
+            row["step"] = entry.get("process")
+
         # fab 어휘에 있는 param일 때만 [자동] 승격. 아니면 힌트로만 남긴다.
         if param in FAB_PARAM_IDS:
             row["tier"] = TIER_AUTO

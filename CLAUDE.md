@@ -22,6 +22,13 @@
   등록됨, git 추적 밖). 날짜별 `MMDD work/` 폴더 아래에 그날 스터디·설계 노트를 둔다(예:
   `personalspace_rca/0718 work/0718_study.md`). Claude는 개인 작업/노트를 항상 여기에 만들 것 —
   repo 상위의 옛 `Semiconductor/personalspace/`(0714까지)는 폐기된 위치이므로 쓰지 말 것.
+- **④/⑤ 갱신(2026-07-23)**: ④ Hypothesis·⑤ Critic이 스켈레톤을 크게 벗어났다. ④는 자동 tier
+  LLM 그룹 조사관(배치 telemetry)·방향 대조·cause 클러스터·**fab 재랭킹**·스텝 상한까지, ⑤는
+  4규칙 + `investigated` 소비(judge_unknown 분기)까지 구현됨(슬라이스2 S2-1~6). 이어 ground truth
+  E2E 평가(슬라이스3)로 **SC-CENTER-01 근본원인 top-1 달성**(정답 193위 rejected → 0위 accepted,
+  함정 P2 시간역전 44건 명시 기각). 처방 4종은 BACKEND_DECISIONS D13~D16. **④/⑤ 상세 정본은
+  `personalspace_rca`의 hypo_critic_py.md·terms_of_reference.md·hypo_critic_test_result.md** —
+  아래 파이프라인 절의 `32b3690` 스냅샷은 이 전환 이전이라 ③~⑥ 서술이 낡았으니 상세는 그쪽을 볼 것.
 - **현재 상태(2026-07-20 기준)**
   - 파이프라인은 **커밋 `32b3690` 기준 ⓪~⑥**으로 Walking Skeleton 완성, end-to-end 실행
     검증됨(kg_rca v2.4 갱신 후 재검증: Center 297건 후보 → 163건 채택/134건 기각). 단, VLM
@@ -96,17 +103,21 @@
   (`_run_per_group`). ③~⑥ 노드는 kg_client/mcp가 필요해 람다가 아니라 `async def`로 감싼다
   (람다는 `await`를 못 담아 실행 자체가 안 됨 — 실제로 겪은 버그).
 - **실시간 모델/LLM 호출 노드**: 목표 구조 기준 ①CNN(**비전 모델**, LLM 아님) · ③VLM · ⑦응답생성
-  (LLM). KG 조회는 빌드타임에 끝난 결과를 조회만 한다. Critic은 규칙 기반으로 LLM을 **쓰지
-  않는다**(확정).
+  (LLM), 그리고 **④ Hypothesis의 자동(Parameter) tier**(2026-07-22 S2-2로 `create_react_agent`
+  그룹 조사관 도입 — 반자동·근거없음은 결정론). KG 조회는 빌드타임 결과 조회. **Critic은 규칙
+  기반으로 LLM을 쓰지 않는다(확정).** ④가 LLM이 됐어도 숫자(evidence)는 도구 반환에서 코드가
+  재구성하고 LLM은 서사(rationale)만 쓴다(옵션 A) — Critic은 evidence만 읽어 판정(faithfulness firewall).
 - **재시도 없음**: 채택 후보가 0개면 재시도하지 않고 즉시 `insufficient_evidence`("판단 불가")를
   반환한다. 근거 없이 답을 지어내지 않는 것이 이 설계의 환각 억제 장치다(기획안 §5.2·§7.1).
-- **판정 책임 경계**: 최종 채택/기각은 Critic이 하지만, **`[자동]` 등급만은 예외로 Hypothesis
-  단계에서 `query_telemetry` 결과로 즉시 채택/기각까지 간다**(기획안 §7.1·§7.2). `[반자동]`·
-  `[근거없음]`은 증거만 모아 Critic으로 넘긴다.
-- **⚠️ Hypothesis 노드가 LLM 에이전트인지 규칙 기반인지는 현재 미정이다.** 기획안 v1.5는 "LLM
-  기반 에이전트가 후보별 tool 호출 여부·순서를 추론해 결정"으로 서술하지만, 담당자 의견으로
-  변동 가능성이 생겨 **아직 확정이 아니다.** `32b3690`의 `nodes/hypothesis.py`는 검증등급에 따라
-  호출을 분기하는 **결정적 룰베이스**다. 기획안 문구를 확정 스펙으로 인용하지 말 것.
+- **판정 책임 경계(S2 확정)**: 최종 채택/기각은 **전부 ⑤ Critic**이 한다 — ④는 tier 무관하게
+  증거 수집·검증·**랭킹(soft)**만 하고 기각 판정은 안 한다(hypo_critic_py.md §1). 자동 tier도
+  ④에서 즉시 채택되지 않고 evidence(drift 등)를 채워 ⑤ 4규칙으로 넘긴다. 기획안 §7.1의 "자동은
+  ④에서 즉시 채택/기각" 서술은 S2 설계에서 "④ soft / ⑤ hard"로 정리됐으니 그대로 인용하지 말 것.
+- **✅ Hypothesis 노드 확정(2026-07-22, S2-2)**: 자동(Parameter) tier는 **LLM 에이전트**
+  (`create_react_agent` 그룹 조사관)가 step 배치로 telemetry를 검증하고, 반자동·근거없음은
+  **결정론 룰베이스**다(tier별 하이브리드). 단 숫자는 도구 반환에서 코드가 재구성하고 LLM은
+  rationale만 쓴다(옵션 A). `32b3690` 스냅샷(위 절)은 이 전환 이전이라 전 tier 결정론이었다 —
+  스냅샷 표를 현재 코드로 읽지 말 것. ④/⑤ 상세 정본은 `personalspace_rca`의 hypo_critic_py.md.
 - `state.py`의 `RCAState`가 파이프라인 전체가 공유하는 상태 타입(TypedDict). 현 필드 흐름:
   `cursor_date`/`cursor_end` → `target_lot_ids → vlm_results → groups → graphrag_candidates →
   hypotheses → critic_result → final_response`.
@@ -239,8 +250,8 @@ CORS는 `:5173`만 허용된다(`backend/main.py`, 프록시 미사용).
 | 위치 | 지금 선택 | 비고 |
 |---|---|---|
 | `hypothesis.py` 결정① MCP 호출 단위 | 가설 단위 대신 `(step, evidence_label, evidence)` 캐싱 | 캐싱 없으면 244건에서 타임아웃 실측. 응급처치 수준 |
-| `hypothesis.py` 결정② route="direct" 의심 장비 | `step=None`을 그대로 `run_commonality_analysis`에 전달 | 신호가 흐려짐. ⚠️ `route` 필드는 kg_rca 07-13 개편으로 **출력에서 제거됨** — `hypothesis.py:34` 주석에만 옛 이름이 남아 있으니 필드를 찾지 말 것(현재는 `step` 유무로 판단) |
-| `hypothesis.py` 결정③ `direction: null`인 `[자동]` 후보 | 방향 무시, 정상범위 이탈이면 `drift_detected=True` | 4건뿐이라 영향 작음 |
+| `hypothesis.py` 결정② `step=None` 후보 | **mapping.process로 step 폴백**(`_with_step_fallback`, 07-23 처방·BACKEND_DECISIONS D14) — 이전엔 `step=None`을 그대로 commonality에 전달해 함정 장비로 쏠렸음(SC-CENTER-01 실측) | 근본은 kg_rca 6번 교정(`kg_step보충_제안.md` 전달), 반영되면 폴백 무동작. (`route` 필드는 07-13 개편으로 출력에서 제거됨 — `step` 유무로 판단) |
+| ~~`hypothesis.py` 결정③ direction 무시~~ **해소(07-22 S2-1)** | 방향 대조(`_drift_direction`/`_direction_match`) 승격 — drift 방향↔KG 예상 대조로 경쟁 가설 판별 | `direction=null` 후보만 n/a로 잔존 |
 | `lowyield.py` 저수율 임계값 | `LOW_YIELD_THRESHOLD = 0.8` 고정값 | 동적 임계값 미검토 |
 | `grouper.py` 최소 로트수 게이트 | `MIN_LOTS_PER_GROUP = 1`(게이트 없음) | 서브클러스터링 없음 |
 | `vlm.py` | 실제 VLM 미연동, `pattern="Center"` 고정 | **파인튜닝 없음**이 기획안 확정 — VLM API(Qwen3-VL·Gemini 등) + few-shot 프롬프팅. Qwen3-VL-4B 파인튜닝은 선행연구(WaferSAGE)가 한 것이지 우리 계획이 아님 |
@@ -248,7 +259,7 @@ CORS는 `:5173`만 허용된다(`backend/main.py`, 프록시 미사용).
 | `response.py` | 실제 LLM 미연동, 결정적 템플릿 문자열 | |
 | `main.py` 배치 시작 커서 | `2026-03-04` 하드코딩 | fab.db 실데이터 범위 기준 시작일 정책 미정 |
 
-| 가설 개수·검증 라운드 상한 | **없음**(후보 전량 순회) | 기획안 §9 제약은 "상한을 두고 가설별 추적 ID로 로깅"을 요구하는데 미반영. Center 297건을 캐싱으로 겨우 버티는 상태 |
+| 검증 라운드 상한 | **배치당 에이전트 스텝 상한 도입**(`AGENT_RECURSION_LIMIT=8`, 07-23 S2-5) — 초과(폭주) 시 그 배치 미조사 폴백 | 기획안 §9 "상한" 이행. 단 가설별 추적 ID 로깅은 여전히 미반영. 후보 전량 순회 자체는 유지(함축은 랭킹이 담당) |
 
 컴포넌트별 상세 개선 목록(VLM/Hypothesis/Critic/응답생성/E2E평가 5개 표)은
 `docs/skeleton_kickoff.md` §8 참고 — 재설계 착수 전 체크리스트로 쓰면 됨.

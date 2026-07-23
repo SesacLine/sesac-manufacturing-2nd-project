@@ -8,7 +8,7 @@ cause/failure_mode 문자열은 fab.db와 join key가 아니다.
 
 from __future__ import annotations
 
-from typing import Literal, NotRequired, TypedDict
+from typing import Annotated, Literal, NotRequired, TypedDict
 
 Tier = Literal["자동", "반자동", "근거없음"]
 EvidenceLabel = Literal["Parameter", "Maintenance", "Recipe", "None"]
@@ -82,6 +82,8 @@ class GraphRAGCandidate(TypedDict):
     """
 
     cause: str
+    matched_cause: NotRequired[str | None]  # kg cause→mapping_table 어휘 번역(mapping.matched_cause). E2E 평가 전용 — 표시·판정 불사용
+    mapped_process: NotRequired[str | None]  # mapping.process — step=None 폴백 전용(처방2-b). path.step이 정본
     failure_mode: str | None
     step: str | None
     signature: NotRequired[str | None]
@@ -124,6 +126,8 @@ class EvidenceEntry(TypedDict):
 
     commonality_ratio: float | None
     drift_detected: bool | None
+    drift_direction: str | None          # "high"/"low"/None — drift 방향 (S2-1)
+    direction_match: bool | None         # candidate.direction과 일치? True/False/None(n/a)
     maintenance_hit: bool | None
     maintenance_ts: str | None
     recipe_match: bool | None
@@ -146,6 +150,7 @@ class Hypothesis(TypedDict):
     """④ Hypothesis 노드 출력. GraphRAGCandidate 1건 + 수집한 증거."""
 
     cause: str
+    matched_cause: NotRequired[str | None]   # candidate.matched_cause 그대로 운반 — ground truth 대조(E2E 평가) 전용
     tier: Tier
     stage: str | None                        # candidate.step(KG ProcessStep 6종 또는 None) — API §2.5 stage
     equipment: str | None
@@ -159,7 +164,8 @@ class Hypothesis(TypedDict):
     # judge_unknown = 근거없음(P5) + 반자동 미조사(SEMI_AUTO). ④는 이 필드를 직접 안 채운다.
     verdict: NotRequired[str]
     investigated: NotRequired[bool]          # investigate_group이 실제 조사(도구호출/unit판정 상속)했으면 True, 미조사 False → judge_unknown
-
+    cluster_id: NotRequired[str]             # unit+direction 병합 키(_cluster_key) — 같은 id = 같은 원인군
+    is_primary: NotRequired[bool]            # 파편화 cause의 대표(주 증거) 행 — cause당 1행만 True
 
 class CriticResult(TypedDict):
     """⑤ Critic 노드 출력."""
@@ -187,11 +193,48 @@ class FinalResponse(TypedDict):
     summary: str
 
 
+def merge_by_group(old: dict, new: dict) -> dict:
+    """그룹 키 dict의 reducer — 기존 키는 두고 새 키만 얹는다({**old, **new}).
+
+    순차 실행에서는 한 번에 한 그룹만 쓰므로 하는 일이 없다. 그러나 Send 병렬로 바꾸면
+    그룹들이 같은 dict에 동시에 쓰는데, reducer가 없으면 LangGraph 기본값(덮어쓰기)이 걸려
+    한 그룹 결과가 조용히 사라진다. 지금 정의해 두면 병렬 전환 시 state.py를 안 고쳐도 된다
+    (골격설계 §4.3). 같은 키가 충돌하면 new가 이긴다.
+    """
+    return {**old, **new}
+
+
+class GroupState(TypedDict):
+    """그룹 서브그래프(④~⑦)가 쓰는 좁은 상태 — 그룹 1개짜리 작업대.
+
+    서브그래프 안에서는 hypotheses/candidates 등이 "그 그룹의 리스트"라, 노드에 group_id를
+    따로 넘기거나 dict[group_id]로 파고들 필요가 없다(골격설계 §4.2). group_id·pattern·
+    lot_ids·cursor_*·observation은 배치 그래프가 넣어주는 입력이고, candidates 이하 4종은
+    ④~⑦이 채우는 출력이다.
+    """
+
+    group_id: str
+    pattern: str
+    lot_ids: list[str]
+    cursor_date: str
+    cursor_end: str
+    observation: NotRequired[Observation | None]
+    description: NotRequired[str | None]
+    candidates: list[GraphRAGCandidate]
+    hypotheses: list[Hypothesis]
+    critic_result: NotRequired[CriticResult | None]
+    final_response: NotRequired[FinalResponse | None]
+
+
 class RCAState(TypedDict):
     """파이프라인 ⓪~⑥ 전체가 공유하는 상태 (LangGraph StateGraph의 state 타입).
 
     cursor_date/cursor_end — ⓪의 누적 스코프(직전 배치 이후 ~ 데이터축 최신일, API 명세
     §2.3). cursor_date "이후"(exclusive) cursor_end "까지"(inclusive) 구간을 처리한다.
+
+    그룹 키 dict 4종(graphrag_candidates·hypotheses·critic_result·final_response)은 각 그룹이
+    자기 키에 쓰므로 merge_by_group reducer를 붙인다. 나머지 필드는 생산자가 배치당 1개뿐이라
+    기본(덮어쓰기) 그대로 둔다(골격설계 §4.3).
     """
 
     cursor_date: str
@@ -199,7 +242,7 @@ class RCAState(TypedDict):
     target_lot_ids: list[str]
     vlm_results: list[VLMResult]
     groups: list[Group]
-    graphrag_candidates: dict[str, GraphRAGResult]
-    hypotheses: dict[str, list[Hypothesis]]
-    critic_result: dict[str, CriticResult]
-    final_response: dict[str, FinalResponse]
+    graphrag_candidates: Annotated[dict[str, GraphRAGResult], merge_by_group]
+    hypotheses: Annotated[dict[str, list[Hypothesis]], merge_by_group]
+    critic_result: Annotated[dict[str, CriticResult], merge_by_group]
+    final_response: Annotated[dict[str, FinalResponse], merge_by_group]

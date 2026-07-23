@@ -1,12 +1,16 @@
 """⑤ Critic 노드. 결정적 함수(룰베이스), LLM 미사용 — 2026-07-09 노드화 결정.
 
-4개 규칙을 순서대로 확인한다(semiconductor_proposal.md §7.2 Critic Workflow 정본):
+규칙을 순서대로 확인한다(semiconductor_proposal.md §7.2 Critic Workflow 정본). Critic은 결정론 —
+fab 재조회 없이 ④가 채운 evidence만 읽는다(faithfulness firewall). 처음 걸리는 규칙이 판정을 정하고,
+끝까지 안 걸리면 채택:
     ① 시간 정합    — 원인 시각 < 결함 시각 아니면 reject("선후 뒤집힘") (함정 PM 필터링)
-    ② 반대근거     — get_normal_lot_ratio를 안 돌렸으면(against is None) reject
-    ③ faithfulness — 조회 안 된 값을 사실처럼 인용했으면 reject
-    ④ KG 메커니즘 연결 — VERIFIED_BY 경로가 없으면 insufficient_evidence
+    ② 반대근거     — get_normal_lot_ratio를 안 돌렸으면(normal_ratio is None) reject
+    ③ faithfulness — 자동 tier & 조사됨(investigated)인데 drift 판정이 비었으면 reject (미조사는 제외 — S2-6)
+    ④ KG 메커니즘 연결 — 근거없음 tier면 judge_unknown 보류(P5)
+    ⑤ 미조사      — investigated=False면 judge_unknown 보류 (S2-6 C3): 반자동 SEMI_AUTO_PENDING /
+                    자동 폴백 NOT_INVESTIGATED. "안 봤다"는 기각이 아니라 판단 보류
 
-채택 가능한 후보가 0개면 재시도 없이 즉시 insufficient_evidence를 반환한다.
+채택 가능한 후보가 0개면 재시도 없이 즉시 insufficient_evidence를 반환한다(그룹 status).
 재계획(replan) 루프는 없다(personalspace/0710 work/metadata.md §3.1).
 """
 
@@ -17,17 +21,20 @@ from ..state import CriticResult, Hypothesis, RCAState
 
 # 고정 사유 토큰(사유코드) — API가 verdict 3-state 승격을 이 토큰으로만 분기한다
 # (API 명세 §2.7 "verdict 매핑 주의": 자연어 reject_reason 본문 매칭 금지).
-# 내부 3버킷(adopt/reject/judge_unknown)을 프론트 3값에 매핑한다(hypo_critic_py.md §13-1 C1·C2):
+# 내부 3버킷(adopt/reject/judge_unknown)을 프론트 verdict 3값에 매핑한다(hypo_critic_py.md §13-1 C1·C2):
 #   P2/P3/P4 = reject → verdict="rejected"
-#   P5(근거없음)·SEMI_AUTO(반자동 미조사) = judge_unknown → verdict="insufficient"
+#   P5(근거없음)·SEMI_AUTO_PENDING(반자동 미조사)·NOT_INVESTIGATED(자동 폴백) → verdict="judge_unknown"
+# (그룹 status "insufficient"와는 다른 층 — verdict는 가설 1건, status는 그룹 전체.)
 TOKEN_TIME_ORDER = "P2_TIME_ORDER"
 TOKEN_NO_COUNTER_EVIDENCE = "P3_NO_COUNTER_EVIDENCE"
 TOKEN_FAITHFULNESS = "P4_FAITHFULNESS"
 TOKEN_NO_KG_MECHANISM = "P5_NO_KG_MECHANISM"
-# 반자동(Maintenance/Recipe)은 fab 증거로 아직 조사되지 않은 상태 = judge_unknown(미조사).
-# 기각(reject)이 아니라 "판단 보류"로 남긴다 — investigate_group 에이전트가 붙으면 이 분기를 걷어내고
-# 에이전트가 adopt/reject를 판정한다(hypo_critic_py.md §13-4 step2).
+# 미조사 분기는 tier가 아니라 investigated 마커 기반이다(S2-6 C3). 반자동은 아직 조사
+# 경로가 없어 항상 미조사 → SEMI_AUTO_PENDING. 반자동 조사가 붙으면 이 토큰만 걷어낸다.
 TOKEN_SEMI_AUTO_PENDING = "SEMI_AUTO_PENDING"
+# S2-6(C3): 미조사 일반 토큰 — 반자동이 아닌데 investigated=False인 행(자동 tier의
+# suspect-None/에이전트 폭주 폴백). "안 봤다"는 기각이 아니라 판단 보류(judge_unknown).
+TOKEN_NOT_INVESTIGATED = "NOT_INVESTIGATED"
 
 
 async def review_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> dict:
@@ -66,14 +73,15 @@ async def review_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> d
                 "reject_token": TOKEN_NO_KG_MECHANISM,
                 "reject_reason": "KG 메커니즘 연결(VERIFIED_BY) 없음",
             })
-        elif h["tier"] == "반자동":
-            # 반자동은 fab 증거로 아직 조사되지 않았다 = judge_unknown(미조사) → "판단 보류".
-            # 기각이 아니다(hypo_critic_py.md §13-1 C1). rejected 리스트에 담되 토큰이
-            # verdict="insufficient"로 승격시킨다. investigate_group 에이전트가 붙으면 이 분기 제거.
+        elif not h.get("investigated", False):
+            # S2-6(C3): ④가 실제로 조사 못 한 행(반자동 전부 + 자동 폴백)은 판단 보류.
+            # 여기 도달 전에 ①시간정합은 이미 통과 검사됨 — 미조사여도 수집된 사실
+            # (maintenance_ts)에 의한 반박은 유효하다(함정 사살 유지, §1-3).
+            token = TOKEN_SEMI_AUTO_PENDING if h["tier"] == "반자동" else TOKEN_NOT_INVESTIGATED
             rejected.append({
                 **h,
-                "reject_token": TOKEN_SEMI_AUTO_PENDING,
-                "reject_reason": "반자동 등급 — fab 증거 미조사로 판단 보류(judge_unknown)",
+                "reject_token": token,
+                "reject_reason": "fab 증거 미조사로 판단 보류(judge_unknown)",
             })
         else:
             accepted.append(h)
@@ -105,11 +113,12 @@ def _check_negative_evidence(hypothesis: Hypothesis) -> bool:
 def _check_faithfulness(hypothesis: Hypothesis) -> bool:
     """조회 실패/미확인 값을 사실처럼 인용했는지 확인. 위반 시 False(reject).
 
-    0713 단순화: `[자동]` 후보인데 query_telemetry는 불렀지만 정상범위 자체가 없어
-    drift_detected를 못 정한 경우만 위반으로 본다. 실제 문장 단위 사실 대조는
-    스텝7(response.py, LLM)이 붙은 뒤 다시 설계해야 한다.
+    0713 단순화: `[자동]` 후보를 실제로 조사했는데(investigated=True) 정상범위 부재로
+    drift_detected를 못 정한 경우만 위반으로 본다. 미조사 행은 위반이 아니라 "판단
+    보류" 대상이라 여기서 걸지 않는다(S2-6 C3 — 가짜 reject 오염 방지). 실제 문장
+    단위 사실 대조는 스텝7(response.py, LLM)이 붙은 뒤 다시 설계해야 한다.
     """
-    if hypothesis["tier"] == "자동":
+    if hypothesis["tier"] == "자동" and hypothesis.get("investigated"):
         return hypothesis["evidence"].get("drift_detected") is not None
     return True
 

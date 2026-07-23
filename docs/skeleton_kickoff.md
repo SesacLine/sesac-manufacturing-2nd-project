@@ -17,6 +17,7 @@
 - 가상환경은 루트 `SesacLine_SemiRCA/.venv` 하나만 쓴다(`pyproject.toml` 하나로 세 곳 의존성 통합, `uv sync`로 설치). `.gitignore`도 루트 하나로 병합, `.env`는 `./kg_rca`·`./secsgem-mcp` 상대경로로 이미 맞춰져 있다.
 - KG는 "이 결함 패턴이면 일반적으로 어떤 원인이 있을 수 있는지"를 문헌에서 찾아주고, MCP 서버는 "이번에 실제로 문제가 된 로트가 어느 장비를 지났고 그 장비에서 무슨 일이 있었는지"를 조회해준다. Hypothesis 노드는 KG가 준 원인 후보 하나하나를 MCP 서버로 실제로 확인해보는 역할이고, Critic 노드는 그 확인 결과가 믿을 만한지 다시 한번 점검하는 역할이다.
 - Hypothesis·Critic은 자유롭게 판단하는 LLM이 아니라 **정해진 규칙대로 동작하는 함수**로 만든다(2026-07-09 팀 결정). 파이프라인에서 LLM을 실시간 호출하는 노드는 ①VLM과 ⑥응답생성 둘뿐이고, ③~⑤는 전부 결정적 함수다.
+  - **⚠️ 갱신(2026-07-23, S2-2)**: 위 문장은 스켈레톤 당시 기록이다. 이후 **④ Hypothesis의 자동(Parameter) tier는 LLM 에이전트**(`create_react_agent` 그룹 조사관)로 전환됐다 — 반자동·근거없음과 ⑤ Critic은 여전히 결정론. 단 옵션 A로 숫자(evidence)는 도구 반환에서 코드가 재구성하고 LLM은 rationale만 쓰므로 "판단 근거 추적 가능" 원칙은 유지된다. ④/⑤ 정본은 `personalspace_rca`의 hypo_critic_py.md·CLAUDE.md ④/⑤ 갱신 절.
 
 ---
 
