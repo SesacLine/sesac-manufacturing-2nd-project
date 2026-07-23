@@ -1,7 +1,4 @@
-"""③ VLM description 생성(describer) — 그룹(스택맵) 단위 Observation 1건을 만들어 group["observation"]에 싣는다.
-
-기획안 v1.5의 "③ VLM description 생성" 스테이지가 이 노드다 — 실제 VLM이 붙으면 여기가
-스택맵 이미지를 서술하는 실시간 모델 노드가 된다(현 nodes/vlm.py는 ① CNN 자리의 스탠드인).
+"""③ 관측 생산 — 그룹(스택맵) 단위 Observation 1건을 만들어 group["observation"]에 싣는다.
 
 기획안 v1.5 목표 구조에서 VLM은 Grouper **뒤**에서 그룹 스택맵(같은 CNN 라벨 웨이퍼들의
 die_map 오버레이)에 1회 적용된다 — 웨이퍼별 판독을 합치는 집계 과정이 없다
@@ -72,7 +69,7 @@ def _build_observation(pattern: str) -> Observation:
     return {"pattern_candidate": pattern, "location_text": "", "morphology_text": ""}
 
 
-def describe_groups(state: RCAState) -> dict:
+def observe_groups(state: RCAState) -> dict:
     """groups 각각에 그룹 단위 관측 1건을 붙인다. 결정적, 그룹당 1건, 집계 없음."""
     groups = [
         {**group, "observation": _build_observation(group["pattern"])}
