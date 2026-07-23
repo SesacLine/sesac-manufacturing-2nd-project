@@ -1,4 +1,4 @@
-"""옵션 2 — 의미 진입(semantic entry) 단위 테스트.
+"""의미 진입(semantic entry — 자연어 임베딩 매칭) 단위 테스트.
 
 실제 OpenAI/Neo4j 없이 결정적 가짜 임베더 + FakeGraph로 검증한다.
 """
@@ -53,6 +53,33 @@ def test_match_is_deterministic_and_topk():
     assert out == sem.match("ring ring center", k=2)   # 재현성
 
 
+def test_min_score_filters_dissimilar():
+    sem = SemanticSignatureIndex(INDEX, _fake_embed)
+    # 어떤 형상 키워드도 없는 서술 → 전 시그니처와 코사인 0 → 하한 미달 → 빈 결과
+    assert sem.match("completely unrelated telemetry noise", k=3) == []
+    # 하한을 낮추면 다시 나온다 (하한이 실제로 걸러냈다는 증거)
+    loose = SemanticSignatureIndex(INDEX, _fake_embed, min_score=-1.0)
+    assert len(loose.match("ring", k=3)) == 3
+
+
+def test_unknown_with_garbage_description_returns_empty():
+    # Unknown + 아무 형상과도 안 닮은 서술 → 진입 0 → candidates=[] (insufficient_evidence 흐름)
+    sem = SemanticSignatureIndex(INDEX, _fake_embed)
+    client = LiveKGClient(graph=FakeGraph(), semantic_index=sem, semantic_k=3)
+    out = client.get_candidates("Unknown", observation={"description": "unrelated noise"})
+    assert out["candidates"] == []
+    assert "entry_signatures" not in out
+
+
+def test_known_with_garbage_description_keeps_pattern_level_only():
+    # 기지 패턴 + 안 닮은 서술 → 형상 진입은 0이지만 패턴 레벨(step/direct) 원인은 유지
+    sem = SemanticSignatureIndex(INDEX, _fake_embed)
+    client = LiveKGClient(graph=KnownPatternFakeGraph(), semantic_index=sem, semantic_k=3)
+    out = client.get_candidates("Edge-Ring", observation={"description": "unrelated noise"})
+    assert "entry_signatures" not in out
+    assert {c["step"] for c in out["candidates"]} == {"DEPO"}   # step 경로만 (형상 경로 없음)
+
+
 # --- LiveKGClient 의미 진입 브랜치 ---
 
 def _sig_row(step, angular, clock):
@@ -85,3 +112,52 @@ def test_live_client_semantic_entry_uses_description():
     assert out["candidates"][0]["step"] == "CMP"            # partial arc -> CMP 위로
     assert out["candidates"][0]["entry_signature"] == "ring@edge"
     assert out["candidates"][-1]["step"] == "ETCH"          # full ring 강등
+
+
+def test_query_text_combines_location_and_morphology():
+    obs = {"location_text": "defects around the entire wafer edge",
+           "morphology_text": "dense unbroken circular band"}
+    text = LiveKGClient._query_text(obs)
+    assert "entire wafer edge" in text and "circular band" in text
+    # 둘 다 없으면 description 폴백
+    assert LiveKGClient._query_text({"description": "x"}) == "x"
+    assert LiveKGClient._query_text({}) is None
+
+
+def _step_row(step, cause):
+    return {"step": step, "failure_mode": f"fm_{step}", "failure_mode_name": step,
+            "cause": cause, "cause_name": cause, "cause_description": "",
+            "unverifiable_signals": None, "evidence": "p_step", "evidence_name": "p",
+            "evidence_label": "Parameter", "fab_table": "telemetry", "consumable": None,
+            "direction": "high", "occurrence_prior": "high", "confidence": 3.0,
+            "quotes": [], "chunk_ids": [f"doc#c_{step}"]}
+
+
+class KnownPatternFakeGraph:
+    """(A) 기지 패턴 경로: HAS_SIGNATURE 범위 + 형상 진입 + step 경로를 흉내낸다."""
+
+    def query(self, cypher, params=None):
+        if "HAS_SIGNATURE" in cypher:
+            return [{"sig": "ring@edge"}]               # Edge-Ring이 좁히는 시그니처
+        if "SpatialSignature {id: $signature}" in cypher:
+            return [_sig_row("ETCH", "full", []), _sig_row("CMP", "partial", [5, 6, 7])]
+        if "ARISES_IN" in cypher:                        # HYPOTHESIS_QUERY (step 경로)
+            return [_step_row("DEPO", "cause_depo_pattern_level")]
+        return []                                        # DIRECT_QUERY 등은 비움
+
+
+def test_known_pattern_scopes_signatures_and_keeps_pattern_level():
+    sem = SemanticSignatureIndex(INDEX, _fake_embed)
+    client = LiveKGClient(graph=KnownPatternFakeGraph(), semantic_index=sem, semantic_k=3)
+    obs = {"location_text": "defects around the entire wafer edge forming a ring",
+           "morphology_text": "a dense circular ring band, broken on one side",
+           "angular_coverage": "partial", "clock_positions": [5, 6, 7],
+           "density": "low", "continuity": "discontinuous"}
+    out = client.get_candidates("Edge-Ring", observation=obs)
+    assert out["entry_signatures"] == ["ring@edge"]        # 패턴이 범위 제한 -> ring@edge만
+    steps = {c["step"] for c in out["candidates"]}
+    assert {"ETCH", "CMP", "DEPO"} <= steps               # 형상 경로 + 패턴 레벨(DEPO) 둘 다
+    assert out["candidates"][0]["step"] == "CMP"           # partial arc -> CMP 최상위
+    assert out["candidates"][-1]["step"] == "ETCH"         # full ring 강등
+    depo = next(c for c in out["candidates"] if c["step"] == "DEPO")
+    assert depo["morphology"] is None                      # 패턴 레벨 경로는 morphology 없음

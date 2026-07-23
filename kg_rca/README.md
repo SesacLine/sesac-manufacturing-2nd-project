@@ -61,7 +61,7 @@ SpatialSignature ──FORMS_IN─────┘                        Cause
 | `[반자동]` | `Maintenance` / `Recipe` | fab 조회는 되지만 조인 키·기대값이 없어 판정은 사람 몫 |
 | `[근거없음]` | 없음 | 문헌 서술로만 존재 (예: RTP 원인 — fab 6스텝 밖) |
 
-전체 명세는 [`KG_schema_v1.2.md`](../docs/KG_schema_v1.2.md) (정본, v2.4), fab 데이터 스키마는
+전체 명세는 [`KG_schema_v1.3.md`](../docs/KG_schema_v1.3.md) (정본, v2.5), fab 데이터 스키마는
 [`fab.md`](fab.md) 참조. [`backup/schema.md`](backup/schema.md)는 v1 기록용.
 
 ## 준비
@@ -129,9 +129,13 @@ python 3_split.py                      #           -> outputs/chunks.jsonl (표 
 python 4_ingest_chunks_to_neo4j.py     # 시드 앵커(:Evidence 포함) + Document/Chunk 적재
 python 5_build_kg_from_chunks.py       # LLM 추출 -> outputs/extracted_kg.jsonl + Neo4j
 python 6_ask_graphrag.py               # 패턴별 가설 전건 -> stdout + outputs/hypotheses.json
+python 7_build_signature_index.py      # (선택) 의미 진입용 시그니처 임베딩 -> outputs/signature_index.json
 ```
 
 - `6_ask_graphrag.py`는 기본으로 탐색된 **모든** 가설을 낸다. 상한을 두려면 `TOP_K=3 python 6_ask_graphrag.py`.
+- `7_build_signature_index.py`는 backend 라이브 조회(`KG_LIVE`+`KG_SEMANTIC`)의 **의미 진입**용
+  선택 산출물이다. **그래프를 재빌드(0~5 재실행)하면 이 인덱스도 낡으므로 반드시 다시 돌린다**
+  (인덱스는 그래프의 파생 스냅샷). 안 쓰면 backend는 패턴/enum 진입만으로 동작한다.
 - 질문은 `"{패턴} 결함 패턴이 나타나는 근본 원인은 무엇인가요?"` 하나로 고정.
   Cypher는 LLM이 생성하지 않는다(결정적 순회). LLM은 경로를 한국어 문장으로 옮기고 관계를 추출할 때만 쓴다.
 - `outputs/hypotheses.json`: 가설마다 경로·검증 등급·`direction`·`fab_table`·점수 성분·

@@ -1,4 +1,4 @@
-"""LiveKGClient (Mode B 형상 진입 + angular 판별자) 단위 테스트.
+"""LiveKGClient (형상 직접 진입 + angular 판별자) 단위 테스트.
 
 실제 Neo4j 없이 FakeGraph로 순회 함수(fetch_hypotheses_by_signature)까지 태워서
 row->candidate 매핑 + 재랭킹을 결정적으로 검증한다.

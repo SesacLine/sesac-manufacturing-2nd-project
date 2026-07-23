@@ -137,7 +137,7 @@ Base URL `http://localhost:8000/api/v1` (+ `GET /health`). 계약 정본은 `doc
 | 계약 밖 내부 정책 결정 12건 | `docs/BACKEND_DECISIONS.md` |
 | 남은 갭 목록 | `docs/BACKEND_GAP.md` |
 | 기획 전체(배경·차별점·평가방법·타임라인) | `docs/semiconductor_proposal.md` |
-| KG 스키마 (정본) | `docs/KG_schema_v1.2.md` |
+| KG 스키마 (정본) | `docs/KG_schema_v1.3.md` (v2.5) |
 | `hypotheses.json` 출력 필드 명세 | `kg_rca/KG_output_명세.md` |
 | KG 진행상황·남은 문제 | `kg_rca/STATUS.md` |
 | MCP 9종 도구 상세 계약·fab.db 스키마 | `secsgem-mcp/README.md` |

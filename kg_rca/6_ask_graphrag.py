@@ -133,7 +133,7 @@ RETURN g.id            AS signature,
         + coalesce(vb.chunk_ids, [])) AS chunk_ids
 """
 
-# [Mode B] 형상 직접 진입 — pattern 없이 SpatialSignature(shape@zone)에서 순회를 시작한다.
+# 형상 직접 진입 — pattern 없이 SpatialSignature(shape@zone)에서 순회를 시작한다.
 # SIGNATURE_QUERY와 꼬리는 같지만 진입이 다르다: 패턴을 거치지 않으므로(HAS_SIGNATURE 없음)
 # 미지 패턴(CNN=Unknown)에서도 형상만으로 조회 가능하고, ARISES_IN dedup에 형상 경로가 먹히지
 # 않아 **모든 FORMS_IN 엣지의 morphology가 후보에 보존된다**(angular 판별자의 전제).
@@ -452,7 +452,7 @@ def fetch_hypotheses(graph: Neo4jGraph, pattern: str) -> list[dict]:
 
 
 def fetch_hypotheses_by_signature(graph: Neo4jGraph, signature: str) -> list[dict]:
-    """형상 진입(②, Mode B): shape@zone에서 직접 순회. pattern 없이(미지 패턴 대응).
+    """형상 직접 진입: shape@zone에서 pattern 없이 순회한다(미지 패턴 대응).
 
     FORMS_IN 경로만 나오므로 morphology가 모든 후보에 보존된다. mapping_table 오버레이는
     패턴 키가 없어 건너뛴다(pattern=None). backend 라이브 조회가 이 함수를 재사용한다.
@@ -461,6 +461,20 @@ def fetch_hypotheses_by_signature(graph: Neo4jGraph, signature: str) -> list[dic
     for row in rows:
         row["route"] = "signature"
     return _rank_and_sort(rows, pattern=None)
+
+
+def fetch_hypotheses_step_direct(graph: Neo4jGraph, pattern: str) -> list[dict]:
+    """패턴 진입에서 **형상 경로만 뺀** 것: ARISES_IN(step) + ATTRIBUTED_TO(direct).
+
+    backend의 자연어 진입용 — 기지 패턴에서 형상 경로는 VLM 자연어가 고른 시그니처의 순회로 대체하되,
+    패턴 레벨 원인(공정 경유·문헌 직결)은 이 함수로 유지한다. signature 경로는 여기서 빼서
+    NL-선정 시그니처의 morphology 보존 후보와 dedup 충돌하지 않게 한다.
+    """
+    rows = graph.query(HYPOTHESIS_QUERY, params={"pattern": pattern})
+    for row in rows:
+        row["route"] = "step"
+    rows += graph.query(DIRECT_QUERY, params={"pattern": pattern})
+    return _rank_and_sort(rows, pattern)
 
 
 def _rank_and_sort(rows: list[dict], pattern: str | None) -> list[dict]:
@@ -764,7 +778,7 @@ def main() -> None:
                 "path": {
                     "signature": row["signature"],
                     # 형상 경유(FORMS_IN)일 때만 채워지는 모폴로지. VLM 관측과 소프트 매칭하는
-                    # 랭킹 신호로 backend가 사용한다(설계 B). 그 외 경로에서는 전부 null.
+                    # 랭킹 신호로 backend가 사용한다. 그 외 경로에서는 전부 null.
                     "morphology": None if row["signature"] is None else {
                         "density": row["density"],
                         "continuity": row["continuity"],
