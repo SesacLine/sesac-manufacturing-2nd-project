@@ -157,10 +157,19 @@ class LiveKGClient:
                 "angular_coverage": row.get("angular_coverage"),
                 "clock_positions": row.get("clock_positions") or [],
             }
+        # matched_cause/mapped_process 패리티(정적 KGClient._to_candidate와 동일 필드).
+        # 정적 경로는 apply_mapping_fill이 hypotheses.json에 미리 담아둔 mapping 블록을 읽지만,
+        # 라이브 순회 행엔 그 블록이 없어 같은 매칭(q.match_mapping, threshold 내장)을
+        # 조회 시점에 수행한다. entry의 키는 "cause"(mapping_table의 cause id) — 정적 경로의
+        # matched_cause와 같은 값이다. 미지 패턴/매칭 실패면 None(안전).
+        hit = q.match_mapping(pattern, row["cause"], row.get("cause_name") or "")
+        mapping_entry = hit[0] if hit else None
         tier = row["tier"]
         fab_table = row.get("fab_table")
         return {
             "cause": row["cause"],
+            "matched_cause": mapping_entry.get("cause") if mapping_entry else None,
+            "mapped_process": mapping_entry.get("process") if mapping_entry else None,
             "failure_mode": row.get("failure_mode"),
             "step": row.get("step"),
             "signature": signature,
