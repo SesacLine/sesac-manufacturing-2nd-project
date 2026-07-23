@@ -27,6 +27,7 @@ from langgraph.errors import GraphRecursionError
 from ..mcp_client.client import _as_dict   # 도구 반환 정규화 헬퍼 재사용
 import os
 from langchain_openai import ChatOpenAI
+from datetime import datetime, timedelta
 
 
 # --- 0713 Walking Skeleton: 팀 결정 3가지를 전부 "가장 단순한 선택"으로 하드코딩했다.
@@ -59,6 +60,7 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
 
     time_range = await _group_time_range(lot_ids, mcp)
     defect_ts = await _group_defect_ts(lot_ids, mcp)
+    maint_range = _maintenance_range(time_range, defect_ts)   # 처방1: 반박 재료는 결함 이후까지
 
     # S2-2: 자동 tier 전부 → 그룹 조사관(에이전트, step 배치). 반자동·근거없음 → 결정론 유지.
     auto = [c for c in candidates if c["tier"] == "자동"]
@@ -79,7 +81,7 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
             continue
         key = (candidate["step"], candidate["evidence_label"], candidate["evidence"])
         if key not in verify_cache:
-            verify_cache[key] = await _verify_unit(candidate, lot_ids, mcp, time_range)
+            verify_cache[key] = await _verify_unit(candidate, lot_ids, mcp, time_range, maint_range)
         suspect, evidence = verify_cache[key]
         hypotheses.append(_det_hypothesis(candidate, suspect, dict(evidence), investigated=False))
 
@@ -99,6 +101,11 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
 # 정상 경로 = agent→tools(1콜)→agent 3스텝. 8이면 예상 밖 재호출 2~3번까지 허용하되
 # 폭주(1콜 지시 불이행 반복)는 끊는다. 초과 시 그 배치는 미조사 폴백(아래 investigate_group).
 AGENT_RECURSION_LIMIT = 8
+# 처방1(S3-3b): maintenance 조회 창 연장 폭. ⑤ P2(시간역전)가 비교 재료(maintenance_ts)를
+# 가지려면 "결함 이후"의 PM까지 수집해야 한다 — SC-CENTER-01 실측에서 함정 PM(defect+6d)이
+# 공정 구간 창 밖이라 수집 0건 → P2 무발화였음. 원인 신호(telemetry)는 결함 이전이 맞으므로
+# 그 창은 안 넓히고, 반박 재료(maintenance)만 비대칭으로 넓힌다.
+MAINT_LOOKAHEAD_DAYS = 14
 
 
 def _make_model():
@@ -282,18 +289,18 @@ async def _prepass(candidate, lot_ids, mcp):
 
 
 async def _verify_unit(
-    candidate: GraphRAGCandidate, lot_ids: list[str], mcp: MCPClient, time_range: tuple[str, str]
+    candidate: GraphRAGCandidate, lot_ids: list[str], mcp: MCPClient, time_range: tuple[str, str], maint_range: tuple[str, str],
 ) -> tuple[str | None, EvidenceEntry]:
     """검증단위 하나당 MCP 호출 묶음. pre-pass(공통) + tier별 검증."""
     suspect, evidence = await _prepass(candidate, lot_ids, mcp)
     if suspect is None:
         return suspect, evidence
-    evidence.update(await _verify_candidate(candidate, suspect, mcp, time_range))
+    evidence.update(await _verify_candidate(candidate, suspect, mcp, time_range, maint_range))
     return suspect, evidence
 
 
 async def _verify_candidate(
-    candidate: GraphRAGCandidate, suspect_equipment: str, mcp: MCPClient, time_range: tuple[str, str]
+    candidate: GraphRAGCandidate, suspect_equipment: str, mcp: MCPClient, time_range: tuple[str, str], maint_range: tuple[str, str],
 ) -> dict:
     """candidate.tier에 따라 정해진 MCP 도구만 호출해 EvidenceEntry의 tier별 필드를 채운다."""
     if candidate["tier"] == "근거없음":
@@ -321,7 +328,7 @@ async def _verify_candidate(
         }
 
     if candidate["evidence_label"] == "Maintenance":
-        maint = await mcp.get_maintenance_history(suspect_equipment, time_range)
+        maint = await mcp.get_maintenance_history(suspect_equipment, maint_range)
         rows = maint["data"]
         result: dict = {
             "maintenance_hit": len(rows) > 0,
@@ -536,6 +543,20 @@ async def _group_time_range(lot_ids: list[str], mcp: MCPClient) -> tuple[str, st
     if not rows:
         return ("2026-01-01 00:00:00", "2026-12-31 00:00:00")
     return (min(r["ts_in"] for r in rows), max(r["ts_out"] for r in rows))
+
+
+def _maintenance_range(time_range: tuple[str, str], defect_ts: str | None) -> tuple[str, str]:
+      """maintenance 전용 조회 창: 공정 시작 ~ max(공정 끝, defect_ts + LOOKAHEAD).
+
+      지지 증거(결함 전 PM)와 반박 증거(결함 후 PM = 시간역전 재료)를 모두 수집하기 위해
+      끝만 결함 이후로 연장한다. telemetry 창은 그대로 — 원인은 결함 이전에서만 찾는다.
+      defect_ts가 없으면(EDS 이벤트 부재) 연장 기준점이 없어 원래 창 그대로 둔다.
+      """
+      if defect_ts is None:
+          return time_range
+      end = datetime.fromisoformat(defect_ts) + timedelta(days=MAINT_LOOKAHEAD_DAYS)
+      return (time_range[0], max(time_range[1], end.strftime("%Y-%m-%d %H:%M:%S")))
+
 
 async def _group_defect_ts(lot_ids: list[str], mcp: MCPClient) -> str | None:
     """그룹 대표(첫 로트)의 결함 확정(EDS) 시각. Critic 시간정합의 비교 기준 — ④가 수집(firewall)."""

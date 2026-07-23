@@ -351,3 +351,21 @@ def test_matched_cause_carried_to_hypothesis():
     no_map = dict(candidate)
     no_map.pop("matched_cause")
     assert _det_hypothesis(no_map, None, {}, investigated=False)["matched_cause"] is None
+
+
+def test_maintenance_range_extends_past_defect():
+    from backend.nodes.hypothesis import _maintenance_range
+
+    tr = ("2026-03-11 00:00:00", "2026-03-17 06:00:00")
+
+    # ① defect_ts 없음 → 연장 기준점이 없어 원래 창 그대로 (무동작 안전)
+    assert _maintenance_range(tr, None) == tr
+
+    # ② 통상 케이스(SC-CENTER-01 모양): defect+14d > 공정 끝 → 끝만 연장, 시작 불변
+    got = _maintenance_range(tr, "2026-03-17 00:41:59")
+    assert got[0] == tr[0]
+    assert got[1] == "2026-03-31 00:41:59"          # defect + MAINT_LOOKAHEAD_DAYS(14)
+
+    # ③ 창은 절대 줄지 않는다: defect+14d < 공정 끝이면 공정 끝 유지 (max의 존재 이유)
+    long_tr = ("2026-03-01 00:00:00", "2026-04-20 00:00:00")
+    assert _maintenance_range(long_tr, "2026-03-05 00:00:00") == long_tr
