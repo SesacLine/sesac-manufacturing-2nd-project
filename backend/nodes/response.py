@@ -11,8 +11,8 @@ Root Cause "확정"이 아니라 "가설(채택) + 근거"까지가 스코프다
       accepted[0]이 곧 대표다. 나머지는 accepted 원순서 → 비채택 원순서로 잇는다.
     - 정렬 확정 **뒤** 배열 인덱스로 hypothesis_id("h{n}")를 부여한다(§2.5/§2.7 드릴다운 키).
     - 각 원소에 verdict("accepted"/"rejected"/"judge_unknown")를 싣는다 — 기각 사유의
-      고정 토큰(critic.py) 중 judge_unknown 계열(P5_NO_KG_MECHANISM·SEMI_AUTO_PENDING)만
-      verdict="judge_unknown"으로 승격(자연어 매칭 금지, hypo_critic_py.md §13-1 C1·C2).
+      고정 토큰(critic.py) 중 judge_unknown 계열(P5_NO_KG_MECHANISM·SEMI_AUTO_PENDING·
+        NOT_INVESTIGATED)만 verdict="judge_unknown"으로 승격(자연어 매칭 금지, hypo_critic_py.md §13-1 C1·C2).
       (그룹 status의 "insufficient"와는 다른 층 — verdict는 가설 1건, status는 그룹 전체.)
     - 그룹 status("reviewed"/"insufficient"/"unmapped")와 reason·lot_ids·lot_count를 싣는다.
     tier/pattern enum 영문 변환은 여기서 하지 않는다 — API 경계(schemas.py/api) 소관.
@@ -21,10 +21,11 @@ Root Cause "확정"이 아니라 "가설(채택) + 근거"까지가 스코프다
 from __future__ import annotations
 
 from ..state import RCAState
-from .critic import TOKEN_NO_KG_MECHANISM, TOKEN_SEMI_AUTO_PENDING
+from .critic import TOKEN_NO_KG_MECHANISM, TOKEN_SEMI_AUTO_PENDING, TOKEN_NOT_INVESTIGATED
 
 # judge_unknown(미조사·근거없음) → verdict="judge_unknown". 나머지 사유는 "rejected".
-_JUDGE_UNKNOWN_TOKENS = {TOKEN_NO_KG_MECHANISM, TOKEN_SEMI_AUTO_PENDING}
+# NOT_INVESTIGATED = 자동 tier의 미조사 폴백(S2-6) — 반자동 SEMI_AUTO_PENDING과 같은 보류 버킷.
+_JUDGE_UNKNOWN_TOKENS = {TOKEN_NO_KG_MECHANISM, TOKEN_SEMI_AUTO_PENDING, TOKEN_NOT_INVESTIGATED}
 
 # TODO(Walking Skeleton, 스텝7에서 교체 대상): summary를 LLM으로 자연어 합성하는 대신
 # 결정적 템플릿 문자열로 채운다 — 전체 배선을 LLM 비용 없이 먼저 검증하기 위함.

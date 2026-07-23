@@ -82,6 +82,8 @@ class GraphRAGCandidate(TypedDict):
     """
 
     cause: str
+    matched_cause: NotRequired[str | None]  # kg cause→mapping_table 어휘 번역(mapping.matched_cause). E2E 평가 전용 — 표시·판정 불사용
+    mapped_process: NotRequired[str | None]  # mapping.process — step=None 폴백 전용(처방2-b). path.step이 정본
     failure_mode: str | None
     step: str | None
     signature: NotRequired[str | None]
@@ -124,6 +126,8 @@ class EvidenceEntry(TypedDict):
 
     commonality_ratio: float | None
     drift_detected: bool | None
+    drift_direction: str | None          # "high"/"low"/None — drift 방향 (S2-1)
+    direction_match: bool | None         # candidate.direction과 일치? True/False/None(n/a)
     maintenance_hit: bool | None
     maintenance_ts: str | None
     recipe_match: bool | None
@@ -146,6 +150,7 @@ class Hypothesis(TypedDict):
     """④ Hypothesis 노드 출력. GraphRAGCandidate 1건 + 수집한 증거."""
 
     cause: str
+    matched_cause: NotRequired[str | None]   # candidate.matched_cause 그대로 운반 — ground truth 대조(E2E 평가) 전용
     tier: Tier
     stage: str | None                        # candidate.step(KG ProcessStep 6종 또는 None) — API §2.5 stage
     equipment: str | None
@@ -159,7 +164,8 @@ class Hypothesis(TypedDict):
     # judge_unknown = 근거없음(P5) + 반자동 미조사(SEMI_AUTO). ④는 이 필드를 직접 안 채운다.
     verdict: NotRequired[str]
     investigated: NotRequired[bool]          # investigate_group이 실제 조사(도구호출/unit판정 상속)했으면 True, 미조사 False → judge_unknown
-
+    cluster_id: NotRequired[str]             # unit+direction 병합 키(_cluster_key) — 같은 id = 같은 원인군
+    is_primary: NotRequired[bool]            # 파편화 cause의 대표(주 증거) 행 — cause당 1행만 True
 
 class CriticResult(TypedDict):
     """⑤ Critic 노드 출력."""
