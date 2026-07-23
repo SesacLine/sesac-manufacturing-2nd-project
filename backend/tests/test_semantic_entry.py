@@ -1,4 +1,4 @@
-"""옵션 2 — 의미 진입(semantic entry) 단위 테스트.
+"""의미 진입(semantic entry — 자연어 임베딩 매칭) 단위 테스트.
 
 실제 OpenAI/Neo4j 없이 결정적 가짜 임베더 + FakeGraph로 검증한다.
 """

@@ -1,15 +1,17 @@
-"""라이브 KG 조회 클라이언트 (Mode B, (가) 전면 라이브).
+"""라이브 KG 조회 클라이언트 — 파일(hypotheses.json)을 읽는 KGClient와 달리 Neo4j를 요청마다 직접 순회한다.
 
-파일(hypotheses.json)을 읽는 KGClient와 달리, 요청마다 Neo4j를 **직접 순회**한다.
+진입 방식(관측 내용에 따라 자동 선택):
 - pattern이 3종(Center/Scratch/Edge-Ring)이면 패턴 진입(fetch_hypotheses).
-- pattern이 Unknown이고 관측 signature(shape@zone)가 있으면 **형상 진입**
-  (fetch_hypotheses_by_signature) — dedup에 안 먹혀 모든 FORMS_IN 엣지의 morphology가 보존된다.
-그 뒤 angular 판별자(morphology_rank)로 재랭킹한다.
+- 관측에 자연어 서술이 있으면 **의미 진입**: 자연어를 임베딩해 시그니처와 유사도 매칭.
+  기지 패턴은 HAS_SIGNATURE로 범위를 좁혀 그 안에서, Unknown은 전체에서 고른다.
+- 관측이 shape@zone enum을 직접 주면 **형상 정확 진입**(fetch_hypotheses_by_signature)
+  — 패턴을 거치지 않아 미지 패턴도 조회 가능하고, 패턴 진입의 dedup(공정 경로 우선)에
+  먹히지 않아 모든 FORMS_IN 엣지의 morphology가 후보에 보존된다.
+그 뒤 angular_coverage 판별자(morphology_rank)로 재랭킹한다.
 
 순회 로직은 kg_rca/6_ask_graphrag.py의 함수를 재사용한다(빌드 스크립트와 단일 진실).
-숫자로 시작하는 모듈명이라 importlib로 지연 로드한다 — 이 로더 한 곳이 나중에 옵션 2
-(의미 진입)로 갈 때 교체 지점이다. get_candidates 인터페이스는 KGClient와 동일해서
-graph.py/batch_runner에 그대로 drop-in 된다.
+숫자로 시작하는 모듈명이라 importlib로 지연 로드한다. get_candidates 인터페이스는
+KGClient와 동일해서 graph.py/batch_runner에 그대로 drop-in 된다.
 """
 
 from __future__ import annotations
@@ -39,19 +41,21 @@ class LiveKGClient:
 
     def __init__(self, graph, semantic_index=None, semantic_k: int = 3) -> None:
         self._graph = graph
-        # 옵션 2: 주입되면 관측의 자연어(location+morphology_text)를 의미 매칭해 진입 시그니처를
-        # 고른다. 기지 패턴이면 그 패턴의 HAS_SIGNATURE로 범위를 좁혀서((A) 방식), Unknown이면 전체.
+        # 의미 진입 인덱스: 주입되면 관측의 자연어(location+morphology_text)를 임베딩 유사도로
+        # 매칭해 진입 시그니처를 고른다. 기지 패턴이면 그 패턴의 HAS_SIGNATURE 시그니처로
+        # 검색 범위를 좁히고, Unknown이면 전체에서 찾는다.
         self._semantic = semantic_index
         self._semantic_k = semantic_k
 
-    # pattern_candidate가 좁히는 시그니처 범위 ((A) 방식)
+    # CNN 패턴이 좁혀주는 시그니처 검색 범위 — "문헌상 이 패턴이 나타나는 형상들"
     _PATTERN_SIGNATURES_QUERY = (
         "MATCH (:DefectPattern {id: $pattern})-[:HAS_SIGNATURE]->(g:SpatialSignature) "
         "RETURN g.id AS sig"
     )
 
     def get_candidates(self, pattern: str, observation: dict | None = None) -> dict:
-        """(A) 방식 — VLM 자연어(location_text+morphology_text)가 진입 쿼리를 이끈다.
+        """VLM 자연어(location_text+morphology_text)가 진입 쿼리를 이끈다.
+        CNN 패턴은 검색 "범위"를 좁히고, 자연어가 그 범위 안에서 진입 시그니처를 고른다.
 
         - pattern_candidate(CNN)가 3종이면 그 패턴의 HAS_SIGNATURE 시그니처로 **범위를 좁히고**,
           자연어 임베딩이 그 안에서 진입 시그니처를 고른다. 패턴 레벨 원인(공정 경유·문헌 직결)도 유지.
@@ -169,7 +173,7 @@ class LiveKGClient:
             "unverifiable_signals": row.get("unverifiable_signals") or None,
             "sentence": q._fallback_sentence(pattern or "관측 형상", row),
             "citations": KGClient._to_citations({"chunk_ids": row.get("chunk_ids") or []}),
-            # 의미 진입(옵션 2)일 때만: 어느 시그니처로 어떤 유사도로 들어왔는지
+            # 자연어 의미 진입일 때만: 어느 시그니처로 어떤 유사도로 들어왔는지
             "entry_signature": row.get("entry_signature"),
             "entry_score": row.get("entry_score"),
         }

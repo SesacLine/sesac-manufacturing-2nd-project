@@ -1,4 +1,4 @@
-"""angular_coverage 판별자 재정렬(설계 B) 단위 테스트.
+"""angular_coverage 판별자 재정렬 단위 테스트.
 
 LLM/Neo4j 없이 결정적으로 도는 순수 함수 검증.
 """

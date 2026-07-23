@@ -87,7 +87,8 @@ class GraphRAGCandidate(TypedDict):
     signature: NotRequired[str | None]
     # 형상 경유(FORMS_IN) 후보의 모폴로지 — hypotheses.json path.morphology를 그대로 옮긴 것.
     # {density, continuity, angular_coverage, clock_positions}. shape@zone은 하드 매칭 키이고
-    # 이 값들은 VLM 관측과 소프트 매칭하는 랭킹 신호다(설계 B). 형상 경유가 아니면 None.
+    # 이 값들은 VLM 관측과 소프트 매칭하는 랭킹 신호다(노드 속성이 아니라 FORMS_IN 엣지
+    # 속성 — 같은 shape@zone 노드가 공정마다 다른 모폴로지를 가질 수 있게). 형상 경유가 아니면 None.
     # TODO(④ graphrag 노드): 관측 모폴로지와 비교해 후보 랭킹 가점을 적용 — 아직 미구현.
     morphology: NotRequired[dict | None]
     scenario_hint: NotRequired[ScenarioHint | None]

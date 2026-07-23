@@ -1,4 +1,4 @@
-"""옵션 2 — 의미(semantic) 진입.
+"""의미(semantic) 진입 — VLM 자연어를 임베딩 유사도로 SpatialSignature에 매칭한다.
 
 VLM의 자연어 서술(location_text/morphology_text)을 임베딩해 SpatialSignature에 **유사도로**
 진입 노드를 고른다. enum 정확일치(shape@zone)를 대체하되, 진입 뒤 순회 본체는 그대로
@@ -95,8 +95,8 @@ class SemanticSignatureIndex:
         """(sig_id, cosine) 상위 k개 — 단 min_score 미달은 제외라 k개 미만·빈 리스트일 수 있다.
         결정적(같은 임베딩이면 같은 순서).
 
-        allowed가 주어지면 그 시그니처 집합으로 매칭 범위를 제한한다((A) 방식: pattern_candidate가
-        HAS_SIGNATURE 시그니처로 좁힌 범위). None이면 인덱스 전체(미지 패턴).
+        allowed가 주어지면 그 시그니처 집합으로 매칭 범위를 제한한다(기지 패턴일 때 —
+        CNN 패턴의 HAS_SIGNATURE 시그니처로 좁힌 범위). None이면 인덱스 전체(미지 패턴).
         """
         query_vec = self._embed(query_text)
         scored = [
