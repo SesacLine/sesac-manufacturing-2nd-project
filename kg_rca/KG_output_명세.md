@@ -47,7 +47,7 @@
 | `hypotheses[].tier` | `자동` \| `반자동` \| `근거없음` | 검증 시나리오 분기 (agent 판정 / 조회 후 사람 / 검증 불가). **순위와 무관** |
 | `hypotheses[].scenario_hint` | `A3` \| `A5` \| `A2` \| `A6` \| `null` | MCP 검증 체인 배정: Parameter→A3, Recipe→A5, Maintenance→consumable이면 A6·아니면 A2, 근거없음→null. 소급 노드(consumable 미저장)는 키워드 휴리스틱 임시 판정 — 재추출 시 노드 속성으로 대체 |
 | `path.signature` | `ring@edge` \| `null` | 형상 경유 여부와 통과 시그니처 (경로 종류는 path의 null 패턴으로 판별) |
-| `path.step` | `ETCH` \| `null` | T3 commonality의 `step` 옵션 값 · `lot_history.step` 조인 키. `null`이면 문헌 직결 |
+| `path.step` | `ETCH` \| `null` | T3 commonality의 `step` 옵션 값 · `lot_history.step` 조인 키. `null`이면 문헌 직결. 단 **direct 경로라도 mapping_table 매칭이 되면 그 `process`로 보충된다**(backend가 올바른 공정 장비를 조사하게 — apply_mapping_fill) |
 | `path.failure_mode` | `incorrect_etch_rate` | 어떤 고장 모드를 경유했는지 (그래프 역추적 키) |
 | `path.cause` | `etching_non_uniformities` | 가설의 본체 — 검증 대상 원인의 그래프 id |
 | `path.evidence` | `rf_power` \| `null` | 검증 신호 id. Parameter면 `telemetry.param` 조인 키 |
