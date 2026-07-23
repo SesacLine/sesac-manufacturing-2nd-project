@@ -329,3 +329,25 @@ def test_rank_hypotheses_none_ratio_neutral_and_prior_tiebreak():
     ]
     assert [h["cause"] for h in _rank_hypotheses(hypotheses)] == \
         ["low_counter", "unknown_a", "unknown_b", "high_counter"]
+
+
+def test_matched_cause_carried_to_hypothesis():
+    from backend.nodes.hypothesis import _det_hypothesis, _to_hypotheses_batch
+
+    candidate = {"cause": "A", "matched_cause": "clean_nozzle_clog", "tier": "자동",
+                "step": "CLEAN", "evidence": "flow_rate", "direction": "low",
+                "sentence": "...", "citations": []}
+
+    # 결정론 경로
+    det = _det_hypothesis(candidate, suspect=None, evidence={}, investigated=False)
+    assert det["matched_cause"] == "clean_nozzle_clog"
+
+    # 에이전트 배치 경로
+    result = {"messages": [AIMessage(content="서사")]}
+    batch = _to_hypotheses_batch([candidate], result, suspect="CLEAN-01", base_evidence={})
+    assert batch[0]["matched_cause"] == "clean_nozzle_clog"
+
+    # matched_cause 없는 후보(구버전 kg 출력 등)는 None으로 정직하게
+    no_map = dict(candidate)
+    no_map.pop("matched_cause")
+    assert _det_hypothesis(no_map, None, {}, investigated=False)["matched_cause"] is None

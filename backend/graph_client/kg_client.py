@@ -46,6 +46,9 @@ class KGClient:
         score = hypothesis["score"]
         return {
             "cause": path["cause"],
+            # 평가 전용: kg cause → mapping_table(ground truth) 어휘 번역(kg_rca mapping 블록).
+            # 정답이 아니라 어휘 대응표라 정답 누출 아님 — 표시·판정엔 안 쓰고 E2E 평가만 쓴다.
+            "matched_cause": (hypothesis.get("mapping") or {}).get("matched_cause"),
             "failure_mode": path["failure_mode"],
             "step": path["step"],
             "signature": path.get("signature"),

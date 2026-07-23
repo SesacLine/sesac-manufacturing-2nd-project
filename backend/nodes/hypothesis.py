@@ -108,6 +108,7 @@ def _make_model():
 def _det_hypothesis(candidate, suspect, evidence, investigated: bool) -> Hypothesis:
     return {
         "cause": candidate["cause"],
+        "matched_cause": candidate.get("matched_cause"),   # 평가 전용 운반
         "tier": candidate["tier"],
         "stage": candidate["step"],
         "equipment": suspect,
@@ -253,6 +254,7 @@ def _to_hypotheses_batch(candidates, result, suspect, base_evidence) -> list[Hyp
             evidence["telemetry_summary"] = f"{param} {len(series)}개 포인트, 정상범위 {normal_range}"
         hypotheses.append({
             "cause": candidate["cause"],
+            "matched_cause": candidate.get("matched_cause"),   # 평가 전용 운반
             "tier": candidate["tier"],
             "stage": candidate["step"],
             "equipment": suspect,

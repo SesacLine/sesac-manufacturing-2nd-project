@@ -58,6 +58,7 @@ class GraphRAGCandidate(TypedDict):
     """
 
     cause: str
+    matched_cause: NotRequired[str | None]  # kg cause→mapping_table 어휘 번역(mapping.matched_cause). E2E 평가 전용 — 표시·판정 불사용
     failure_mode: str | None
     step: str | None
     signature: NotRequired[str | None]
@@ -118,6 +119,7 @@ class Hypothesis(TypedDict):
     """④ Hypothesis 노드 출력. GraphRAGCandidate 1건 + 수집한 증거."""
 
     cause: str
+    matched_cause: NotRequired[str | None]   # candidate.matched_cause 그대로 운반 — ground truth 대조(E2E 평가) 전용
     tier: Tier
     stage: str | None                        # candidate.step(KG ProcessStep 6종 또는 None) — API §2.5 stage
     equipment: str | None
