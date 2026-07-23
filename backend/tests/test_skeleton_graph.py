@@ -83,6 +83,41 @@ def test_group_node_functions_keep_old_signature_via_adapter():
     ]
 
 
+class _EmptyKG:
+    """후보 0건만 돌려주는 fake KGClient — unmapped 경로 통합 테스트용(mcp 불필요)."""
+
+    def get_candidates(self, pattern, observation=None):
+        return {"pattern": pattern, "candidates": []}
+
+
+# covers: AC-5, AC-11, AC-14
+def test_subgraph_unmapped_path_routes_adapter_to_respond_without_llm():
+    """④ 후보 0건 → route_on_candidates → ⑦' respond 어댑터 통합 경로를 실제 ainvoke로 탄다.
+
+    ④ 후보 0건 처리는 build/critic을 건너뛰므로 mcp는 안 불린다(object() 더미로 충분). 순수함수
+    단위 테스트(test_skeleton_response)가 우회했던 '어댑터 fake-state 재구성 + 라우팅' 통합을 덮는다.
+    """
+    import asyncio
+
+    from backend.graph import _build_group_subgraph
+
+    sub = _build_group_subgraph(_EmptyKG(), object())
+    gstate = {
+        "group_id": "g-unknown",
+        "pattern": "Unknown",
+        "lot_ids": ["L1"],
+        "cursor_date": "2026-01-01",
+        "cursor_end": "2026-01-02",
+        "observation": None,
+    }
+    out = asyncio.run(sub.ainvoke(gstate))
+    final = out["final_response"]
+    assert final["status"] == "unmapped"
+    assert final["hypotheses"] == []
+    assert final["pattern"] == "Unknown"
+    assert final["lot_ids"] == ["L1"]
+
+
 GOLDEN_PATH = Path(__file__).resolve().parent / "golden" / "ac10_full_batch_golden.json"
 
 
