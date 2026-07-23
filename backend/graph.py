@@ -16,7 +16,7 @@ from langgraph.graph import END, StateGraph
 
 from .graph_client import KGClient
 from .mcp_client import MCPClient
-from .nodes import critic, graphrag, grouper, hypothesis, lowyield, observe, response, vlm
+from .nodes import cnn, critic, graphrag, grouper, hypothesis, lowyield, response, vlm_describe
 from .state import RCAState
 
 
@@ -43,10 +43,10 @@ def build_graph(kg_client: KGClient, mcp: MCPClient):
         return await _run_per_group(state, response.generate_response)
 
     workflow.add_node("select_low_yield_lots", lowyield.select_low_yield_lots)
-    workflow.add_node("read_wafer_maps", vlm.read_wafer_maps)
+    workflow.add_node("read_wafer_maps", cnn.read_wafer_maps)
     workflow.add_node("group_by_pattern", grouper.group_by_pattern)
     # ③ 관측 생산(v1.5: VLM은 Grouper 뒤, 스택맵에 1회) — 스켈레톤은 패턴별 결정적 템플릿.
-    workflow.add_node("observe_groups", observe.observe_groups)
+    workflow.add_node("observe_groups", vlm_describe.observe_groups)
     workflow.add_node("fetch_graphrag_candidates", _fetch_graphrag_candidates)
     workflow.add_node("build_hypotheses", _build_hypotheses)
     workflow.add_node("review_hypotheses", _review_hypotheses)
