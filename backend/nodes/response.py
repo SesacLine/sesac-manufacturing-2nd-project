@@ -31,8 +31,59 @@ _JUDGE_UNKNOWN_TOKENS = {TOKEN_NO_KG_MECHANISM, TOKEN_SEMI_AUTO_PENDING}
 # description(그룹 대표 VLM 서술, §2.5)도 VLM 미연동 동안 None이다(프론트 summary_line fallback).
 
 
+def _ordered_hypotheses(critic: dict | None) -> list[dict]:
+    """critic_result를 §2.5 정렬 불변식대로 배열화한다 — 대표(accepted[0])를 index 0에,
+    각 원소에 verdict/verdict_reason, 정렬 확정 뒤 h{n} 부여.
+
+    ⑦(reviewed)과 ⑦'(insufficient)이 이 헬퍼를 공유해 두 경로의 배열이 어긋나지 않게 한다
+    (골격설계 §5.2.1). 정렬 전에 h{n}을 매기면 h0가 대표가 아니게 되므로 순서 확정 뒤에 매긴다.
+    """
+    accepted = list(critic["accepted"]) if critic else []
+    non_accepted = list(critic["rejected"]) if critic else []
+
+    ordered: list[dict] = []
+    for h in accepted:
+        ordered.append({**h, "verdict": "accepted", "verdict_reason": None})
+    for h in non_accepted:
+        verdict = "judge_unknown" if h.get("reject_token") in _JUDGE_UNKNOWN_TOKENS else "rejected"
+        ordered.append({**h, "verdict": verdict, "verdict_reason": h.get("reject_reason")})
+    for n, h in enumerate(ordered):
+        h["hypothesis_id"] = f"h{n}"
+    return ordered
+
+
 def generate_response(state: RCAState, group_id: str) -> dict:
-    """critic_result[group_id]를 바탕으로 final_response[group_id]를 채운다."""
+    """채택 가설이 있는 그룹의 최종 카드를 조립한다(UC-1, status="reviewed").
+
+    후보 0건/채택 0건 분기는 라우팅(route_on_candidates·route_on_verdicts)이 갈라 ⑦'로 보내므로
+    여기 오지 않는다 — 이 함수는 채택 ≥1만 처리한다(골격설계 §6). LLM 실패 시 아래 템플릿
+    summary를 except에 남기면 status="reviewed"가 유지된다(§5.3.5, 실모델 연동 담당 몫).
+    """
+    group = next((g for g in state["groups"] if g["group_id"] == group_id), None)
+    pattern = group["pattern"] if group else "unknown"
+    lot_ids = list(group["lot_ids"]) if group else []
+
+    critic = state["critic_result"].get(group_id)
+    ordered = _ordered_hypotheses(critic)
+    accepted = list(critic["accepted"]) if critic else []
+
+    lines = [
+        f"- {h['cause']} (등급: {h['tier']}, 의심 장비: {h['equipment']})" for h in accepted
+    ]
+    summary = f"{pattern} 패턴 — 가설 {len(accepted)}건 채택:\n" + "\n".join(lines)
+    return _final(
+        group_id, pattern, lot_ids,
+        status="reviewed", reason=None, hypotheses=ordered, summary=summary,
+    )
+
+
+def respond_without_llm(state: RCAState, group_id: str) -> dict:
+    """LLM을 부르지 않는 응답 — 후보 0건(UC-3)/채택 0건(UC-2) 두 경우를 만든다(골격설계 §5.2·§5.2.1).
+
+    라우팅이 이 노드로 보낸 케이스만 처리한다: candidates가 비면 unmapped(hypotheses=[]),
+    아니면 insufficient(⑦과 동일 헬퍼로 정렬 배열+h{n}+verdict 재현 — 근거 모달이 hypothesis_id로
+    열려야 하므로 반드시 배열을 채운다, §2.7). description은 두 경우 모두 카드에 실어 보낸다.
+    """
     group = next((g for g in state["groups"] if g["group_id"] == group_id), None)
     pattern = group["pattern"] if group else "unknown"
     lot_ids = list(group["lot_ids"]) if group else []
@@ -50,44 +101,20 @@ def generate_response(state: RCAState, group_id: str) -> dict:
             summary=f"{pattern} 패턴은 원인 분석 데이터가 없습니다(KG 매핑 대상 3종 밖).",
         )
 
-    critic = state["critic_result"].get(group_id)
-    accepted = list(critic["accepted"]) if critic else []
-    non_accepted = list(critic["rejected"]) if critic else []
-
-    # §2.5 정렬 불변식: 대표(accepted 중 kg_rca 순위 최상위 = accepted[0])를 index 0에.
-    ordered: list[dict] = []
-    for h in accepted:
-        ordered.append({**h, "verdict": "accepted", "verdict_reason": None})
-    for h in non_accepted:
-        verdict = "judge_unknown" if h.get("reject_token") in _JUDGE_UNKNOWN_TOKENS else "rejected"
-        ordered.append({**h, "verdict": verdict, "verdict_reason": h.get("reject_reason")})
-    # 정렬 확정 뒤에 h{n} 부여 (§2.5 — 정렬 전에 매기면 h0가 대표가 아니게 된다).
-    for n, h in enumerate(ordered):
-        h["hypothesis_id"] = f"h{n}"
-
     # UC-2: 후보는 있었지만 Critic이 하나도 채택 못 한 경우 — 판단 불가(근거부족).
-    if not accepted:
-        return _final(
-            group_id,
-            pattern,
-            lot_ids,
-            status="insufficient",
-            reason=(
-                "매핑된 원인 후보는 있으나 시간 정합·정상 로트 대조에서 "
-                "채택 가능한 후보가 없어 판단 불가(근거부족)."
-            ),
-            hypotheses=ordered,
-            summary=f"{pattern} 패턴은 판단 불가 — 채택 가능한 근거 있는 가설이 없습니다.",
-        )
-
-    # 정상 흐름(UC-1): 채택된 가설 + 근거를 카드로 조립.
-    lines = [
-        f"- {h['cause']} (등급: {h['tier']}, 의심 장비: {h['equipment']})" for h in accepted
-    ]
-    summary = f"{pattern} 패턴 — 가설 {len(accepted)}건 채택:\n" + "\n".join(lines)
+    critic = state["critic_result"].get(group_id)
+    ordered = _ordered_hypotheses(critic)
     return _final(
-        group_id, pattern, lot_ids,
-        status="reviewed", reason=None, hypotheses=ordered, summary=summary,
+        group_id,
+        pattern,
+        lot_ids,
+        status="insufficient",
+        reason=(
+            "매핑된 원인 후보는 있으나 시간 정합·정상 로트 대조에서 "
+            "채택 가능한 후보가 없어 판단 불가(근거부족)."
+        ),
+        hypotheses=ordered,
+        summary=f"{pattern} 패턴은 판단 불가 — 채택 가능한 근거 있는 가설이 없습니다.",
     )
 
 

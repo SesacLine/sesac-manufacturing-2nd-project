@@ -36,6 +36,27 @@ def _to_group_state(group: dict, state: RCAState) -> dict:
     }
 
 
+def route_on_candidates(state: GroupState) -> str:
+    """④ 뒤 라우팅 — 후보가 0건이면 ⑤⑥을 건너뛰고 ⑦'로. 패턴명은 보지 않는다(§6.1).
+
+    3종이든 Unknown이든 "KG가 후보를 줬나" 하나로 갈린다. 후보가 있으면 build_hypotheses로.
+    """
+    if not state.get("candidates"):
+        return "respond_without_llm"
+    return "build_hypotheses"
+
+
+def route_on_verdicts(state: GroupState) -> str:
+    """⑥ 뒤 라우팅 — 채택 0건이면 LLM(⑦)을 아예 호출하지 않는다(환각 억제 장치, §6.2).
+
+    재료(채택 가설) 없이 문장을 쓰게 하지 않는 것이 이 컷의 이유다. 채택 ≥1이면 generate_response로.
+    """
+    result = state.get("critic_result")
+    if not result or not result.get("accepted"):
+        return "respond_without_llm"
+    return "generate_response"
+
+
 def _group_for_node(gstate: GroupState) -> dict:
     """옛 노드 함수가 state["groups"]에서 group_id로 찾아 쓰는 그룹 dict를 GroupState에서 되만든다."""
     return {
@@ -94,17 +115,41 @@ def _build_group_subgraph(kg_client: KGClient, mcp: MCPClient):
         out = response.generate_response(fake, gid)
         return {"final_response": out["final_response"][gid]}
 
+    async def respond(gstate: GroupState) -> dict:
+        gid = gstate["group_id"]
+        fake = {
+            "groups": [_group_for_node(gstate)],
+            "graphrag_candidates": {
+                gid: {"pattern": gstate["pattern"], "candidates": gstate.get("candidates", [])}
+            },
+            "critic_result": {gid: gstate.get("critic_result")},
+        }
+        out = response.respond_without_llm(fake, gid)
+        return {"final_response": out["final_response"][gid]}
+
     sub = StateGraph(GroupState)
     # 노드명은 옛 바깥 노드명을 그대로 물려받는다(NODE_TO_STEP_INDEX 4·5·6·7과 대응, §8.2c).
     sub.add_node("fetch_graphrag_candidates", fetch_kg)
     sub.add_node("build_hypotheses", build)
     sub.add_node("review_hypotheses", review)
     sub.add_node("generate_response", generate)
+    sub.add_node("respond_without_llm", respond)
     sub.set_entry_point("fetch_graphrag_candidates")
-    sub.add_edge("fetch_graphrag_candidates", "build_hypotheses")
+    # ④ 뒤: 후보 0건이면 ⑤⑥ 건너뛰고 ⑦'로(§6.1).
+    sub.add_conditional_edges(
+        "fetch_graphrag_candidates",
+        route_on_candidates,
+        {"build_hypotheses": "build_hypotheses", "respond_without_llm": "respond_without_llm"},
+    )
     sub.add_edge("build_hypotheses", "review_hypotheses")
-    sub.add_edge("review_hypotheses", "generate_response")
+    # ⑥ 뒤: 채택 0건이면 LLM(⑦) 안 부르고 ⑦'로(§6.2).
+    sub.add_conditional_edges(
+        "review_hypotheses",
+        route_on_verdicts,
+        {"generate_response": "generate_response", "respond_without_llm": "respond_without_llm"},
+    )
     sub.add_edge("generate_response", END)
+    sub.add_edge("respond_without_llm", END)
     return sub.compile()
 
 
@@ -112,7 +157,11 @@ async def run_groups(state: RCAState, group_graph) -> dict:
     """groups를 순차로 돌며 그룹 서브그래프를 호출하고 결과를 {group_id: 값}으로 모은다.
 
     순차 for 루프다 — Send 병렬화는 범위 밖(§7.1). MCP 세션을 새로 열지 않는다(group_graph의
-    노드가 이미 주입된 mcp 싱글턴을 재사용한다). Normal 방어 가드는 step 4에서 추가한다.
+    노드가 이미 주입된 mcp 싱글턴을 재사용한다).
+
+    Normal 방어 가드(§6.3): ②가 Normal 그룹을 안 만드는 게 원칙이지만(정상 웨이퍼=그룹 미생성),
+    표기 차이 등으로 새어 들어오면 서브그래프에 태우지 않고 로그만 남긴다 — 그래프 갈래가 아니라
+    "여기 오면 안 되는데 왔다"를 기록하는 것이라 라우팅이 아닌 가드로 둔다.
     """
     merged: dict = {
         "graphrag_candidates": {},
@@ -122,6 +171,9 @@ async def run_groups(state: RCAState, group_graph) -> dict:
     }
     for group in state["groups"]:
         gid = group["group_id"]
+        if group["pattern"] == "Normal":
+            logger.info("Normal 그룹 유입 — 건너뜀 (②에서 걸러졌어야 함): %s", gid)
+            continue
         out = await group_graph.ainvoke(_to_group_state(group, state))
         merged["graphrag_candidates"][gid] = {
             "pattern": group["pattern"],
