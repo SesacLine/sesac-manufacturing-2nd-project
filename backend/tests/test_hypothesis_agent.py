@@ -399,3 +399,19 @@ def test_group_time_range_union():
 
     tr = asyncio.run(_group_time_range(["L1", "L2", "L3", "L4"], FakeMCP()))
     assert tr == ("2026-03-13 22:00:00", "2026-03-18 09:00:00")   # 전체 합집합 (첫 로트 아님)
+
+
+def test_rank_hypotheses_commonality_tiebreak():
+    from backend.nodes.hypothesis import _rank_hypotheses
+
+    # 세기 동률(둘 다 5) → 결함 로트 공통률 높은(전부 지나간) 클러스터가 앞 (처방4)
+    hypotheses = [
+        {"cause": "partial", "cluster_id": "u1",
+        "evidence": {"drift_detected": True, "direction_match": True,
+                    "commonality_ratio": 0.625, "normal_ratio": 0.89}},
+        {"cause": "full", "cluster_id": "u2",
+        "evidence": {"drift_detected": True, "direction_match": True,
+                    "commonality_ratio": 1.0, "normal_ratio": 0.91}},
+    ]
+    # normal_ratio로는 partial(0.89)이 이기지만, commonality가 그보다 우선한다
+    assert [h["cause"] for h in _rank_hypotheses(hypotheses)] == ["full", "partial"]

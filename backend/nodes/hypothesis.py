@@ -515,9 +515,12 @@ def _rank_hypotheses(hypotheses: list[Hypothesis]) -> list[Hypothesis]:
 
     클러스터 정렬 키(위가 우선):
     ① 증거 세기(_evidence_strength) 내림차순 — 구성원 증거가 동일하므로 첫 행이 대표
-    ② normal_ratio 오름차순 — 반대 증거 할인(같은 장비가 정상 로트도 많이 냈으면 약화).
+    ② commonality_ratio 내림차순 — 결함 로트 공통률(인과 필요조건, 처방4). 원인 장비라면
+        결함 로트 전부가 지났어야 한다 — 일부만 지난 장비의 drift는 타 시나리오/노이즈.
+        None(suspect 부재)은 0.0(인과 연결 미성립 = 바닥)
+    ③ normal_ratio 오름차순 — 반대 증거 할인(같은 장비가 정상 로트도 많이 냈으면 약화).
         None(미조회)은 중립 0.5로 취급
-    ③ 최초 등장 index 오름차순 — 완전 동률이면 prior(kg rank)가 타이브레이커
+    ④ 최초 등장 index 오름차순 — 완전 동률이면 prior(kg rank)가 타이브레이커
 
     ⑤ Critic·⑦ response가 순서를 보존만 하므로 최종 accepted[0] = 대표 원인이
     여기서 결정된다(BACKEND_DECISIONS.md D1). cluster_id가 없으면 KeyError로
@@ -531,7 +534,14 @@ def _rank_hypotheses(hypotheses: list[Hypothesis]) -> list[Hypothesis]:
         prior, members = item
         evidence = members[0]["evidence"]          # 클러스터 내 증거 동일 → 첫 행이 대표
         ratio = evidence.get("normal_ratio")
-        return (-_evidence_strength(evidence), ratio if ratio is not None else 0.5, prior)
+        comm = evidence.get("commonality_ratio")
+        return (
+            -_evidence_strength(evidence),
+            -(comm if comm is not None else 0.0),  # 처방4: 결함 로트 공통률 — 인과 필요조건.
+                                                    # 5/8 장비의 drift는 8/8 장비를 못 이긴다
+            ratio if ratio is not None else 0.5,
+            prior,
+        )
 
     ranked = sorted(enumerate(clusters.values()), key=sort_key)
     return [hyp for _, members in ranked for hyp in members]
