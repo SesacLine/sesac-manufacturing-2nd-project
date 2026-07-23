@@ -19,19 +19,20 @@ from __future__ import annotations
 DEFECT_HEAT_THRESHOLD = 0.5
 
 # --- 반경 구역 (정규화 반경 0~1, 중심=0 / 최외곽=1) ---
-R_INNER = 0.33   # center: r <= R_INNER
-R_EDGE = 0.67    # edge:   r >= R_EDGE   (mid = 그 사이)
+# geometry 작성자 제공 기준값
+R_INNER = 0.35   # center: r <= R_INNER
+R_EDGE = 0.80    # edge:   r >= R_EDGE   (mid = 그 사이)
 
 # --- 각도 분포 ---
-ANGULAR_BINS = 12                 # 12방위(시계) 히스토그램
+ANGULAR_BINS = 12                 # 12방위(시계) 히스토그램 (geometry 작성자 제공)
 ANGULAR_FULL = 0.7                # 점유 방위 비율 >= → 전방위(full) 후보
 ANGULAR_PARTIAL = 0.35            # >= → 부분(partial)
 ANGULAR_CONCENTRATION_MAX = 0.35  # 평균벡터 집중도 < 이 값이어야 "균등"(full); 이상이면 방위 편중
 CLOCK_MIN_CONCENTRATION = 0.3     # 대표 시각(clock) 인정에 필요한 최소 집중도
 
-# --- 군집 ---
-MIN_CLUSTER_SIZE = 4              # 유의미 군집 최소 die 수 (배경 노이즈 컷)
-NEAR_FULL_RATIO = 0.6            # defect_die_ratio >= → 전면(global)
+# --- 군집 --- (geometry 작성자 제공 기준값)
+MIN_CLUSTER_SIZE = 3              # 이보다 작은 connected component는 노이즈 취급
+NEAR_FULL_RATIO = 0.55           # defect_die_ratio >= → near-full(global)
 
 # --- 형상 판정 ---
 RING_RSTD_MAX = 0.13             # 반경 표준편차 < → 좁은 반경 대역(링 후보)

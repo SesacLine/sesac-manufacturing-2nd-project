@@ -71,15 +71,15 @@ def test_signature_entry_returns_all_forms_in_edges_with_morphology():
     assert all(c["morphology"] is not None for c in out["candidates"])  # morphology 보존
 
 
-def test_angular_discriminator_demotes_contradicting_full_ring():
-    # 관측 = partial arc → full-ring(ETCH) 후보는 강등, partial(CMP)이 위로.
+def test_angular_discriminator_drops_contradicting_full_ring():
+    # 관측 = partial arc → full-ring(ETCH) 후보는 강한 모순으로 리스트에서 제외, partial(CMP)만.
     client = LiveKGClient(graph=FakeGraph(ROWS))
     out = client.get_candidates("Unknown", observation=OBS_PARTIAL)
     cands = out["candidates"]
+    steps = {c["step"] for c in cands}
+    assert "ETCH" not in steps                # full ring 후보 드롭됨
     assert cands[0]["step"] == "CMP"
     assert cands[0]["morphology_score"] == 0.0
-    assert cands[-1]["step"] == "ETCH"
-    assert cands[-1]["morphology_score"] <= -10.0
     assert cands[0]["rank"] == 1              # 재랭킹 후 rank 재부여
 
 

@@ -109,9 +109,10 @@ def test_live_client_semantic_entry_uses_description():
            "density": "low", "continuity": "discontinuous"}
     out = client.get_candidates("Unknown", observation=obs)
     assert out["entry_signatures"] == ["ring@edge"]        # NL -> 의미 매칭으로 진입
-    assert out["candidates"][0]["step"] == "CMP"            # partial arc -> CMP 위로
+    steps = {c["step"] for c in out["candidates"]}
+    assert "ETCH" not in steps                             # full ring 강한 모순 → 드롭
+    assert out["candidates"][0]["step"] == "CMP"            # partial arc -> CMP
     assert out["candidates"][0]["entry_signature"] == "ring@edge"
-    assert out["candidates"][-1]["step"] == "ETCH"          # full ring 강등
 
 
 def test_query_text_combines_location_and_morphology():
@@ -156,8 +157,8 @@ def test_known_pattern_scopes_signatures_and_keeps_pattern_level():
     out = client.get_candidates("Edge-Ring", observation=obs)
     assert out["entry_signatures"] == ["ring@edge"]        # 패턴이 범위 제한 -> ring@edge만
     steps = {c["step"] for c in out["candidates"]}
-    assert {"ETCH", "CMP", "DEPO"} <= steps               # 형상 경로 + 패턴 레벨(DEPO) 둘 다
+    assert "ETCH" not in steps                             # full ring 형상 후보 → 강한 모순 드롭
+    assert {"CMP", "DEPO"} <= steps                        # partial 형상(CMP) + 패턴 레벨(DEPO) 유지
     assert out["candidates"][0]["step"] == "CMP"           # partial arc -> CMP 최상위
-    assert out["candidates"][-1]["step"] == "ETCH"         # full ring 강등
     depo = next(c for c in out["candidates"] if c["step"] == "DEPO")
-    assert depo["morphology"] is None                      # 패턴 레벨 경로는 morphology 없음
+    assert depo["morphology"] is None                      # 패턴 레벨 경로는 morphology 없음(드롭 대상 아님)
