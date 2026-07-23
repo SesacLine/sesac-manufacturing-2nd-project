@@ -25,14 +25,31 @@ def test_no_observation_preserves_order():
     assert [c["cause"] for c in out] == ["a", "b"]
 
 
-def test_angular_mismatch_demotes_contradicting_candidate():
-    # 관측 = partial arc. full-ring 후보(a)는 상충 → 아래로, partial 후보(b)는 유지.
+def test_strong_contradiction_is_dropped():
+    # 관측 = partial arc. full-ring 후보(a)는 강한 모순(-10) → 리스트에서 제외, partial(b)만 남음.
     obs = PARTIAL
     cands = [_cand("a", FULL), _cand("b", PARTIAL)]
     out = rerank_by_observation(cands, obs)
+    assert [c["cause"] for c in out] == ["b"]        # a 드롭됨
+    assert out[0]["morphology_score"] == 0.0         # partial 일치 → 무벌점
+
+
+def test_drop_can_be_disabled_for_debug():
+    # drop_contradictions=False면 옛 동작(강등만) — 모순 후보가 남되 맨 아래로.
+    obs = PARTIAL
+    cands = [_cand("a", FULL), _cand("b", PARTIAL)]
+    out = rerank_by_observation(cands, obs, drop_contradictions=False)
     assert [c["cause"] for c in out] == ["b", "a"]
-    assert out[0]["morphology_score"] == 0.0        # partial 일치 → 무벌점
-    assert out[1]["morphology_score"] <= -10.0      # full vs partial → 강한 강등
+    assert out[1]["morphology_score"] <= -10.0
+
+
+def test_soft_contradiction_is_not_dropped():
+    # clock/density/continuity만 어긋나면(합 -5까지) 강한 모순 아님 → 남긴다(감점만).
+    obs = {"angular_coverage": "partial", "clock_positions": [1, 2], "density": "high"}
+    cand_soft = {"angular_coverage": "partial", "clock_positions": [7, 8], "density": "low"}  # -3-1=-4
+    out = rerank_by_observation([_cand("a", cand_soft)], obs)
+    assert [c["cause"] for c in out] == ["a"]         # 드롭 안 됨
+    assert out[0]["morphology_score"] == -4.0
 
 
 def test_demote_only_never_promotes_over_evidence():
