@@ -64,7 +64,8 @@ kg_rca/outputs/signature_index.json
 # 웨이퍼맵 판독 — 학습 체크포인트 (모델 바이너리 커밋 금지, 재학습으로 재생성)
 wafer_reading/classifier/checkpoints/
 
-# 개인 작업공간
+# 개인 작업공간 (팀원별 폴더 — 새 폴더는 여기에 추가, 기존 줄을 교체하지 말 것)
+personalspace_rca/
 sdoubleoj/
 *.backup
 

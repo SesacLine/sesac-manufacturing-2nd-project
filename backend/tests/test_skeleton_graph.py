@@ -133,7 +133,7 @@ def test_full_batch_persisted_results_byte_identical_to_pre_refactor_golden():
     """
     from backend.config import fab_db_path
 
-    if not fab_db_path().exists():
+    if not Path(fab_db_path()).exists():
         pytest.skip("fab.db 없음 — 2차 게이트는 fab.db 준비 후 로컬에서 수동 확인 대상")
     if not GOLDEN_PATH.exists():
         pytest.skip(
