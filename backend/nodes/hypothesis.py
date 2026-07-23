@@ -71,7 +71,7 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
     # 이제 반자동·근거없음 전용 (자동 tier의 캐시 역할은 배치 telemetry 1콜이 흡수).
     verify_cache: dict[tuple, tuple] = {}
     hypotheses: list[Hypothesis] = []
-    for candidate in candidates:          # 원래 순서(kg rank) 보존 — D1/§2.5 정렬 불변식
+    for candidate in candidates:          # 원순서(kg rank)로 조립 — _annotate_clusters zip 전제. 최종 순서는 _rank_hypotheses가 결정
         if id(candidate) in agent_hyps:
             hypotheses.append(agent_hyps[id(candidate)])
             continue
@@ -83,6 +83,9 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
 
     # 클러스터 id + cause 대표 행 주석 — 순서·행 수 불변
     _annotate_clusters(candidates, hypotheses)
+
+    # S2-4: fab 증거 재랭킹 (C4) — 여기서부터의 순서가 곧 최종 표시 순서 (⑤⑥은 보존만)
+    hypotheses = _rank_hypotheses(hypotheses)
 
     for hyp in hypotheses:                # 시간정합 기준(defect_ts) 일괄 스탬프 — ④가 수집(firewall)
         hyp["evidence"]["defect_ts"] = defect_ts
@@ -119,8 +122,9 @@ async def investigate_group(
     suspect가 없으면(공통 장비 특정 불가) 그 배치는 결정론 폴백(investigated=False).
     루프 상한/중단 기준은 S2-5에서 — 지금은 step 배치 순회 1패스.
 
-    반환 순서 = 입력 candidates 순서(kg rank 보존). build_hypotheses가 zip으로
-    후보↔가설을 맞추는 전제이자, D1/§2.5 정렬 불변식 유지 장치(S2-4 재랭킹 전까지).
+    반환 순서 = 입력 candidates 순서. build_hypotheses의 원순서 조립과
+    _annotate_clusters의 zip이 이 계약을 전제한다 — S2-4 재랭킹이 생긴 뒤에도
+    유지되는 계약이다(재랭킹은 주석이 끝난 뒤 _rank_hypotheses가 별도로 한다).
     """
     by_step: dict = {}
     for c in candidates:
@@ -431,8 +435,9 @@ def _evidence_strength(evidence: EvidenceEntry) -> int:
     확실성 우선: telemetry 판정(drift_detected가 not None) > maintenance 정황 > 무신호.
     telemetry 안에서는 지지 세기 순. "정상범위(음성)"도 maintenance보다 위인 이유:
     §5 "Parameter 핸들을 가진 cause는 그 Parameter가 주 증거"(telemetry가 더 확실) —
-    확실한 반박도 그 cause의 대표 검증 결과다. S2-4 랭킹 점수와 목적이 다르다
-    (이건 순위가 아니라 cause 내부의 대표 행 선정).
+    확실한 반박도 그 cause의 대표 검증 결과다. 이 서수는 S2-4 랭킹
+    (_rank_hypotheses)의 클러스터 세기로도 재사용된다 — 대표 행 선정과
+    클러스터 순위가 같은 확실성 축을 공유한다.
     """
     drift = evidence.get("drift_detected")
     if drift is True:
@@ -450,7 +455,7 @@ def _annotate_clusters(candidates: list[GraphRAGCandidate], hypotheses: list[Hyp
   
       candidates↔hypotheses는 같은 순서라는 전제(zip) — investigate_group의
       "반환 순서 = 입력 순서" 계약과 build_hypotheses의 원순서 조립이 이를 보장한다.
-      정렬(클러스터 순위·prior 내부 정렬)은 여기서 하지 않는다 — S2-4의 몫.
+      정렬(클러스터 순위·prior 내부 정렬)은 여기서 하지 않는다 — 바로 뒤에 호출되는 _rank_hypotheses의 몫.
 
       - cluster_id: 같은 unit+direction(_cluster_key) 행들의 묶음 표식. 표시층(⑥/프론트)이
         이 id로 원인군 카드를 묶는다(terms §6). 행 구조는 안 바꾼다(API §2.5 무변경).
@@ -469,6 +474,37 @@ def _annotate_clusters(candidates: list[GraphRAGCandidate], hypotheses: list[Hyp
               best[cause] = (strength, i)
       for i, hyp in enumerate(hypotheses):
           hyp["is_primary"] = (best[hyp["cause"]][1] == i)
+
+
+def _rank_hypotheses(hypotheses: list[Hypothesis]) -> list[Hypothesis]:
+    """S2-4: fab 증거 재랭킹 (C4 구현) — 파이프라인에서 처음으로 순서가 바뀌는 지점.
+
+    행이 아니라 클러스터(unit+direction) 단위로 정렬한다: 같은 클러스터 행들은
+    fab 증거가 동일해(함축의 바닥, terms §2-1) fab으로는 서로 구분 불가 —
+    묶음째 움직이고 내부는 prior(kg rank) 순서를 유지한다. 행 수·내용 불변.
+
+    클러스터 정렬 키(위가 우선):
+    ① 증거 세기(_evidence_strength) 내림차순 — 구성원 증거가 동일하므로 첫 행이 대표
+    ② normal_ratio 오름차순 — 반대 증거 할인(같은 장비가 정상 로트도 많이 냈으면 약화).
+        None(미조회)은 중립 0.5로 취급
+    ③ 최초 등장 index 오름차순 — 완전 동률이면 prior(kg rank)가 타이브레이커
+
+    ⑤ Critic·⑦ response가 순서를 보존만 하므로 최종 accepted[0] = 대표 원인이
+    여기서 결정된다(BACKEND_DECISIONS.md D1). cluster_id가 없으면 KeyError로
+    시끄럽게 죽는 게 맞다 — _annotate_clusters 뒤에서만 부르라는 계약.
+    """
+    clusters: dict[str, list[Hypothesis]] = {}
+    for hyp in hypotheses:
+        clusters.setdefault(hyp["cluster_id"], []).append(hyp)   # 삽입 순 = 최초 등장 순
+
+    def sort_key(item):
+        prior, members = item
+        evidence = members[0]["evidence"]          # 클러스터 내 증거 동일 → 첫 행이 대표
+        ratio = evidence.get("normal_ratio")
+        return (-_evidence_strength(evidence), ratio if ratio is not None else 0.5, prior)
+
+    ranked = sorted(enumerate(clusters.values()), key=sort_key)
+    return [hyp for _, members in ranked for hyp in members]
 
 
 async def _group_time_range(lot_ids: list[str], mcp: MCPClient) -> tuple[str, str]:

@@ -229,3 +229,48 @@ def test_annotate_clusters_tie_keeps_prior_order():
     _annotate_clusters(candidates, hypotheses)
     assert hypotheses[0]["is_primary"] is True     # prior(먼저 온) 행 유지
     assert hypotheses[1]["is_primary"] is False
+
+
+def test_rank_hypotheses_orders_clusters_by_evidence():
+    from backend.nodes.hypothesis import _rank_hypotheses
+
+    # kg rank 순 입력: 약한 클러스터(u1: A,C)가 앞, 강한 클러스터(u2: B)가 뒤
+    hypotheses = [
+        {"cause": "A", "cluster_id": "u1", "evidence": {"drift_detected": False, "normal_ratio": 0.2}},
+        {"cause": "B", "cluster_id": "u2",
+        "evidence": {"drift_detected": True, "direction_match": True, "normal_ratio": 0.2}},
+        {"cause": "C", "cluster_id": "u1", "evidence": {"drift_detected": False, "normal_ratio": 0.2}},
+    ]
+    ranked = _rank_hypotheses(hypotheses)
+
+    # 강한 클러스터(세기 5)가 앞으로, u1은 묶음째 이동 + 내부 prior(A→C) 유지
+    assert [h["cause"] for h in ranked] == ["B", "A", "C"]
+    assert ranked[0]["cause"] == "B"          # hypotheses[0] = 대표원인 (C4/D1)
+
+
+def test_rank_hypotheses_normal_ratio_tiebreak():
+    from backend.nodes.hypothesis import _rank_hypotheses
+
+    # 증거 세기 동률(둘 다 5) → normal_ratio 낮은(반대증거 적은) 클러스터가 앞
+    hypotheses = [
+        {"cause": "high_counter", "cluster_id": "u1",
+        "evidence": {"drift_detected": True, "direction_match": True, "normal_ratio": 0.9}},
+        {"cause": "low_counter", "cluster_id": "u2",
+        "evidence": {"drift_detected": True, "direction_match": True, "normal_ratio": 0.1}},
+    ]
+    assert [h["cause"] for h in _rank_hypotheses(hypotheses)] == ["low_counter", "high_counter"]
+
+
+def test_rank_hypotheses_none_ratio_neutral_and_prior_tiebreak():
+    from backend.nodes.hypothesis import _rank_hypotheses
+
+    # 전부 세기 0 동률. None ratio는 중립 0.5 → 실측 0.2보다 뒤, 0.9보다 앞.
+    # None끼리 완전 동률이면 prior(최초 등장 순) 유지.
+    hypotheses = [
+        {"cause": "unknown_a", "cluster_id": "u1", "evidence": {"normal_ratio": None}},
+        {"cause": "unknown_b", "cluster_id": "u2", "evidence": {"normal_ratio": None}},
+        {"cause": "low_counter", "cluster_id": "u3", "evidence": {"normal_ratio": 0.2}},
+        {"cause": "high_counter", "cluster_id": "u4", "evidence": {"normal_ratio": 0.9}},
+    ]
+    assert [h["cause"] for h in _rank_hypotheses(hypotheses)] == \
+        ["low_counter", "unknown_a", "unknown_b", "high_counter"]
