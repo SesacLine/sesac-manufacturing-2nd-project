@@ -92,6 +92,21 @@ def test_subgraph_inner_node_names_map_to_expected_step_index(node_name, expecte
     assert new_step == expected_index
 
 
+# covers: AC-21, AC-23
+def test_respond_without_llm_reaches_terminal_step_7():
+    """⑦'(unmapped/insufficient 종단)도 response_gen(7)이라 current_step이 7에 도달한다.
+
+    골격설계 §8.4 "unmapped면 current_step이 끝으로 간다" 정합 — respond_without_llm이
+    NODE_TO_STEP_INDEX에 7로 잡혀 있어야 그 경로로 끝나는 그룹도 진행바가 완료를 가리킨다.
+    """
+    from backend.batch_runner import process_stream_item
+
+    new_step, _ = process_stream_item(
+        namespace=("g1",), update={"respond_without_llm": {}}, current_step=4
+    )
+    assert new_step == 7
+
+
 # covers: AC-22
 def test_group_tag_contextvar_prefixes_log_message():
     from backend import batch_runner
