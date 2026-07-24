@@ -130,7 +130,8 @@ def test_assembler_shapes():
         assert key in payload
     card = payload["hypotheses"][0]
     for key in ("hypothesis_id", "cause", "stage", "tier", "verdict",
-                "verdict_reason", "narrative", "next_actions", "citations"):
+                "verdict_reason", "narrative", "next_actions", "citations",
+                "cluster_id", "is_primary"):  # R2 원인군 카드용 필드(additive)
         assert key in card
     assert card["tier"] == "auto"  # enum 정규화는 API 경계에서
 
@@ -149,3 +150,49 @@ def test_assembler_shapes():
         "available": False, "reason": "none_tier", "series": []
     }
     assert ev1["note"] is not None
+
+
+def test_assembler_surfaces_cluster_id_for_grouping():
+    """R2 — ⑤가 채운 cluster_id/is_primary가 §2.5 카드로 그대로 흘러가야(프론트 원인군 묶기용)."""
+    from backend.assembler import build_analysis_payload
+
+    final = {
+        "pattern": "Center",
+        "status": "reviewed",
+        "reason": None,
+        "lot_ids": ["lot1"],
+        "lot_count": 1,
+        "hypotheses": [
+            {"hypothesis_id": "h0", "cause": "clean_nozzle_clog", "stage": "CLEAN",
+             "tier": "자동", "verdict": "accepted", "verdict_reason": None,
+             "equipment": "CLEAN-01", "sentence": "s", "citations": [], "evidence": {},
+             "cluster_id": "CLEAN|low", "is_primary": True},
+            {"hypothesis_id": "h1", "cause": "low_chemical_flow_rate", "stage": "CLEAN",
+             "tier": "자동", "verdict": "accepted", "verdict_reason": None,
+             "equipment": "CLEAN-01", "sentence": "s", "citations": [], "evidence": {},
+             "cluster_id": "CLEAN|low", "is_primary": False},
+        ],
+    }
+    payload = build_analysis_payload("grp_center_20260401_01", final)
+    c0, c1 = payload["hypotheses"]
+    # 같은 cluster_id → 프론트가 한 원인군으로 묶는다
+    assert c0["cluster_id"] == c1["cluster_id"] == "CLEAN|low"
+    assert c0["is_primary"] is True and c1["is_primary"] is False
+
+
+def test_assembler_cluster_id_none_when_absent():
+    """R2 — ⑤가 cluster_id를 안 채웠으면 None(프론트가 단독 후보로 취급)."""
+    from backend.assembler import build_analysis_payload
+
+    final = {
+        "pattern": "Scratch", "status": "reviewed", "reason": None,
+        "lot_ids": ["lot1"], "lot_count": 1,
+        "hypotheses": [
+            {"hypothesis_id": "h0", "cause": "c", "stage": "CMP", "tier": "자동",
+             "verdict": "accepted", "verdict_reason": None, "equipment": "CMP-01",
+             "sentence": "s", "citations": [], "evidence": {}},
+        ],
+    }
+    card = build_analysis_payload("grp_scratch_20260401_01", final)["hypotheses"][0]
+    assert card["cluster_id"] is None
+    assert card["is_primary"] is False

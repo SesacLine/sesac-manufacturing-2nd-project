@@ -74,6 +74,7 @@ EXPECTED_UNMAPPED = {
         "summary": f"{PATTERN} 패턴은 원인 분석 데이터가 없습니다(KG 매핑 대상 3종 밖).",
         # 테스트 state에 observation이 없어 영어 서술 소스가 없음 → 한국어 description도 None
         "description": None,
+        "confidence": "low",  # R1: 채택 원인 없음(unmapped) → 불확실
     }
 }
 
@@ -97,6 +98,7 @@ EXPECTED_INSUFFICIENT = {
         "summary": f"{PATTERN} 패턴은 판단 불가 — 채택 가능한 근거 있는 가설이 없습니다.",
         # 테스트 state에 observation이 없어 영어 서술 소스가 없음 → 한국어 description도 None
         "description": None,
+        "confidence": "low",  # R1: 채택 0건(insufficient) → 불확실
     }
 }
 
@@ -136,11 +138,13 @@ EXPECTED_REVIEWED = {
         "lot_count": len(LOT_IDS),
         "hypotheses": EXPECTED_REVIEWED_HYPOTHESES,
         "summary": (
-            f"{PATTERN} 패턴 — 가설 2건 채택:\n"
+            # R1: 비단정형 — 두 채택 모두 evidence={} → 적극 지지 없음 → 확신 "불확실"
+            f"{PATTERN} 패턴 — 가능성 있는 원인 후보 2건 (확정 아님 · 확신: 불확실):\n"
             "- cause-X (등급: 자동, 의심 장비: EQ-9)\n"
             "- cause-Y (등급: 반자동, 의심 장비: EQ-3)"
         ),
         "description": None,                  # observation 없음 → None
+        "confidence": "low",                  # R1: evidence 없음 → 불확실
     }
 }
 
@@ -306,3 +310,50 @@ def test_description_none_when_vlm_track_but_no_text():
     state = _state_with_candidates_but_zero_accepted()
     state["observation"] = {"vlm_track": "pty"}  # total_description 키 없음
     assert respond_without_llm(state)["final_response"]["description"] is None
+
+
+# ── R1: 확신 수준(불확실 표시, eval_scenario_kg_proposal.md R1) ────────────────────────────
+def test_confidence_medium_when_few_accepted_with_strong_support():
+    # 소수 채택(≤3) + 방향일치 drift 있는 가설 → "medium"(잠정 지지). 확정("high")은 없음.
+    from backend.nodes.response import generate_response
+
+    accepted = [
+        {"cause": "cX", "tier": "자동", "equipment": "EQ-9",
+         "evidence": {"drift_detected": True, "direction_match": True}, "sentence": "s"},
+    ]
+    state = {
+        "group_id": GROUP_ID, "pattern": PATTERN, "lot_ids": LOT_IDS,
+        "candidates": [{"cause": "cX"}],
+        "critic_result": {"status": "accepted", "accepted": accepted, "rejected": []},
+    }
+    fr = generate_response(state)["final_response"]
+    assert fr["confidence"] == "medium"
+    assert "확정 아님" in fr["summary"] and "잠정 지지" in fr["summary"]
+
+
+def test_confidence_low_when_many_accepted_even_with_support():
+    # 채택 다수(>3)면 지지 증거가 있어도 "좁히지 못함" → "low"(불확실).
+    from backend.nodes.response import generate_response
+
+    accepted = [
+        {"cause": f"c{i}", "tier": "자동", "equipment": "EQ",
+         "evidence": {"drift_detected": True, "direction_match": True}, "sentence": "s"}
+        for i in range(4)
+    ]
+    state = {
+        "group_id": GROUP_ID, "pattern": PATTERN, "lot_ids": LOT_IDS,
+        "candidates": [{"cause": "c0"}],
+        "critic_result": {"status": "accepted", "accepted": accepted, "rejected": []},
+    }
+    fr = generate_response(state)["final_response"]
+    assert fr["confidence"] == "low"
+    assert "불확실" in fr["summary"]
+
+
+def test_confidence_never_high():
+    # R1 불변식: confidence는 절대 "high"(확정)가 아니다 — RCA 스코프는 가설까지.
+    from backend.nodes.response import _confidence
+
+    strong = [{"evidence": {"normal_ratio": 0.1}}]
+    assert _confidence(strong) in ("medium", "low")
+    assert _confidence([]) == "low"

@@ -62,7 +62,7 @@ eval = "secsgem-mcp/eval"
 
 [tool.pytest.ini_options]
 addopts = "-q"
-testpaths = ["secsgem-mcp/tests", "backend/tests"]
+testpaths = ["secsgem-mcp/tests", "backend/tests", "kg_rca/tests"]
 markers = ["data: 데이터셋 빌드(fab.db)가 필요한 테스트 — CI에서 제외"]
 
 # 재현성 정책 (원래 secsgem-mcp/pyproject.toml)

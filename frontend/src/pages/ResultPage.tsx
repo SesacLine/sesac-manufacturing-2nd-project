@@ -4,11 +4,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api, ApiError, formatDetail } from "../api/client";
-import type { Analysis, LotWafers } from "../api/types";
+import type { Analysis, Hypothesis, LotWafers } from "../api/types";
 import EvidenceModal from "../components/EvidenceModal";
 import HypothesisCard from "../components/HypothesisCard";
 import WaferStrip from "../components/WaferStrip";
-import { STATUS_LABELS, summaryLine } from "../labels";
+import { CONFIDENCE_LABELS, STATUS_LABELS, summaryLine } from "../labels";
 
 export default function ResultPage() {
   const { analysisId } = useParams<{ analysisId: string }>();
@@ -72,6 +72,23 @@ export default function ResultPage() {
     analysis.description ??
     summaryLine(analysis.pattern, analysis.status, analysis.hypotheses[0]?.stage);
 
+  // R2(원인군 카드): 채택 가설을 cluster_id로 묶는다(등장 순서 보존). 같은 cluster_id는 fab
+  // 증거가 동일한 원인군 — 그 안에서 단일 헤드라인을 뽑으면 문헌 근거 많은 generic 형제가
+  // 정답을 덮으므로, 후보 묶음으로 함께 제시한다. cluster_id 없으면 단독 후보(__solo).
+  // 기각·미판정은 원인군에 안 넣고 아래 평면 목록으로 둔다.
+  const acceptedHyps = analysis.hypotheses.filter((h) => h.verdict === "accepted");
+  const otherHyps = analysis.hypotheses.filter((h) => h.verdict !== "accepted");
+  const clusterOrder: string[] = [];
+  const clusterMap = new Map<string, Hypothesis[]>();
+  for (const h of acceptedHyps) {
+    const key = h.cluster_id ?? `__solo_${h.hypothesis_id}`;
+    if (!clusterMap.has(key)) {
+      clusterMap.set(key, []);
+      clusterOrder.push(key);
+    }
+    clusterMap.get(key)!.push(h);
+  }
+
   return (
     <section className="panel">
       <div className="panel-head">
@@ -129,18 +146,74 @@ export default function ResultPage() {
                 <div className="desc">{analysis.reason}</div>
               </div>
             )}
+            {/* R1: 확정 원인이 아니라 "가능성 있는 후보"임을 표현 층에서 명시(불확실 표시).
+                confidence=low(다수 채택/증거 약함)일 때 특히 단정하지 않도록 경고 배너를 띄운다. */}
+            {analysis.status === "reviewed" && analysis.confidence === "low" && (
+              <div className="notice" style={{ borderStyle: "solid" }}>
+                ⚠ 확정된 근본 원인이 아닙니다 — 아래는 <b>가능성 있는 원인 후보</b>이며,
+                채택 후보가 많거나 검증 증거가 약해 확신 수준은 <b>불확실</b>입니다. 참고로만
+                활용하세요.
+              </div>
+            )}
             <div className="box-title" style={{ margin: "6px 0 10px" }}>
-              Hypothesis · Critic 결과 — 가설 {analysis.hypotheses.length}건 (대표 우선 정렬,
-              받은 순서 그대로)
+              <span>
+                Hypothesis · Critic 결과 — 원인 후보 {analysis.hypotheses.length}건 (대표 우선
+                정렬, 받은 순서 그대로)
+              </span>
+              <span
+                className={analysis.confidence === "low" ? "badge warn" : "badge"}
+                title="R1 확신 수준 — 확정이 아니라 가설 스코프"
+              >
+                확신: {CONFIDENCE_LABELS[analysis.confidence]}
+              </span>
             </div>
-            {analysis.hypotheses.map((h, i) => (
-              <HypothesisCard
-                key={h.hypothesis_id}
-                hypothesis={h}
-                isTop={i === 0}
-                onShowEvidence={(hypothesisId, cause) => setModal({ hypothesisId, cause })}
-              />
-            ))}
+            {/* R2: 채택 가설을 원인군(cluster)으로 묶어 카드로 낸다. 원인군에 후보가 여럿이면
+                "하나로 좁혀지지 않음"을 명시 — 단일 헤드라인이 정답을 가리는 문제 완화. */}
+            {clusterOrder.map((key, ci) => {
+              const members = clusterMap.get(key)!;
+              const multi = members.length > 1;
+              const stageLabel = members[0].stage ? ` · ${members[0].stage} 공정` : "";
+              return (
+                <div key={key} className="box">
+                  <div className="box-title">
+                    <span>
+                      원인군 {ci + 1}
+                      {stageLabel} — 후보 {members.length}건
+                    </span>
+                    {multi && <span className="badge warn">하나로 좁혀지지 않음</span>}
+                  </div>
+                  {multi && (
+                    <div className="caption" style={{ marginBottom: 8 }}>
+                      이 후보들은 fab 증거가 동일해 단일 원인으로 확정할 수 없습니다 — 원인군으로
+                      함께 검토하세요.
+                    </div>
+                  )}
+                  {members.map((h) => (
+                    <HypothesisCard
+                      key={h.hypothesis_id}
+                      hypothesis={h}
+                      isTop={analysis.hypotheses[0]?.hypothesis_id === h.hypothesis_id}
+                      onShowEvidence={(hypothesisId, cause) => setModal({ hypothesisId, cause })}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+            {otherHyps.length > 0 && (
+              <>
+                <div className="box-title" style={{ margin: "6px 0 10px" }}>
+                  <span>기각 · 미판정 가설 {otherHyps.length}건</span>
+                </div>
+                {otherHyps.map((h) => (
+                  <HypothesisCard
+                    key={h.hypothesis_id}
+                    hypothesis={h}
+                    isTop={false}
+                    onShowEvidence={(hypothesisId, cause) => setModal({ hypothesisId, cause })}
+                  />
+                ))}
+              </>
+            )}
           </>
         )}
       </div>

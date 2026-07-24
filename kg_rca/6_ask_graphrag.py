@@ -309,6 +309,11 @@ MAPPING_MATCH_KEYWORDS: dict[str, list[str]] = {
     "cmp_edge_overpolish": [
         "edge overpolish", "edge over polish", "overpolish at edge",
         "excessive polishing at edge", "edge over polishing",
+        # P1(대칭 보정): down_force 계열 — 물리적으로 맞는 자동 후보 excessive_down_force를
+        # cmp_edge_overpolish에 잇는다. Center CMP(center_polishing_too_fast→cmp_center_overpolish)가
+        # 이어지듯 Edge CMP도 대칭으로 이어지게(mapping_table의 param=down_force와도 정합).
+        "excessive down force", "down force", "downforce", "high down force",
+        "excessive polishing pressure",
     ],
     "clean_residue": [
         "clean residue", "cleaning residue", "chemical residue",
@@ -347,6 +352,10 @@ DRIFT_TO_DIRECTION = {
 }
 
 MAPPING_MATCH_THRESHOLD = 0.55
+# (P2-b) 비어있지 않은 path.step을 매핑 공정으로 '교정'하는 건 강한 매칭일 때만 한다.
+# 느슨한 매칭이 추출된 정본 step을 덮어써 오히려 오연결을 만드는 걸 막는다
+# (키워드 substring 포함은 _similarity가 1.0을 주므로 0.85면 앵커 매칭만 통과한다).
+MAPPING_STEP_OVERRIDE_THRESHOLD = 0.85
 
 
 def _norm_text(raw: str) -> str:
@@ -398,14 +407,20 @@ def match_mapping(pattern: str, cause_id: str, cause_name: str) -> tuple[dict, f
 
 
 def apply_mapping_fill(pattern: str, rows: list[dict]) -> int:
+    """매핑 표를 오버레이한다. 반환 = 매칭된 행 수. row["mapping"]에 근거를 남긴다.
+
+    두 가지를 한다:
+      (1) matched_cause 라벨링 — **tier 무관하게** 모든 매칭 행에 붙인다(P1, 비대칭 해소).
+          E2E 평가가 KG cause를 시뮬레이터 어휘(ground truth)로 대조하려면 자동/반자동 후보에도
+          matched_cause가 있어야 한다. 없으면 물리적으로 맞는 자동 후보(예: Edge-Ring
+          excessive_down_force → cmp_edge_overpolish)가 채점에서 통째로 빠진다 — Center CMP는
+          이어지는데 Edge CMP만 누락되던 비대칭이 여기서 생겼다.
+      (2) 검증 신호 채움·[자동] 승격·step 교정 — **[근거없음] 행에만** 한다. 이미 검증된
+          (자동/반자동) 행의 evidence/step/direction은 문헌 추출 정본이라 건드리지 않고 라벨만 얹는다.
+          (kg_client는 mapping에서 matched_cause·process만 읽으므로 라벨 부착은 런타임 무해.)
     """
-    [근거없음] 행에 매핑 표의 검증 신호를 채운다. 채운 행 수를 반환.
-    row["mapping"]에 근거(항목, 점수, prob, citation)를 남긴다.
-    """
-    filled = 0
+    matched = 0
     for row in rows:
-        if row["tier"] != TIER_NONE:
-            continue
         hit = match_mapping(pattern, row["cause"], row["cause_name"] or "")
         if hit is None:
             continue
@@ -413,6 +428,7 @@ def apply_mapping_fill(pattern: str, rows: list[dict]) -> int:
         sig = entry.get("telemetry_signature") or {}
         param, drift = sig.get("param"), sig.get("drift")
 
+        # (1) matched_cause 라벨 — tier 무관(P1)
         row["mapping"] = {
             "matched_cause": entry.get("cause"),
             "score": round(score, 3),
@@ -423,12 +439,31 @@ def apply_mapping_fill(pattern: str, rows: list[dict]) -> int:
             "citation": entry.get("citation"),
             "param_in_fab_vocab": param in FAB_PARAM_IDS,
         }
+        matched += 1
 
-        # 문헌직결(direct) 행은 step=NULL(DIRECT_QUERY) — 매칭이 특정한 공정으로 보충한다.
-        # 신호(param/drift)만 채우고 조사 장소를 비워두면 backend가 엉뚱한 장비에서 param을
-        # 찾다 기각된다(0723 E2E 실측: 정답 가설 사망 경로). step 있는 행(path 정본)은 안 건드림.
-        if row["step"] is None and entry.get("process"):
-            row["step"] = entry.get("process")
+        # (2) 검증 신호 채움·승격·step 교정은 [근거없음] 행에만.
+        if row["tier"] != TIER_NONE:
+            continue
+
+        # step 보충·교정 (P2, eval_scenario_kg_proposal.md — path.step ↔ mapping.process 불일치).
+        # (a) 문헌직결(direct) 행은 step=NULL(DIRECT_QUERY) — 매칭이 특정한 공정으로 보충한다.
+        #     신호(param/drift)만 채우고 조사 장소를 비워두면 backend가 엉뚱한 장비에서 param을
+        #     찾다 기각된다(0723 E2E 실측: 정답 가설 사망 경로).
+        # (b) step이 채워졌더라도 매핑이 지목한 공정과 다르면(추출 오연결, 예: DEPO≠CLEAN)
+        #     교정한다 — 단 강한 매칭일 때만(MAPPING_STEP_OVERRIDE_THRESHOLD). mapping_table은
+        #     큐레이션된 fab 어휘 브리지라 키워드 앵커가 강하게 맞으면 추출 step보다 신뢰도가 높다.
+        #     KG가 자기완결적으로 교정하면 backend의 step=None 폴백(D14)은 자연 무동작이 된다.
+        #     조용히 덮지 않고 로그로 남긴다(무엇을 왜 바꿨는지 드러냄).
+        mapped_process = entry.get("process")
+        if mapped_process and row["step"] != mapped_process:
+            if row["step"] is None:
+                print(f"    · step 보충(P2-a): None → {mapped_process}  [{row['cause']}]")
+                row["step"] = mapped_process
+            elif score >= MAPPING_STEP_OVERRIDE_THRESHOLD:
+                print(f"    · step 교정(P2-b): {row['step']} → {mapped_process}  "
+                      f"[{row['cause']}] (매핑 {entry.get('cause')}, score={score:.2f})")
+                row["step"] = mapped_process
+            # 약한 매칭(score < 임계)에서 non-None step은 건드리지 않는다 — 추출 정본 보존.
 
         # fab 어휘에 있는 param일 때만 [자동] 승격. 아니면 힌트로만 남긴다.
         if param in FAB_PARAM_IDS:
@@ -438,8 +473,7 @@ def apply_mapping_fill(pattern: str, rows: list[dict]) -> int:
             row["evidence_label"] = "Parameter"
             row["fab_table"] = "telemetry"
             row["direction"] = DRIFT_TO_DIRECTION.get(drift)
-        filled += 1
-    return filled
+    return matched
 
 
 # 같은 (공정, 고장, 원인, 신호) 꼬리를 두 경로가 모두 찾으면 한 가설로 합치되,
@@ -511,10 +545,10 @@ def _rank_and_sort(rows: list[dict], pattern: str | None) -> list[dict]:
 
     survivors = list(best.values())
 
-    # 매핑 테이블 오버레이 — [근거없음]을 큐레이션 지식으로 채운다 (tier 승격 가능).
-    filled = apply_mapping_fill(pattern, survivors)
-    if filled:
-        print(f"  (mapping_table: [근거없음] {filled}건 채움)")
+    # 매핑 테이블 오버레이 — 모든 tier에 matched_cause 라벨(P1) + [근거없음]은 검증신호 채움/승격.
+    matched = apply_mapping_fill(pattern, survivors)
+    if matched:
+        print(f"  (mapping_table: {matched}건 매칭 — matched_cause 라벨 + [근거없음] 검증신호 채움)")
 
     # =========================
     # 순위 — 검증 가능성(tier)이 아니라 문헌 근거로 매긴다.

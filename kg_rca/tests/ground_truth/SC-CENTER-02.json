@@ -1,0 +1,49 @@
+{
+  "cause_sites": [
+    [
+      "DEPO-02",
+      "DEPO-02-CH2"
+    ]
+  ],
+  "clue_overwritten": false,
+  "coverage_gap": {
+    "equipment": "DEPO-02",
+    "from": "2026-02-24 14:03:47",
+    "to": "2026-02-25 15:09:58"
+  },
+  "defect_patterns": [
+    "Center"
+  ],
+  "is_unmatched": false,
+  "key_evidence_path": [
+    "commonality → DEPO-02/DEPO-02-CH2",
+    "무이벤트 누적형 → telemetry chamber_pressure linear_up (시작점 근거는 T8 변화점)"
+  ],
+  "lifecycle": [],
+  "lot_ids": [
+    "lot10241",
+    "lot36752",
+    "lot18898",
+    "lot10396",
+    "lot32793",
+    "lot46049",
+    "lot11510",
+    "lot20772"
+  ],
+  "scenario_id": "SC-CENTER-02",
+  "source": "wm811k",
+  "t0": "2026-02-20 21:48:38",
+  "telemetry_clues": [
+    {
+      "drift": "linear_up",
+      "equipment": "DEPO-02",
+      "param": "chamber_pressure"
+    }
+  ],
+  "traps_to_reject": [
+    "LITHO-01: 정상 lot 다수 통과, t0+12d PM은 불량 이후(선후 뒤집힘)"
+  ],
+  "true_root_causes": [
+    "deposition_center_thickness"
+  ]
+}

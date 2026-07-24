@@ -27,6 +27,40 @@ from .critic import TOKEN_NO_KG_MECHANISM, TOKEN_SEMI_AUTO_PENDING, TOKEN_NOT_IN
 # NOT_INVESTIGATED = 자동 tier의 미조사 폴백(S2-6) — 반자동 SEMI_AUTO_PENDING과 같은 보류 버킷.
 _JUDGE_UNKNOWN_TOKENS = {TOKEN_NO_KG_MECHANISM, TOKEN_SEMI_AUTO_PENDING, TOKEN_NOT_INVESTIGATED}
 
+# ── R1: 확신 수준(불확실 표시) ─────────────────────────────────────────────────────────
+# 판정 층(⑤/⑥)이 못 거른 환각을 표현 층에서 완화한다(eval_scenario_kg_proposal.md R1·B1).
+# 미지 결함(정답 KG에 없음)은 과채택으로 "채택 0건" 가드가 발화 못 해 status=reviewed로 나오는데,
+# 그럴 때 "이것이 근본 원인"이라 단정하지 않도록 confidence를 함께 내보낸다.
+#   · 절대 "high"(확정)를 내지 않는다 — RCA 스코프는 "가설(채택)+근거"까지지 확정이 아니다.
+#   · 재료는 이미 넘어온 evidence만 읽는다 — 새 증거를 만들지 않는다(faithfulness firewall).
+#   · "medium" = 후보가 소수로 좁혀졌고 그중 fab 증거로 적극 지지되는 가설이 있음.
+#   · "low"    = 채택이 다수(좁히지 못함)이거나 적극 지지 증거가 없음 → "단정하지 않음".
+_MANY_ACCEPTED = 3           # 채택이 이 수를 넘으면 "좁히지 못함"(불확실) 신호
+_NORMAL_RATIO_WEAK = 0.5     # assembler._NORMAL_RATIO_WEAK_THRESHOLD와 같은 임계(정상비율 이상=반대근거 강함)
+
+
+def _has_strong_support(h: dict) -> bool:
+    """채택 가설 1건이 fab 증거로 '적극 지지'되는가 — 방향일치 drift 또는 반대근거 약함."""
+    ev = h.get("evidence") or {}
+    # 자동 tier: drift가 KG 예상 방향과 일치(direction_match=True)하면 적극 지지.
+    if ev.get("drift_detected") and ev.get("direction_match"):
+        return True
+    # 정상 로트 대조에서 반대근거가 약하면(정상비율이 임계 미만) 지지.
+    nr = ev.get("normal_ratio")
+    if nr is not None and nr < _NORMAL_RATIO_WEAK:
+        return True
+    return False
+
+
+def _confidence(accepted: list[dict]) -> str:
+    """'medium'(잠정 지지) / 'low'(불확실). 확정('high')은 내지 않는다(R1)."""
+    if not accepted:
+        return "low"
+    strong = sum(1 for h in accepted if _has_strong_support(h))
+    if strong >= 1 and len(accepted) <= _MANY_ACCEPTED:
+        return "medium"
+    return "low"
+
 # ── 사용자 노출용 그룹 서술(description, API 명세 §2.5) ──────────────────────────────
 # 설계 결정: VLM(노드③)은 **영어 서술만** 생성하고(프롬프트 단순·출력 자연스러움), 한국어 번역은
 # 이 응답 단계에서 한다. 번역기(translate: str→str)는 조립 시점 partial로 주입된다
@@ -88,14 +122,20 @@ def generate_response(state: GroupState, translate=None) -> dict:
     ordered = _ordered_hypotheses(critic)
     accepted = list(critic["accepted"]) if critic else []
 
+    confidence = _confidence(accepted)  # R1: 확정 아님(medium/low) — 표현 층 불확실 표시
+    level_ko = "잠정 지지" if confidence == "medium" else "불확실"
     lines = [
         f"- {h['cause']} (등급: {h['tier']}, 의심 장비: {h['equipment']})" for h in accepted
     ]
-    summary = f"{pattern} 패턴 — 가설 {len(accepted)}건 채택:\n" + "\n".join(lines)
+    # R1: 단정형("가설 N건 채택") 대신 비단정형 — "확정 아님"과 확신 수준을 명시한다.
+    summary = (
+        f"{pattern} 패턴 — 가능성 있는 원인 후보 {len(accepted)}건 "
+        f"(확정 아님 · 확신: {level_ko}):\n" + "\n".join(lines)
+    )
     return _final(
         state["group_id"], pattern, lot_ids,
         status="reviewed", reason=None, hypotheses=ordered, summary=summary,
-        description=_group_description(state, translate),
+        description=_group_description(state, translate), confidence=confidence,
     )
 
 
@@ -123,6 +163,7 @@ def respond_without_llm(state: GroupState, translate=None) -> dict:
             hypotheses=[],
             summary=f"{pattern} 패턴은 원인 분석 데이터가 없습니다(KG 매핑 대상 3종 밖).",
             description=description,
+            confidence="low",  # R1: 채택 원인 없음 → 불확실
         )
 
     # UC-2: 후보는 있었지만 Critic이 하나도 채택 못 한 경우 — 판단 불가(근거부족).
@@ -140,6 +181,7 @@ def respond_without_llm(state: GroupState, translate=None) -> dict:
         hypotheses=ordered,
         summary=f"{pattern} 패턴은 판단 불가 — 채택 가능한 근거 있는 가설이 없습니다.",
         description=description,
+        confidence="low",  # R1: 채택 0건 → 불확실(판단 불가)
     )
 
 
@@ -153,6 +195,7 @@ def _final(
     hypotheses: list[dict],
     summary: str,
     description: str | None,
+    confidence: str,
 ) -> dict:
     return {
         "final_response": {
@@ -165,5 +208,6 @@ def _final(
             "hypotheses": hypotheses,  # 정렬·h{n}·verdict 포함 (대표 = index 0)
             "summary": summary,        # 결정론적 템플릿(내부용, LLM 아님)
             "description": description,  # ③VLM(영어) → 한국어 번역, §2.5 (없으면 None → 프론트 summary_line)
+            "confidence": confidence,  # R1: medium|low — 확정("high") 없음. 표현 층 불확실 표시
         }
     }
