@@ -181,7 +181,7 @@ async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -
         "cursor_date": cursor_date,
         "cursor_end": cursor_end,
         "target_lot_ids": [],
-        "vlm_results": [],
+        "cnn_results": [],
         "groups": [],
         "graphrag_candidates": {},
         "hypotheses": {},
@@ -208,7 +208,7 @@ async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -
     # 웨이퍼 판독 저장(§2.6 원천) — defect_pattern은 API 5종으로 정규화해 저장.
     readings = [
         (r["lot_id"], str(r["wafer_id"]), normalize_pattern(r["pattern"]))
-        for r in state.get("vlm_results", [])
+        for r in state.get("cnn_results", [])
     ]
     if readings:
         store.save_wafer_readings(readings)

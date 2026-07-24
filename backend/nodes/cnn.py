@@ -1,8 +1,5 @@
 """① CNN 결함 패턴 판정 — 웨이퍼 1장당 1건, 5클래스(Center/Edge-Ring/Scratch/Unknown/Normal).
 
-(구 vlm.py — 기획안 v1.5 재배치에 따라 2026-07-23 개명. VLM 서술 역할은 ③ vlm_describe.py로
-이동했고, 이 노드는 웨이퍼 개별 이미지의 분류만 담당한다.)
-
 ResNet-18 실연동(wafer_reading.classifier): 체크포인트가 있으면 die_map을 실판독하고,
 없으면(CI·미학습 환경) 기존 스켈레톤 하드코딩("Center")으로 폴백해 파이프라인이 끊기지
 않게 한다 — vlm_describe/quantitative의 폴백 정책과 동일한 태도.
@@ -46,10 +43,10 @@ def _get_classifier():
 
 
 def read_wafer_maps(state: RCAState) -> dict:
-    """target_lot_ids의 웨이퍼 die_map을 ResNet으로 판정해 vlm_results를 채운다."""
+    """target_lot_ids의 웨이퍼 die_map을 ResNet으로 판정해 cnn_results를 채운다."""
     lot_ids = state["target_lot_ids"]
     if not lot_ids:
-        return {"vlm_results": []}
+        return {"cnn_results": []}
 
     con = sqlite3.connect(os.environ["FAB_DB"])
     con.row_factory = sqlite3.Row
@@ -68,24 +65,21 @@ def read_wafer_maps(state: RCAState) -> dict:
         else:
             no_map_keys.append((row["lot_id"], row["wafer_id"]))
 
-    vlm_results = []
+    cnn_results = []
     if die_maps:
         for (lot_id, wafer_id), pred in zip(keys, clf.classify_batch(die_maps)):
-            vlm_results.append(_result(lot_id, wafer_id, pred["pattern"], pred["confidence"]))
+            cnn_results.append(_result(lot_id, wafer_id, pred["pattern"], pred["confidence"]))
     # die_map 없는 웨이퍼 또는 무모델 환경 → 폴백 패턴
     for lot_id, wafer_id in no_map_keys:
-        vlm_results.append(_result(lot_id, wafer_id, _FALLBACK_PATTERN, 0.5, fallback=True))
-    return {"vlm_results": vlm_results}
+        cnn_results.append(_result(lot_id, wafer_id, _FALLBACK_PATTERN, 0.5))
+    return {"cnn_results": cnn_results}
 
 
-def _result(lot_id: str, wafer_id: str, pattern: str, confidence: float, fallback: bool = False):
+def _result(lot_id: str, wafer_id: str, pattern: str, confidence: float):
+    # 소비자(grouper/batch_runner)는 pattern만 쓰고 confidence=0.5로 폴백 여부를 드러냄.
     return {
         "lot_id": lot_id,
         "wafer_id": wafer_id,
         "pattern": pattern,
-        "spatial": "",  # 형상 서술은 ③ vlm_describe(관측)로 이동 — 여기선 분류만
-        "description": "CNN 폴백(체크포인트 없음) 임시값" if fallback else "",
-        "severity": "unknown",
         "confidence": confidence,
-        "ambiguity": fallback,
     }

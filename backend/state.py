@@ -18,17 +18,14 @@ EvidenceLabel = Literal["Parameter", "Maintenance", "Recipe", "None"]
 ScenarioHint = Literal["A2", "A3", "A5", "A6"]
 
 
-class VLMResult(TypedDict):
-    """① VLM 노드 출력. 웨이퍼 1장당 1건."""
+class CNNResult(TypedDict):
+    """① CNN 판정 노드(cnn.py) 출력. 웨이퍼 1장당 1건
+    """
 
     lot_id: str
     wafer_id: str
     pattern: str
-    spatial: str
-    description: str
-    severity: str
     confidence: float
-    ambiguity: bool
 
 
 class Observation(TypedDict):
@@ -43,7 +40,7 @@ class Observation(TypedDict):
     pattern_candidate: str                       # CNN 라벨 (3종 or "Unknown"). = Group["pattern"]
     location_text: str                           # VLM 자연어 (공간 분포)
     morphology_text: str                         # VLM 자연어 (형상)
-    total_description: NotRequired[str]          # VLM 자연어 (종합 서술) — BLEU/ROUGE-L 평가 대상
+    total_description: NotRequired[str]          # VLM 종합 서술 (사용자 최종 응답 노출, 평가에도 사용)
     angular_coverage: NotRequired[str]           # die-matrix: full|partial|unknown
     clock_positions: NotRequired[list[int]]      # die-matrix: 1~12 (partial일 때만)
     density: NotRequired[str]                    # high|medium|low|unknown
@@ -243,7 +240,7 @@ class RCAState(TypedDict):
     cursor_date: str
     cursor_end: str
     target_lot_ids: list[str]
-    vlm_results: list[VLMResult]
+    cnn_results: list[CNNResult]  # 구 vlm_results — 생산자가 ① CNN(cnn.py)이 되며 키·타입 함께 개명(07-24)
     groups: list[Group]
     graphrag_candidates: Annotated[dict[str, GraphRAGResult], merge_by_group]
     hypotheses: Annotated[dict[str, list[Hypothesis]], merge_by_group]

@@ -108,7 +108,8 @@
   않고 evidence(drift 등)를 채워 ⑥ 규칙으로 넘긴다. 기획안 §7.1의 "자동은 즉시 채택/기각"
   서술은 "⑤ soft / ⑥ hard"로 정리됐으니 그대로 인용하지 말 것. 상세는
   `docs/hypo_critic_설계공유_v1.0.md`.
-- `state.py`: 배치 그래프는 `RCAState`(cursor → target_lot_ids → vlm_results → groups …),
+- `state.py`: 배치 그래프는 `RCAState`(cursor → target_lot_ids → cnn_results → groups …
+  — 구 `vlm_results`, 07-24 `CNNResult`와 함께 개명),
   그룹 서브그래프는 **`GroupState`**(group_id·pattern·lot_ids·observation → candidates →
   hypotheses → critic_result → final_response, 그룹키 reducer 4종 — #32). **#33에서 시그니처
   평탄화 완료** — 서브그래프 노드는 옛 `(state, group_id, mcp)` 어댑터를 걷어내고 `GroupState`를

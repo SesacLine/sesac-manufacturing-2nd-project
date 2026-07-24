@@ -186,7 +186,7 @@ def test_astream_production_path_isolates_real_subgraph_exception():
         "cursor_date": "2026-01-01",
         "cursor_end": "2026-01-31",
         "target_lot_ids": [],
-        "vlm_results": [],
+        "cnn_results": [],
         "groups": _state_two_groups()["groups"],
         "graphrag_candidates": {},
         "hypotheses": {},
