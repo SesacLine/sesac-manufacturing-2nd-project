@@ -203,14 +203,11 @@ def _observe_group_live(group: dict, state: RCAState) -> dict:
         **observation,
         "location_text": vlm["location_text"],
         "morphology_text": vlm["morphology_text"],
-    }
-    return {
-        **group,
-        "observation": observation,
         "total_description": vlm["total_description"],
         "vlm_track": vlm["vlm_track"],
         "image_mode": vlm["image_mode"],
     }
+    return {**group, "observation": observation}
 
 
 def _fetch_die_maps_by_keys(keys: list[tuple[str, str]]) -> list[np.ndarray]:
