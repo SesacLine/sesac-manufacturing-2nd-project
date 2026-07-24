@@ -14,7 +14,7 @@ def fetch_graphrag_candidates(state: GroupState, kg_client: KGClient) -> dict:
     """이 그룹의 pattern으로 kg_client.get_candidates를 호출해 candidates를 채운다.
 
     Center/Edge-Ring/Scratch가 아닌 패턴은 KGClient가 이미 candidates=[]를 돌려준다
-    (kg_client.py 참고) — 여기서 따로 걸러낼 필요 없이 그대로 저장하면 하위 스텝들이
+    (kg_client.py 참고) — 여기서 따로 걸러낼 필요 없이 그대로 저장하면 route_on_candidates가
     빈 리스트를 보고 UC-3(미매핑 패턴) 처리를 한다.
     """
     result = kg_client.get_candidates(
