@@ -415,3 +415,34 @@ def test_rank_hypotheses_commonality_tiebreak():
     ]
     # normal_ratio로는 partial(0.89)이 이기지만, commonality가 그보다 우선한다
     assert [h["cause"] for h in _rank_hypotheses(hypotheses)] == ["full", "partial"]
+
+
+def test_rank_hypotheses_specificity_tiebreak_same_equipment():
+    from backend.nodes.hypothesis import _rank_hypotheses
+
+    # B2: 세기·공통률·반대증거 전부 동률(=같은 장비 경쟁, SCRATCH)이면 특이성 높은 클러스터가 위.
+    # 입력순(prior)으로는 low_spec이 앞이지만, 특이성이 prior를 이긴다.
+    hypotheses = [
+        {"cause": "low_spec", "cluster_id": "u1",
+         "evidence": {"drift_detected": True, "direction_match": True,
+                      "commonality_ratio": 1.0, "normal_ratio": 0.9, "specificity": 0.1}},
+        {"cause": "high_spec", "cluster_id": "u2",
+         "evidence": {"drift_detected": True, "direction_match": True,
+                      "commonality_ratio": 1.0, "normal_ratio": 0.9, "specificity": 0.9}},
+    ]
+    assert [h["cause"] for h in _rank_hypotheses(hypotheses)] == ["high_spec", "low_spec"]
+
+
+def test_rank_hypotheses_specificity_none_is_neutral():
+    from backend.nodes.hypothesis import _rank_hypotheses
+
+    # specificity 없는 후보(반자동·근거없음)는 중립 0 — 기존 랭킹(prior)을 안 흔든다.
+    hypotheses = [
+        {"cause": "a", "cluster_id": "u1",
+         "evidence": {"drift_detected": True, "direction_match": True,
+                      "commonality_ratio": 1.0, "normal_ratio": 0.9}},
+        {"cause": "b", "cluster_id": "u2",
+         "evidence": {"drift_detected": True, "direction_match": True,
+                      "commonality_ratio": 1.0, "normal_ratio": 0.9}},
+    ]
+    assert [h["cause"] for h in _rank_hypotheses(hypotheses)] == ["a", "b"]  # prior 유지

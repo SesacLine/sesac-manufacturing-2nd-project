@@ -89,6 +89,10 @@ async def build_hypotheses(state: GroupState, mcp: MCPClient) -> dict:
     # 클러스터 id + cause 대표 행 주석 — 순서·행 수 불변
     _annotate_clusters(candidates, hypotheses)
 
+    # B2(0724): 특이성 주석 — 같은 장비 경쟁 클러스터 타이브레이커 (_rank_hypotheses가 소비). baseline
+    # 조회 1개/(장비,param). 설계 근거: personalspace_rca/0724 work/hypo_critic_처방설계_v0.1.md.
+    await _annotate_specificity(hypotheses, time_range, mcp)
+
     # S2-4: fab 증거 재랭킹 (C4) — 여기서부터의 순서가 곧 최종 표시 순서 (⑤⑥은 보존만)
     hypotheses = _rank_hypotheses(hypotheses)
 
@@ -506,6 +510,68 @@ def _annotate_clusters(candidates: list[GraphRAGCandidate], hypotheses: list[Hyp
           hyp["is_primary"] = (best[hyp["cause"]][1] == i)
 
 
+# B2(0724): 특이성(defect-specificity) — 같은 장비에서 여러 param이 경쟁할 때(공통률·반대증거 동률)
+# 정답을 가르는 타이브레이커. "이 param이 결함 기간에 특이적으로 벗어났나(그룹창) vs 이 장비의 평소
+# 모습인가(baseline)". baseline은 넓은 창을 한 번 더 조회해 그룹창 밖 포인트로 잡는다.
+# 설계 근거·기각된 대안: personalspace_rca/0724 work/hypo_critic_처방설계_v0.1.md.
+BASELINE_MARGIN_DAYS = 90
+
+
+def _outrate(series: list[dict] | None, normal_range: list[float] | None) -> float | None:
+    """정상범위 밖 포인트 비율(0..1). series/range 없으면 None."""
+    if not series or not normal_range:
+        return None
+    lo, hi = normal_range
+    return sum(1 for p in series if not (lo <= p["value"] <= hi)) / len(series)
+
+
+def _widen(time_range: tuple[str, str], days: int) -> tuple[str, str]:
+    s = datetime.fromisoformat(time_range[0]) - timedelta(days=days)
+    e = datetime.fromisoformat(time_range[1]) + timedelta(days=days)
+    return (s.strftime("%Y-%m-%d %H:%M:%S"), e.strftime("%Y-%m-%d %H:%M:%S"))
+
+
+async def _baseline_outrate(
+    mcp: MCPClient, equipment: str, param: str, time_range: tuple[str, str],
+) -> float | None:
+    """param의 창 밖 baseline 이탈률 — 넓은 창(±BASELINE_MARGIN_DAYS) 조회 후 그룹창 밖 포인트만."""
+    wide = _widen(time_range, BASELINE_MARGIN_DAYS)
+    tel = await mcp.query_telemetry(equipment, wide, params=[param], max_points=800)
+    series = tel["data"]["series"]
+    normal_range = tel["data"]["normal_ranges"].get(param)
+    if not series or not normal_range:
+        return None
+    lo, hi = normal_range
+    gs, ge = time_range
+    outside = [p for p in series if not (gs <= p["ts"] <= ge)]
+    if not outside:
+        return None
+    return sum(1 for p in outside if not (lo <= p["value"] <= hi)) / len(outside)
+
+
+async def _annotate_specificity(
+    hypotheses: list[Hypothesis], time_range: tuple[str, str], mcp: MCPClient,
+) -> None:
+    """B2: 각 telemetry 후보에 특이성(그룹창 이탈률 − 창밖 baseline 이탈률)을 주석한다.
+
+    telemetry 없는 후보(반자동·근거없음·미조사)는 specificity=None → 랭킹서 중립(0) 취급.
+    (equipment, param)당 baseline 1회만 조회(캐싱). 순서·행 수 불변 — 값만 채운다.
+    """
+    baseline_cache: dict[tuple[str, str], float | None] = {}
+    for hyp in hypotheses:
+        ev = hyp["evidence"]
+        gout = _outrate(ev.get("telemetry_series"), ev.get("telemetry_normal_range"))
+        eq, param = hyp.get("equipment"), ev.get("telemetry_param")
+        if gout is None or not eq or not param:
+            ev["specificity"] = None
+            continue
+        key = (eq, param)
+        if key not in baseline_cache:
+            baseline_cache[key] = await _baseline_outrate(mcp, eq, param, time_range)
+        base = baseline_cache[key]
+        ev["specificity"] = None if base is None else gout - base
+
+
 def _rank_hypotheses(hypotheses: list[Hypothesis]) -> list[Hypothesis]:
     """S2-4: fab 증거 재랭킹 (C4 구현) — 파이프라인에서 처음으로 순서가 바뀌는 지점.
 
@@ -535,11 +601,15 @@ def _rank_hypotheses(hypotheses: list[Hypothesis]) -> list[Hypothesis]:
         evidence = members[0]["evidence"]          # 클러스터 내 증거 동일 → 첫 행이 대표
         ratio = evidence.get("normal_ratio")
         comm = evidence.get("commonality_ratio")
+        spec = evidence.get("specificity")
         return (
             -_evidence_strength(evidence),
             -(comm if comm is not None else 0.0),  # 처방4: 결함 로트 공통률 — 인과 필요조건.
                                                     # 5/8 장비의 drift는 8/8 장비를 못 이긴다
             ratio if ratio is not None else 0.5,
+            # B2(0724): 최후 타이브레이커 — 위 3개가 동률이면(=같은 장비 경쟁, SCRATCH) 특이성 높은
+            # 클러스터가 위로. prior(kg rank) 앞에 둬 "결함 특이 신호"가 문헌 순위를 이긴다. None=중립 0.
+            -(spec if spec is not None else 0.0),
             prior,
         )
 
