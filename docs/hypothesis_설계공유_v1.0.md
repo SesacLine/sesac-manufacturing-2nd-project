@@ -157,13 +157,18 @@ build_hypotheses(candidates, lot_ids, mcp)
 - **대안과 기각**: 후보 단위 캐싱만 적용 → 부분 완화에 그침, 여전히 느림.
 - **되돌릴 조건**: 후보 수가 적은 소규모 데이터면 배치 이득이 미미해진다.
 
-### 4-3. 최종 순위를 fab 증거로 다시 계산한다 — 대표원인이 여기서 정해진다 (D1·D16)
+### 4-3. 최종 순위를 fab 증거로 다시 계산한다 — 대표원인이 여기서 정해진다 (D1·D16, +B2 0724)
 
 - **문제**: KG가 준 순위는 "문헌에 얼마나 많이 나오나"(근거량) 기준이라, 이번 배치의 실제
   원인과는 무관하다.
-- **선택**: 조사가 끝난 뒤 **클러스터 단위로 4단계 키를 적용해 다시 정렬**한다
-  (증거 세기 → `commonality_ratio` → `normal_ratio` → KG 순위). 정확한 키 정의는 D1·D16.
-- **대안과 기각**: KG 순위를 그대로 사용 → SC-CENTER-01에서 정답이 193위로 밀렸다.
+- **선택**: 조사가 끝난 뒤 **클러스터 단위로 5단계 키를 적용해 다시 정렬**한다
+  (증거 세기 → `commonality_ratio` → `normal_ratio` → **특이성** → KG 순위). 정확한 키 정의는 D1·D16.
+- **B2(0724) — 특이성(defect-specificity) 타이브레이커**: 같은 장비에 여러 param이 경쟁할 때
+  (공통률·반대증거가 동률) **결함 특이성**(그룹창 이탈률 − 창밖 baseline 이탈률)으로 정답을 가른다.
+  `normal_ratio` 뒤·`KG 순위` 앞에 둬, 공통률이 먼저 갈리는 경우(다른 장비)엔 **미발동 → CENTER/EDGE 보호**.
+  SCRATCH 경쟁 클러스터 해결(정답 0위). 근거·검증: `hypo_critic_처방설계_v0.1.md`.
+- **대안과 기각**: KG 순위를 그대로 사용 → SC-CENTER-01에서 정답 193위. 특이성을 **전역 채택 게이트**로
+  쓰는 안도 기각 — 정답 특이성이 시나리오별 −43~+96로 흩어져 임계값이 없다(그래서 "최후 타이브레이커"로만).
 - **되돌릴 조건**: 증거 세기 산식(`_evidence_strength`)을 다시 설계하면 이 정렬도 함께 봐야 한다.
 
 ### 4-4. 지지 증거와 반박 증거는 조회 구간이 다르다 (D13·D15)
@@ -217,7 +222,7 @@ build_hypotheses(candidates, lot_ids, mcp)
 ## 7. 테스트 현황
 
 - **단위 테스트**: `backend/tests/test_hypothesis_agent.py`(테스트 함수 17개). 배치 판정 분배,
-  방향 대조, 클러스터 주석, 재랭킹 4단 키, 스텝 상한 초과 시 미조사 폴백, 시간창 계산을 고정한다.
+  방향 대조, 클러스터 주석, 재랭킹 5단 키(특이성 포함), 스텝 상한 초과 시 미조사 폴백, 시간창 계산을 고정한다.
   fab.db 없이 mock으로 실행된다(`pytest -q -m "not data"` = CI와 동일 조건).
 - **아직 검증 못 한 케이스**:
   - `반자동` 실제 조사 경로(현재는 전원 판단 보류로만 나감).
@@ -245,7 +250,7 @@ build_hypotheses(candidates, lot_ids, mcp)
 | 에이전트 배치 조사 | `investigate_group` → `_build_group_prompt` → `_to_hypotheses_batch` |
 | 방향 대조 | `_drift_direction` / `_direction_match` |
 | 클러스터 / 대표 행 | `_cluster_key` / `_evidence_strength` / `_annotate_clusters` |
-| 재랭킹 4단 키 | `_rank_hypotheses` |
+| 재랭킹 5단 키(특이성 포함) | `_rank_hypotheses` |
 | 시간창 | `_group_time_range` / `_maintenance_range` |
 | step 폴백 | `_with_step_fallback` |
 | 정책 결정 이력 | `docs/BACKEND_DECISIONS.md` D1 · D13~D16 |
