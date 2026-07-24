@@ -246,6 +246,10 @@ class RCAState(TypedDict):
     target_lot_ids: list[str]
     cnn_results: list[CNNResult]  # 구 vlm_results — 생산자가 ① CNN(cnn.py)이 되며 키·타입 함께 개명(07-24)
     groups: list[Group]
+    # ② grouper 산출(이슈 #69): 다수결이 Normal인 로트 — 저수율인데 판독상 정상(맵 비가시
+    # 수율손실 의심). 기획 §6.1대로 그룹은 안 만들고 여기 담아 "판독상 정상 N로트" 카드의
+    # 원천으로 운반한다. 노출 방식(status 신설 vs unmapped reason 교체)은 프론트 협의 중.
+    normal_lots: NotRequired[list[str]]
     graphrag_candidates: Annotated[dict[str, GraphRAGResult], merge_by_group]
     hypotheses: Annotated[dict[str, list[Hypothesis]], merge_by_group]
     critic_result: Annotated[dict[str, CriticResult], merge_by_group]
