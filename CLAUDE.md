@@ -55,7 +55,7 @@
 | `kg_rca/` | 지식그래프(KG). 도메인 문헌 → Neo4j 적재 → LLM KG 추출 → 결정적 그래프 순회로 원인 후보(`hypotheses.json`) 생성 | 완성, 계속 갱신 중 |
 | `secsgem-mcp/` | MCP 서버. SECS/GEM 시뮬레이터가 만든 가상 fab 운영 데이터(`fab.db`)를 9종 도구로 조회 | 완성 |
 
-## 파이프라인 (`backend/`) — 현행 ⓪~⑦ (기획안 v1.5 구조, 2026-07-23 구현)
+## 파이프라인 (`backend/`) — 현행 ⓪~⑦ (기획안 v1.5 구조, 2026-07-23~24 구현)
 
 **배치 그래프**(state=`RCAState`) + **그룹 서브그래프**(state=`GroupState`, 그룹당 1회 실행)의
 2층 구조다(#32). 바깥 그래프의 `run_groups` 노드가 groups를 순차로 돌며 서브그래프를 호출한다
@@ -73,7 +73,7 @@
                                                 VLM 자연어는 TODO(미연동, 스켈레톤 폴백만)
 → run_groups             graph.py               그룹마다 아래 서브그래프 호출 (contextvars로 로그에 [패턴] 태그)
 
-[그룹 서브그래프 — 옛 시그니처 함수를 GroupState로 감싼 어댑터들]
+[그룹 서브그래프 — GroupState를 직접 받는 노드 함수들 (#33 평탄화, 어댑터 제거)]
 ④ fetch_graphrag_candidates nodes/graphrag.py   KG 조회 — get_candidates(pattern, observation)
    ├─(후보 0건)──────────→ ⑦' respond_without_llm     ← route_on_candidates (조건부 엣지)
 ⑤ build_hypotheses       nodes/hypothesis.py    증거 수집·검증·fab 재랭킹 (자동 tier=LLM 에이전트)
@@ -104,9 +104,11 @@
   `docs/hypo_critic_설계공유_v1.0.md`.
 - `state.py`: 배치 그래프는 `RCAState`(cursor → target_lot_ids → vlm_results → groups …),
   그룹 서브그래프는 **`GroupState`**(group_id·pattern·lot_ids·observation → candidates →
-  hypotheses → critic_result → final_response, 그룹키 reducer 4종 — #32). 서브그래프 노드는
-  옛 시그니처 함수(`(state, group_id, mcp)`)를 GroupState로 감싼 **어댑터**라, 노드 함수
-  내부 알고리즘은 그대로다(시그니처 평탄화는 #33 예정).
+  hypotheses → critic_result → final_response, 그룹키 reducer 4종 — #32). **#33에서 시그니처
+  평탄화 완료** — 서브그래프 노드는 옛 `(state, group_id, mcp)` 어댑터를 걷어내고 `GroupState`를
+  **직접** 받는다(`graph.py`가 노드 함수를 직접 등록하고 kg_client·mcp는 `functools.partial`로
+  조립 시점 주입). 노드 함수 내부 알고리즘은 무변경(행위 보존 리팩터, rationale 제외 골든 SHA
+  일치로 실증). 상세는 `docs/langgraph_골격_설계공유_v1.0.md`.
 - `main.py`는 **앱 조립만** 한다(CORS·라우터 등록·`store.init_db()`). 엔드포인트는 `api/`,
   저장 계층은 `store.py`, 전역 싱글턴(KGClient·MCPClient)은 `deps.py`에 있다.
 - `store.py`: `app_state.db`(SQLite) 테이블 4종 — `cursor_state`(배치 커서) · `batch` · `analysis` ·
