@@ -175,7 +175,7 @@ async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -
     cursor_date, cursor_end = _cursor_range()
 
     logging_mcp = LoggingMCP(mcp, batch_id)
-    graph = build_graph(kg_client, logging_mcp)
+    graph = build_graph(kg_client, logging_mcp, batch_id=batch_id)
 
     state: dict = {
         "cursor_date": cursor_date,
