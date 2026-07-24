@@ -20,7 +20,7 @@ import inspect
 import sqlite3
 from typing import Any
 
-from . import store
+from . import deps, store
 from .assembler import build_analysis_payload
 from .config import DATA_EPOCH, EVENT_DATE_COMPACT, fab_db_path
 from .graph import _CURRENT_GROUP, build_graph
@@ -175,7 +175,8 @@ async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -
     cursor_date, cursor_end = _cursor_range()
 
     logging_mcp = LoggingMCP(mcp, batch_id)
-    graph = build_graph(kg_client, logging_mcp, batch_id=batch_id)
+    # ⑦ description 영어→한국어 번역기 주입(RESPONSE_LLM=1일 때만 실체, 아니면 None=원문 운반).
+    graph = build_graph(kg_client, logging_mcp, batch_id=batch_id, translate=deps.response_translator())
 
     state: dict = {
         "cursor_date": cursor_date,

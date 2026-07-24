@@ -103,7 +103,8 @@ def test_review_hypotheses_takes_group_state_and_returns_single_critic_result():
 
 # covers: AC-4
 def test_generate_response_takes_group_state_only():
-    assert list(inspect.signature(response.generate_response).parameters) == ["state"]
+    # translate는 조립 시점 partial 주입(deps.response_translator) — build_hypotheses의 mcp와 같은 관례.
+    assert list(inspect.signature(response.generate_response).parameters) == ["state", "translate"]
 
     state = _gstate(
         candidates=[{"cause": "c1"}],
@@ -121,7 +122,7 @@ def test_generate_response_takes_group_state_only():
 
 # covers: AC-5
 def test_respond_without_llm_takes_group_state_only_for_both_statuses():
-    assert list(inspect.signature(response.respond_without_llm).parameters) == ["state"]
+    assert list(inspect.signature(response.respond_without_llm).parameters) == ["state", "translate"]
 
     unmapped = response.respond_without_llm(_gstate(candidates=[], critic_result=None))
     assert unmapped["final_response"]["status"] == "unmapped"

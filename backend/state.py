@@ -194,7 +194,8 @@ class FinalResponse(TypedDict):
     lot_ids: list[str]
     lot_count: int
     hypotheses: list[dict]
-    summary: str
+    summary: str                                 # 결정론적 템플릿 요약(내부용, LLM 아님 — 확정)
+    description: str | None                       # ③VLM 실생성 서술(한국어 번역). 없으면 None → 프론트 summary_line
 
 
 def merge_by_group(old: dict, new: dict) -> dict:

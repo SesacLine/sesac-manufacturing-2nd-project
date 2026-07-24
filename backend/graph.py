@@ -73,13 +73,16 @@ def route_on_verdicts(state: GroupState) -> str:
     return "generate_response"
 
 
-def _build_group_subgraph(kg_client: KGClient, mcp: MCPClient):
+def _build_group_subgraph(kg_client: KGClient, mcp: MCPClient, translate=None):
     """④~⑦ 그룹 서브그래프(state=GroupState). 노드 함수를 직접 등록한다(step 3, #33).
 
     노드 함수가 GroupState를 그대로 받으므로 #38의 브리지 클로저(그룹 하나짜리 RCAState를
-    되만들어 옛 시그니처로 넘기던 것)는 사라졌다. kg_client·mcp 같은 의존성은 LangGraph가
+    되만들어 옛 시그니처로 넘기던 것)는 사라졌다. kg_client·mcp·translate 같은 의존성은 LangGraph가
     노드를 fn(state)로 부르기 때문에 partial로 조립 시점에 묶어 둔다.
     함수 내부 알고리즘·MCP 호출 순서·캐싱은 한 줄도 안 바뀐다.
+
+    translate: ⑦ description의 영어→한국어 번역기(deps.response_translator, RESPONSE_LLM=1일 때만
+    실체). None이면 응답노드가 원문(영어)을 그대로 운반한다(기본/테스트 — 결정적).
     """
     sub = StateGraph(GroupState)
     # 노드명은 옛 바깥 노드명을 그대로 물려받는다(NODE_TO_STEP_INDEX 4·5·6·7과 대응, §8.2c).
@@ -89,8 +92,8 @@ def _build_group_subgraph(kg_client: KGClient, mcp: MCPClient):
     )
     sub.add_node("build_hypotheses", partial(hypothesis.build_hypotheses, mcp=mcp))
     sub.add_node("review_hypotheses", partial(critic.review_hypotheses, mcp=mcp))
-    sub.add_node("generate_response", response.generate_response)
-    sub.add_node("respond_without_llm", response.respond_without_llm)
+    sub.add_node("generate_response", partial(response.generate_response, translate=translate))
+    sub.add_node("respond_without_llm", partial(response.respond_without_llm, translate=translate))
     sub.set_entry_point("fetch_graphrag_candidates")
     # ④ 뒤: 후보 0건이면 ⑤⑥ 건너뛰고 ⑦'로(§6.1).
     sub.add_conditional_edges(
@@ -175,17 +178,17 @@ async def run_groups(state: RCAState, group_graph, batch_id: str | None = None) 
     return merged
 
 
-def build_graph(kg_client: KGClient, mcp: MCPClient, batch_id: str | None = None):
+def build_graph(kg_client: KGClient, mcp: MCPClient, batch_id: str | None = None, translate=None):
     """RCAState를 상태로 갖는 바깥 StateGraph를 조립해 반환한다.
 
     ⓪~③은 배치당 1회(바깥 노드), ④~⑦은 그룹마다 반복(서브그래프). 이 경계가 서브그래프 경계다.
     ③ observe_groups는 #25가 배치 노드로 머지한 그대로 바깥에 둔다(A안).
 
     batch_id는 run_groups의 고장 격리 로그를 어느 배치에 남길지 알려주는 용도다(기본 None이면
-    조립·테스트 경로 — 로그는 남기지 않고 격리만 한다). LangGraph는 노드를 fn(state)로 부르므로
-    _run_groups 클로저에 묶어 넘긴다.
+    조립·테스트 경로 — 로그는 남기지 않고 격리만 한다). translate는 ⑦ description 번역기(기본
+    None = 원문 운반). LangGraph는 노드를 fn(state)로 부르므로 _run_groups 클로저에 묶어 넘긴다.
     """
-    group_graph = _build_group_subgraph(kg_client, mcp)
+    group_graph = _build_group_subgraph(kg_client, mcp, translate)
 
     async def _run_groups(state: RCAState) -> dict:
         return await run_groups(state, group_graph, batch_id=batch_id)
