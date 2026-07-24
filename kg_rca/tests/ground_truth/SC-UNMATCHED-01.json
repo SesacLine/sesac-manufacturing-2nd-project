@@ -1,0 +1,25 @@
+{
+  "cause_sites": [],
+  "clue_overwritten": false,
+  "coverage_gap": null,
+  "defect_patterns": [
+    "Center"
+  ],
+  "is_unmatched": true,
+  "key_evidence_path": [],
+  "lifecycle": [],
+  "lot_ids": [
+    "lot18905",
+    "lot36926",
+    "lot39535",
+    "lot24238",
+    "lot39533",
+    "lot44812"
+  ],
+  "scenario_id": "SC-UNMATCHED-01",
+  "source": "wm811k",
+  "t0": null,
+  "telemetry_clues": [],
+  "traps_to_reject": [],
+  "true_root_causes": []
+}

@@ -1,0 +1,49 @@
+{
+  "cause_sites": [
+    [
+      "ETCH-01",
+      "ETCH-01-CH2"
+    ]
+  ],
+  "clue_overwritten": false,
+  "coverage_gap": {
+    "equipment": "ETCH-01",
+    "from": "2026-02-04 04:08:40",
+    "to": "2026-02-05 09:09:57"
+  },
+  "defect_patterns": [
+    "Edge-Ring"
+  ],
+  "is_unmatched": false,
+  "key_evidence_path": [
+    "commonality → ETCH-01/ETCH-01-CH2",
+    "maintenance BM @ t0 → telemetry rf_power step_up"
+  ],
+  "lifecycle": [],
+  "lot_ids": [
+    "lot23844",
+    "lot44793",
+    "lot6092",
+    "lot14756",
+    "lot12905",
+    "lot16428",
+    "lot20735",
+    "lot9151"
+  ],
+  "scenario_id": "SC-EDGE-RING-01",
+  "source": "wm811k",
+  "t0": "2026-01-29 05:58:51",
+  "telemetry_clues": [
+    {
+      "drift": "step_up",
+      "equipment": "ETCH-01",
+      "param": "rf_power"
+    }
+  ],
+  "traps_to_reject": [
+    "LITHO-01: 정상 lot 다수 통과, t0+12d PM은 불량 이후(선후 뒤집힘)"
+  ],
+  "true_root_causes": [
+    "etch_nonuniformity"
+  ]
+}

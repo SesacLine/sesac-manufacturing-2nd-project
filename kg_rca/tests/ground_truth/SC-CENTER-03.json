@@ -1,0 +1,45 @@
+{
+  "cause_sites": [
+    [
+      "CMP-01",
+      "CMP-01-CH2"
+    ]
+  ],
+  "clue_overwritten": false,
+  "coverage_gap": null,
+  "defect_patterns": [
+    "Center"
+  ],
+  "is_unmatched": false,
+  "key_evidence_path": [
+    "commonality → CMP-01/CMP-01-CH2",
+    "maintenance BM @ t0 → telemetry slurry_flow linear_up"
+  ],
+  "lifecycle": [],
+  "lot_ids": [
+    "lot15792",
+    "lot39480",
+    "lot45541",
+    "lot36688",
+    "lot9997",
+    "lot36846",
+    "lot39557",
+    "lot45631"
+  ],
+  "scenario_id": "SC-CENTER-03",
+  "source": "wm811k",
+  "t0": "2026-01-26 16:54:22",
+  "telemetry_clues": [
+    {
+      "drift": "linear_up",
+      "equipment": "CMP-01",
+      "param": "slurry_flow"
+    }
+  ],
+  "traps_to_reject": [
+    "LITHO-01: 정상 lot 다수 통과, t0+12d PM은 불량 이후(선후 뒤집힘)"
+  ],
+  "true_root_causes": [
+    "cmp_center_overpolish"
+  ]
+}

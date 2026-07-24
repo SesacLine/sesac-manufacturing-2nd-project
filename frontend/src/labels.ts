@@ -4,6 +4,7 @@
 import type {
   AnalysisStatus,
   BatchStatus,
+  Confidence,
   Pattern,
   SeriesName,
   Stage,
@@ -66,6 +67,12 @@ export const TIER_LABELS: Record<Tier, string> = {
   auto: "[자동]",
   semi_auto: "[반자동]",
   none: "[근거없음]",
+};
+
+/** R1 확신 수준(불확실 표시). "확정"은 없음 — 단정하지 않는 것이 이 신호의 목적. */
+export const CONFIDENCE_LABELS: Record<Confidence, string> = {
+  medium: "잠정 지지",
+  low: "불확실",
 };
 
 export const REASON_LABELS: Record<UnavailableReason, string> = {

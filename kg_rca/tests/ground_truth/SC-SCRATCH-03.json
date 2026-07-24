@@ -1,0 +1,45 @@
+{
+  "cause_sites": [
+    [
+      "CMP-02",
+      "CMP-02-CH2"
+    ]
+  ],
+  "clue_overwritten": false,
+  "coverage_gap": null,
+  "defect_patterns": [
+    "Scratch"
+  ],
+  "is_unmatched": false,
+  "key_evidence_path": [
+    "commonality → CMP-02/CMP-02-CH2",
+    "maintenance BM @ t0 → telemetry slurry_flow step_up"
+  ],
+  "lifecycle": [],
+  "lot_ids": [
+    "lot15352",
+    "lot46607",
+    "lot3293",
+    "lot14376",
+    "lot46832",
+    "lot20019",
+    "lot17291",
+    "lot45795"
+  ],
+  "scenario_id": "SC-SCRATCH-03",
+  "source": "wm811k",
+  "t0": "2026-01-17 13:08:20",
+  "telemetry_clues": [
+    {
+      "drift": "step_up",
+      "equipment": "CMP-02",
+      "param": "slurry_flow"
+    }
+  ],
+  "traps_to_reject": [
+    "LITHO-01: 정상 lot 다수 통과, t0+12d PM은 불량 이후(선후 뒤집힘)"
+  ],
+  "true_root_causes": [
+    "cmp_slurry_particle"
+  ]
+}

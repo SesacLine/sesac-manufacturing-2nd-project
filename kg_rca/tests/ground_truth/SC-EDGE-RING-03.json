@@ -1,0 +1,45 @@
+{
+  "cause_sites": [
+    [
+      "CMP-02",
+      "CMP-02-CH2"
+    ]
+  ],
+  "clue_overwritten": false,
+  "coverage_gap": null,
+  "defect_patterns": [
+    "Edge-Ring"
+  ],
+  "is_unmatched": false,
+  "key_evidence_path": [
+    "commonality → CMP-02/CMP-02-CH2",
+    "maintenance BM @ t0 → telemetry down_force linear_up"
+  ],
+  "lifecycle": [],
+  "lot_ids": [
+    "lot14500",
+    "lot12908",
+    "lot47514",
+    "lot33721",
+    "lot13959",
+    "lot19841",
+    "lot18406",
+    "lot9343"
+  ],
+  "scenario_id": "SC-EDGE-RING-03",
+  "source": "wm811k",
+  "t0": "2026-02-05 23:00:15",
+  "telemetry_clues": [
+    {
+      "drift": "linear_up",
+      "equipment": "CMP-02",
+      "param": "down_force"
+    }
+  ],
+  "traps_to_reject": [
+    "LITHO-01: 정상 lot 다수 통과, t0+12d PM은 불량 이후(선후 뒤집힘)"
+  ],
+  "true_root_causes": [
+    "cmp_edge_overpolish"
+  ]
+}

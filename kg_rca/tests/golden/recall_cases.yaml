@@ -1,0 +1,78 @@
+# KG 검색 품질 회귀 골든셋 (갈래 B — mapping_table.yaml에서 도출)
+#
+# 목적: KG를 재빌드했을 때 "시뮬레이터가 주입할 수 있는 정답 원인"을 여전히 후보로
+#       떠올리는지 감시한다. 절대 성능 측정이 아니라 **떨어지면 알림**이 목적.
+#
+# 출처(문서용 — 테스트는 이 파일을 읽지 않는다):
+#   이 9쌍은 secsgem-mcp/simulator/mapping_table.yaml에서 도출한 kg_rca 내부 committed
+#   스냅샷이다. generate.py의 시나리오가 pattern별로 그 표의 cause를 확률로 뽑아 주입하므로
+#   (pick_cause), 어떤 시나리오가 나오든 정답 cause는 이 9개 안에 있다. scenario_id는
+#   RNG(seed 20260101) 배정이라 재빌드마다 달라질 수 있지만 어휘 집합은 이 표로 고정이다.
+#   컴포넌트 경계를 넘지 않으려고 테스트는 secsgem-mcp를 읽지 않는다 — 대신 ground_truth를
+#   witness로 써서 정합을 지킨다(test_scenario_recall.py::test_scenario_causes_covered_by_golden).
+#   → fab.db·secsgem-mcp 없이 CI에서 돈다.
+#
+# 대조 키는 candidate.matched_cause 다 (cause 아님):
+#   KG의 cause 문자열(etching_non_uniformities)과 시뮬레이터 어휘(etch_nonuniformity)는
+#   표기가 달라 직접 비교하면 0%가 나온다. KG 출력의 mapping.matched_cause가 둘을 잇는
+#   번역 키이고, 이 표의 gold_cause도 mapping_table 어휘라 matched_cause와 바로 맞는다.
+#
+# 재생성: mapping_table.yaml이 바뀌면 아래 cases를 다시 뽑을 것.
+#   python -c "import yaml; m=yaml.safe_load(open('secsgem-mcp/simulator/mapping_table.yaml',encoding='utf-8')); \
+#              [print(p, c['cause']) for p,cs in m.items() for c in cs]"
+
+meta:
+  source: secsgem-mcp/simulator/mapping_table.yaml
+  match_key: matched_cause          # candidate.matched_cause 로 대조
+  build_ref: "hypotheses.json 2026-07-23 빌드(schema v2.5, 772건)"
+  total_cases: 9
+
+# --- 임계값(회귀 가드) ---
+# coverage: 정답 cause가 그 pattern의 KG 후보 어딘가에 matched_cause로 존재하는가.
+#   현재 8/9(cmp_edge_overpolish만 미스). 이 밑으로 떨어지면 = 재빌드가 정답 원인을
+#   후보에서 잃었다는 신호 → fail. known_miss 케이스는 분모에서 제외하지 않고 기대 실패로 표시.
+# recall@k(top-k 순위 안에 드는가)는 관측(observation) 없이는 무의미하다:
+#   raw hypotheses.json은 문헌 빈도순이라 정답이 rank 35~367에 있어 recall@20=0.
+#   실제 파이프라인은 ③ 관측으로 morphology 재랭킹을 걸어야 정답이 위로 온다.
+#   → recall@k 게이트는 관측을 주입하는 별도 테스트(-m data, 아래 note 참고)에서 잰다.
+thresholds:
+  coverage_min: 8                   # 9 중 최소 8이 KG 후보에 존재해야 통과
+
+cases:
+  # ---- Edge-Ring ----
+  - pattern: Edge-Ring
+    gold_cause: etch_nonuniformity
+    current_first_rank: 48          # 참고값(문헌순 raw rank) — 관측 재랭킹 전
+  - pattern: Edge-Ring
+    gold_cause: cmp_edge_overpolish
+    known_miss: true                # ⚠ 07-23 빌드 기준 matched_cause 미할당
+    note: >
+      KG 지식 부재가 아니라 **매핑 매칭 실패**다. Edge-Ring CMP에
+      localized_over_polish / asymmetric_edge_handling / localized_pressure_on_wafer_edge
+      같은 의미상 동일 원인이 후보로 존재하지만, mapping_table의 cmp_edge_overpolish로
+      번역되지 않았다. 개선 대상: mapping 매칭 키워드 또는 match_mapping 임계.
+  - pattern: Edge-Ring
+    gold_cause: clean_residue
+    current_first_rank: 274
+
+  # ---- Center ----
+  - pattern: Center
+    gold_cause: deposition_center_thickness
+    current_first_rank: 109
+  - pattern: Center
+    gold_cause: cmp_center_overpolish
+    current_first_rank: 115
+  - pattern: Center
+    gold_cause: clean_nozzle_clog
+    current_first_rank: 367
+
+  # ---- Scratch ----
+  - pattern: Scratch
+    gold_cause: cmp_pad_wear
+    current_first_rank: 81
+  - pattern: Scratch
+    gold_cause: cmp_slurry_particle
+    current_first_rank: 53
+  - pattern: Scratch
+    gold_cause: clean_brush_contact
+    current_first_rank: 35

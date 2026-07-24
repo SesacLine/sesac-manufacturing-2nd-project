@@ -6,6 +6,8 @@ export type BatchStatus = "running" | "completed" | "failed";
 export type LogStatus = "done" | "running" | "error";
 export type Tier = "auto" | "semi_auto" | "none";
 export type Verdict = "accepted" | "rejected" | "judge_unknown";
+/** R1 확신 수준 — "high"(확정)는 없다. RCA 스코프는 "가설+근거"까지(§2.5 확장). */
+export type Confidence = "medium" | "low";
 export type Stage = "LITHO" | "ETCH" | "DEPO" | "CMP" | "CLEAN" | "EDS";
 export type SeriesName = "low_yield_eq" | "line_avg";
 export type UnavailableReason = "not_collected_for_tier" | "none_tier" | "no_data_found";
@@ -74,6 +76,8 @@ export interface Hypothesis {
   narrative: string;
   next_actions: string[];
   citations: Citation[];
+  cluster_id?: string | null; // R2 원인군 묶기 — 같은 값 = fab 증거 동일한 원인군. 없으면 단독
+  is_primary?: boolean; // R2 cause 대표 행
 }
 export interface Analysis {
   analysis_id: string;
@@ -81,6 +85,7 @@ export interface Analysis {
   description: string | null; // null이면 summary_line fallback (§3.2)
   status: AnalysisStatus;
   reason: string | null;
+  confidence: Confidence; // R1 확신 수준(불확실 표시) — 구 저장분 대비 서버가 "low" 폴백
   lot_count: number;
   lot_ids: string[];
   hypotheses: Hypothesis[]; // 받은 순서 신뢰 — index 0이 대표(§2.5 정렬 불변식)

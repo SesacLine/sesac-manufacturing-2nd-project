@@ -1,0 +1,57 @@
+{
+  "cause_sites": [
+    [
+      "CMP-02",
+      "CMP-02-CH1"
+    ]
+  ],
+  "clue_overwritten": false,
+  "coverage_gap": {
+    "equipment": "CMP-02",
+    "from": "2026-03-08 17:30:56",
+    "to": "2026-03-10 05:09:40"
+  },
+  "defect_patterns": [
+    "Scratch"
+  ],
+  "is_unmatched": false,
+  "key_evidence_path": [
+    "commonality → CMP-02/CMP-02-CH1",
+    "수명 초과 @ t0 → pad_usage_hours 정상 상한 초과, t0+9d 교체로 종결 (교체≠원인)"
+  ],
+  "lifecycle": [
+    {
+      "equipment": "CMP-02",
+      "life_exceeded": "2026-03-05 20:48:33",
+      "prev_replacement": "2026-02-11 03:21:17",
+      "replacement": "2026-03-14 20:48:33"
+    }
+  ],
+  "lot_ids": [
+    "lot42665",
+    "lot17441",
+    "lot47541",
+    "lot12233",
+    "lot44037",
+    "lot47160",
+    "lot46782",
+    "lot42731"
+  ],
+  "scenario_id": "SC-SCRATCH-01",
+  "source": "wm811k",
+  "t0": "2026-03-05 20:48:33",
+  "telemetry_clues": [
+    {
+      "drift": "linear_up",
+      "equipment": "CMP-02",
+      "param": "pad_usage_hours"
+    }
+  ],
+  "traps_to_reject": [
+    "LITHO-01: 정상 lot 다수 통과, t0+12d PM은 불량 이후(선후 뒤집힘)",
+    "CMP-02: 종결 교체(t0+9d)를 원인으로 오독 금지 — 불량은 교체 '직전' 집중"
+  ],
+  "true_root_causes": [
+    "cmp_pad_wear"
+  ]
+}

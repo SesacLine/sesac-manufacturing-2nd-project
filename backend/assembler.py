@@ -35,6 +35,10 @@ def build_analysis_payload(analysis_id: str, final: dict) -> dict:
         "description": final.get("description"),  # ③VLM(영어)→한국어 번역, response._describe_ko 소관(§2.5). 없으면 None → 프론트 summary_line fallback
         "status": final["status"],
         "reason": final.get("reason"),
+        # R1: 확신 수준(불확실 표시) — "medium"(잠정 지지)/"low"(불확실). "high"(확정) 없음.
+        # ⑤/⑥ 게이트가 못 거른 환각을 프론트가 "단정하지 않음"으로 표현하게 하는 신호(eval R1·B1).
+        # 구 저장분엔 없을 수 있어 기본 "low"(가장 보수적) 폴백.
+        "confidence": final.get("confidence", "low"),
         "lot_count": final["lot_count"],
         "lot_ids": final["lot_ids"],
         "hypotheses": hypotheses_out,
@@ -66,6 +70,11 @@ def _build_hypothesis(analysis_id: str, h: dict) -> tuple[dict, dict]:
         "narrative": h.get("sentence", ""),
         "next_actions": next_actions,
         "citations": citations,
+        # R2(원인군 카드): 같은 cluster_id = fab 증거가 동일한 원인군. 프론트가 이걸로 묶어
+        # 단일 헤드라인 대신 "원인 후보 묶음"으로 제시한다(eval_scenario_kg_proposal.md R2).
+        # ⑤가 안 채웠으면 None → 프론트가 단독 후보로 취급.
+        "cluster_id": h.get("cluster_id"),
+        "is_primary": bool(h.get("is_primary", False)),  # cause 대표 행(원인군 내 중복 cause 축약용)
     }
 
     evidence = {
