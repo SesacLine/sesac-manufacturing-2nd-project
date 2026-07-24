@@ -60,13 +60,13 @@ def test_merge_by_group_handles_empty_dicts_safely():
 # covers: AC-4
 def test_existing_fields_unchanged_after_group_state_added():
     from backend.state import GroupState  # noqa: F401 — step1 선행 조건(§10 step1)
-    from backend.state import Group, RCAState, VLMResult
+    from backend.state import CNNResult, Group, RCAState
 
     hints = typing.get_type_hints(RCAState, include_extras=True)
     assert hints["target_lot_ids"] == list[str]
-    assert hints["vlm_results"] == list[VLMResult]
+    assert hints["cnn_results"] == list[CNNResult]
     assert hints["groups"] == list[Group]
     # 4종 그룹-키 필드만 reducer 대상이고, 그 외 필드는 여전히 기본(덮어쓰기) 그대로다.
     assert not hasattr(hints["groups"], "__metadata__")
     assert not hasattr(hints["target_lot_ids"], "__metadata__")
-    assert not hasattr(hints["vlm_results"], "__metadata__")
+    assert not hasattr(hints["cnn_results"], "__metadata__")

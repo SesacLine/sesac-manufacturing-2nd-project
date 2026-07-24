@@ -15,14 +15,14 @@ MIN_LOTS_PER_GROUP = 1
 
 
 def group_by_pattern(state: RCAState) -> dict:
-    """vlm_results를 패턴별로 묶어 groups를 채운다.
+    """cnn_results를 패턴별로 묶어 groups를 채운다.
 
     로트당 대표패턴은 그 로트에 속한 웨이퍼들의 pattern 다수결로 정하고,
     같은 대표패턴을 가진 로트끼리 그룹 하나로 묶는다.
     """
     patterns_by_lot: dict[str, list[str]] = collections.defaultdict(list)
-    for vlm_result in state["vlm_results"]:
-        patterns_by_lot[vlm_result["lot_id"]].append(vlm_result["pattern"])
+    for cnn_result in state["cnn_results"]:
+        patterns_by_lot[cnn_result["lot_id"]].append(cnn_result["pattern"])
 
     rep_pattern_by_lot = {
         lot_id: collections.Counter(patterns).most_common(1)[0][0]
