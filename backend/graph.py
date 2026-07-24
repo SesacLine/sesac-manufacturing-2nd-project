@@ -13,17 +13,25 @@ step 3(#33, 행위 보존): ④⑤⑥⑦ 노드 함수가 **GroupState를 직접
 from __future__ import annotations
 
 import contextvars
+import datetime
 import logging
 from functools import partial
 
 from langgraph.graph import END, StateGraph
 
+from . import store
 from .graph_client import KGClient
 from .mcp_client import MCPClient
 from .nodes import cnn, critic, graphrag, grouper, hypothesis, lowyield, response, vlm_describe
 from .state import GroupState, RCAState
 
 logger = logging.getLogger(__name__)
+
+
+def _now_hms() -> str:
+    """logs[].time — §2.4 예외 형식(HH:MM:SS). batch_runner._now_hms와 동형(순환 import 회피용 로컬)."""
+    return datetime.datetime.now().strftime("%H:%M:%S")
+
 
 # 진행 로그 그룹 태그(§8.3). 비동기 작업마다 각자 값을 갖는 ContextVar라 순차·Send 병렬 양쪽에서
 # 안 섞인다. run_groups가 그룹마다 set하고, batch_runner._tag_message가 읽어 로그 앞에 [Center]처럼 붙인다.
@@ -102,7 +110,7 @@ def _build_group_subgraph(kg_client: KGClient, mcp: MCPClient):
     return sub.compile()
 
 
-async def run_groups(state: RCAState, group_graph) -> dict:
+async def run_groups(state: RCAState, group_graph, batch_id: str | None = None) -> dict:
     """groups를 순차로 돌며 그룹 서브그래프를 호출하고 결과를 {group_id: 값}으로 모은다.
 
     순차 for 루프다 — Send 병렬화는 범위 밖(§7.1). MCP 세션을 새로 열지 않는다(group_graph의
@@ -111,6 +119,13 @@ async def run_groups(state: RCAState, group_graph) -> dict:
     Normal 방어 가드(§6.3): ②가 Normal 그룹을 안 만드는 게 원칙이지만(정상 웨이퍼=그룹 미생성),
     표기 차이 등으로 새어 들어오면 서브그래프에 태우지 않고 로그만 남긴다 — 그래프 갈래가 아니라
     "여기 오면 안 되는데 왔다"를 기록하는 것이라 라우팅이 아닌 가드로 둔다.
+
+    고장 격리(노드 실패 계약): 한 그룹의 서브그래프가 예상 못 한 예외(MCP 프록시 재던짐·LLM
+    API 에러·Neo4j 끊김·KeyError 등, 노드 내부 좁은 폴백이 못 잡는 것)를 던지면 그 예외를 그
+    그룹 안에 가둔다 — 배치 로그에 status="error"로 남기고(§2.4, batch_id 있을 때) 결과 없이
+    다음 그룹으로 넘어간다. 재시도는 없다(곱게 무너짐, 기획안 §5.2·§7.1). 이렇게 해야 이미
+    성공한 다른 그룹 결과가 run_batch 최상단 except에서 배치째 유실되지 않는다. 조건부 엣지
+    2종(후보 0건·채택 0건)은 "정상 종단"이라 예외가 아니며 여기 걸리지 않는다.
     """
     merged: dict = {
         "graphrag_candidates": {},
@@ -127,6 +142,25 @@ async def run_groups(state: RCAState, group_graph) -> dict:
         token = _CURRENT_GROUP.set(group["pattern"])
         try:
             out = await group_graph.ainvoke(_to_group_state(group, state))
+        except Exception as exc:  # 이 그룹만 격리 — 배치는 나머지 그룹으로 계속(재시도 없음)
+            logger.exception("그룹 처리 실패 — 이 그룹만 건너뜀: %s", gid)
+            if batch_id is not None:
+                # 로깅은 best-effort — 로그 write 자체가 던져도(sqlite 잠금·디스크 오류) 격리가
+                # 뚫려선 안 된다. 여기서 새면 run_batch 최상단 except가 배치째 죽여 이미 성공한
+                # 그룹까지 유실된다(격리 계약의 최후 보루).
+                try:
+                    store.append_batch_log(
+                        batch_id,
+                        {
+                            "time": _now_hms(),
+                            "tool": "pipeline",
+                            "message": f"[{group['pattern']}] 그룹 처리 실패 — {exc}",
+                            "status": "error",
+                        },
+                    )
+                except Exception:
+                    logger.warning("실패 그룹 로그 기록 실패(무시하고 계속): %s", gid)
+            continue
         finally:
             _CURRENT_GROUP.reset(token)
         merged["graphrag_candidates"][gid] = {
@@ -141,16 +175,20 @@ async def run_groups(state: RCAState, group_graph) -> dict:
     return merged
 
 
-def build_graph(kg_client: KGClient, mcp: MCPClient):
+def build_graph(kg_client: KGClient, mcp: MCPClient, batch_id: str | None = None):
     """RCAState를 상태로 갖는 바깥 StateGraph를 조립해 반환한다.
 
     ⓪~③은 배치당 1회(바깥 노드), ④~⑦은 그룹마다 반복(서브그래프). 이 경계가 서브그래프 경계다.
     ③ observe_groups는 #25가 배치 노드로 머지한 그대로 바깥에 둔다(A안).
+
+    batch_id는 run_groups의 고장 격리 로그를 어느 배치에 남길지 알려주는 용도다(기본 None이면
+    조립·테스트 경로 — 로그는 남기지 않고 격리만 한다). LangGraph는 노드를 fn(state)로 부르므로
+    _run_groups 클로저에 묶어 넘긴다.
     """
     group_graph = _build_group_subgraph(kg_client, mcp)
 
     async def _run_groups(state: RCAState) -> dict:
-        return await run_groups(state, group_graph)
+        return await run_groups(state, group_graph, batch_id=batch_id)
 
     workflow = StateGraph(RCAState)
     workflow.add_node("select_low_yield_lots", lowyield.select_low_yield_lots)

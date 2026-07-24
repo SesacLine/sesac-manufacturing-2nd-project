@@ -36,3 +36,11 @@
 | # | 결정 | 근거 / 되돌릴 조건 |
 |---|---|---|
 | D17 | **그룹 노드는 `GroupState`를 직접 받고, 필수 키 누락은 즉시 오류(fail-fast)**(#33) — #38의 어댑터(그룹 하나짜리 가짜 `RCAState` 재구성) 5개와 `_group_for_node`를 제거. `graph.py`가 ④~⑦ 노드 함수를 직접 등록하고 `kg_client`·`mcp`는 `functools.partial`로 조립 시점에 주입한다. 이로써 도달 불가가 된 폴백(⑤ `if group is None`, ⑦/⑦' `... if group else "unknown"`)을 삭제 — 필수 키가 빠지면 조용히 `"unknown"` 카드를 만드는 대신 `KeyError`로 즉시 드러난다 | 순수 구조 변경(행위 보존): 함수 내부 알고리즘 무변경, `rationale` 제외 골든 SHA256 일치로 실증(전/후 동일 배치). **후속 주의**: `add_node`는 순수 함수일 때만 타입힌트로 input schema·`Command` 분기 대상을 추론하는데 `partial`은 그 추론에서 빠진다 — 나중에 노드를 `Command[Literal[...]]` 직접 라우팅으로 바꾸면 `destinations=`를 명시해야 한다. 리네임 `graphrag→kg`는 step 8 보류 |
+
+> **2026-07-24 추가 (D18, 그룹 서브그래프 고장 격리 = 노드 실패 계약 #53).** `docs/langgraph_골격_설계공유_v1.0.md`
+> §6이 미룬 "노드 실패 계약(try/except)"의 이행. 착수 전 두 안(로그+스킵 vs 새 error status 카드)을
+> 비교해 로그+스킵으로 확정. 상세 비교는 아래 근거 열.
+
+| # | 결정 | 근거 / 되돌릴 조건 |
+|---|---|---|
+| D18 | **그룹 서브그래프의 예상 못 한 예외는 그 그룹만 로그+스킵, 배치는 나머지로 완료(done)**(`graph.run_groups`) — `group_graph.ainvoke`를 그룹별 `try/except`로 감싸, 노드 내부 좁은 폴백이 못 잡는 예외(MCP 프록시 재던짐·LLM API 에러·Neo4j 끊김·`KeyError` 등)가 나면 `store.append_batch_log`에 `status="error"`·`tool="pipeline"`·`[패턴]` 태그로 남기고(`batch_id` 있을 때) 결과 없이 다음 그룹으로 continue. **재시도 없음**(곱게 무너짐). 실패 그룹은 `result_ids`·화면 카드에서 빠지고 배치는 `completed`로 끝난다. `batch_id`는 `build_graph(..., batch_id=)`→`run_groups(..., batch_id=)`로 주입(기본 `None`이면 격리만·무로그). **로깅은 best-effort** — `append_batch_log` 자체가 던져도(sqlite 잠금·디스크 오류) 자체 try/except로 삼켜 격리가 뚫리지 않는다(코드리뷰 반영, 격리의 최후 보루). 프로덕션 경로(`astream(subgraphs=True)`) 비전파는 실제 컴파일 서브그래프+astream 통합 테스트로 회귀 고정 | **기각안: 실패를 새 `status="error"` 카드로 화면 노출.** 분석 `status`는 `reviewed\|insufficient\|unmapped` **고정 3종**, 배치 `status`는 `running\|completed\|failed` "3종이 전부"(API §2.2·§2.4·§2.5)라 4번째 값 추가는 Pydantic·assembler·프론트·문서 파급 + 프론트 조율 필요 → **범위 확장**. 결정타는 철학 정합성: 이 프로젝트의 "곱게 무너짐"은 *재료 없음을 결론 카드로 낸다*(insufficient/unmapped = 파이프라인이 성공적으로 결론냄)는 뜻이지 *크래시를 결과로 위장한다*가 아니다 — 예외는 "결론"이 아니라 "고장"이라 층이 다르므로 카드가 아닌 error 로그가 맞다. `logs[].status="error"`는 이미 허용 enum(LoggingMCP가 MCP 호출 실패에 쓰는 것과 동형)이라 **API 계약 무변경**. **되돌릴/승격 조건**: 실패의 화면 가시성 요구가 생기면 이 error 로그 엔트리(패턴 태그·트레이스 보존)를 재료로 "error 카드" 스토리를 별도 이슈로 승격(혼합안의 승격 경로) |
