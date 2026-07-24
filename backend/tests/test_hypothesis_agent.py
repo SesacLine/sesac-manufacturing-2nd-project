@@ -104,6 +104,49 @@ def test_to_hypotheses_batch_splits_params():
     assert all(h["rationale"] == "배치 조사 서사" for h in hyps)
 
 
+def test_group_defect_ts_collects_across_all_lots():
+    # 0724 FIX: lot0에 EDS가 없어도 형제 로트의 EDS를 모아 defect_ts를 낸다
+    # (옛 코드는 lot0만 봐서 None → P2가 그룹 전체에서 꺼졌음). min = 가장 이른 결함(P2 정본 의미).
+    import asyncio
+    from backend.nodes import hypothesis as H
+
+    class FakeMCP:
+        async def get_lot_timeline(self, lot_id):
+            data = {
+                "L0": [{"ts": "2026-03-01 00:00:00", "detail": "IN"}],          # EDS 없음
+                "L1": [{"ts": "2026-03-05 12:00:00", "detail": "EDS"}],          # 가장 이른 EDS
+                "L2": [{"ts": "2026-03-06 09:00:00", "detail": "EDS"}],          # 더 늦은 EDS
+            }[lot_id]
+            return {"data": data}
+
+    ts = asyncio.run(H._group_defect_ts(["L0", "L1", "L2"], FakeMCP()))
+    assert ts == "2026-03-05 12:00:00"          # 전 로트 EDS 중 min(첫 결함)
+
+
+def test_group_defect_ts_empty_lot_ids_returns_none():
+    # 빈 lot_ids → None (IndexError 없이). mcp는 호출조차 안 됨.
+    import asyncio
+    from backend.nodes import hypothesis as H
+
+    class BoomMCP:
+        async def get_lot_timeline(self, lot_id):
+            raise AssertionError("빈 lot_ids면 mcp를 부르면 안 된다")
+
+    assert asyncio.run(H._group_defect_ts([], BoomMCP())) is None
+
+
+def test_group_defect_ts_no_eds_anywhere_returns_none():
+    # 어느 로트에도 EDS 없으면 None (P2는 자연히 비활성 — 정상).
+    import asyncio
+    from backend.nodes import hypothesis as H
+
+    class FakeMCP:
+        async def get_lot_timeline(self, lot_id):
+            return {"data": [{"ts": "2026-03-01 00:00:00", "detail": "IN"}]}
+
+    assert asyncio.run(H._group_defect_ts(["L0", "L1"], FakeMCP())) is None
+
+
 def test_investigate_group_batches_by_step(monkeypatch):
     import asyncio
     from backend.nodes import hypothesis as H

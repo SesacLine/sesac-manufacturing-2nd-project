@@ -669,7 +669,21 @@ def _with_step_fallback(candidates: list[GraphRAGCandidate]) -> list[GraphRAGCan
 
 
 async def _group_defect_ts(lot_ids: list[str], mcp: MCPClient) -> str | None:
-    """그룹 대표(첫 로트)의 결함 확정(EDS) 시각. Critic 시간정합의 비교 기준 — ④가 수집(firewall)."""
-    timeline = await mcp.get_lot_timeline(lot_ids[0])
-    eds_events = [e for e in timeline["data"] if e["detail"] == "EDS"]
-    return max(e["ts"] for e in eds_events) if eds_events else None
+    """그룹 전 로트의 결함 확정(EDS) 시각 중 **최솟값**(가장 이른 결함). Critic 시간정합(P2)의 비교 기준.
+
+    두 가지를 함께 고친다(0724):
+    1) 첫 로트만 보던 옛 코드는 lot0에 EDS가 없으면 defect_ts=None → 그룹 전체에서 P2가 조용히
+       꺼졌다(_check_time_consistency가 defect_ts None이면 전부 통과). 전 로트에서 EDS를 모아 해소.
+    2) min을 쓴다 — P2는 "근본 원인은 결함이 **처음** 나타난 시점보다 앞서야 한다"가 정본 의미.
+       그룹 로트들의 결함 확정 시각이 흩어져 있을 때, 첫 결함 이후의 정비(PM)는 시간역전(함정)이다.
+       max(가장 늦은 결함)를 쓰면 함정 PM이 "결함 이전"으로 보여 P2가 무발화한다(SC-CENTER-01 실측:
+       max로 바꿨더니 함정 P2 44건→0건 회귀 → min으로 교정).
+    비용: get_lot_timeline이 로트 수만큼(_group_time_range와 같은 N콜). lot_ids 빈 경우 None(가드).
+    """
+    if not lot_ids:
+        return None
+    ts_list: list[str] = []
+    for lot_id in lot_ids:
+        timeline = await mcp.get_lot_timeline(lot_id)
+        ts_list += [e["ts"] for e in timeline["data"] if e["detail"] == "EDS"]
+    return min(ts_list) if ts_list else None
