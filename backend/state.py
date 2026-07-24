@@ -43,12 +43,15 @@ class Observation(TypedDict):
     pattern_candidate: str                       # CNN 라벨 (3종 or "Unknown"). = Group["pattern"]
     location_text: str                           # VLM 자연어 (공간 분포)
     morphology_text: str                         # VLM 자연어 (형상)
+    total_description: NotRequired[str]          # VLM 자연어 (종합 서술) — BLEU/ROUGE-L 평가 대상
     angular_coverage: NotRequired[str]           # die-matrix: full|partial|unknown
     clock_positions: NotRequired[list[int]]      # die-matrix: 1~12 (partial일 때만)
     density: NotRequired[str]                    # high|medium|low|unknown
     continuity: NotRequired[str]                 # continuous|intermittent|discontinuous|not_applicable|unknown
     defect_die_ratio: NotRequired[float]         # die-matrix 정량값
     description: NotRequired[str]                # location+morphology 대체용 단일 서술(폴백)
+    vlm_track: NotRequired[str]                  # 관측 메타: open|pty (트랙별 평가 비교용)
+    image_mode: NotRequired[str]                 # 관측 메타: stacked|single (Scratch 단일 분기)
     signature: NotRequired[str | None]           # 규칙 정규화가 shape@zone을 직접 줄 때만(선택)
 
 
