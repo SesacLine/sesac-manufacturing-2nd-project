@@ -2,7 +2,7 @@
 
 kg_rca/6_ask_graphrag.py는 요청마다 도는 API가 아니라, 고정 3패턴(Center/Scratch/Edge-Ring)을
 미리 순회해 kg_rca/outputs/hypotheses.json에 저장하는 배치 스크립트다. 그래프·패턴이 정적이라
-③ 조회 노드(nodes/graphrag.py)는 이 파일을 패턴으로 필터링하는 것만으로 충분하다.
+④ 조회 노드(nodes/graphrag.py)는 이 파일을 패턴으로 필터링하는 것만으로 충분하다.
 요청마다 Neo4j를 직접 순회하려면 LiveKGClient를 쓴다(KG_LIVE=1).
 """
 
