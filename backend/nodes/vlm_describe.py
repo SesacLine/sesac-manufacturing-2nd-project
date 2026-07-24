@@ -126,9 +126,32 @@ def _observation_from_die_maps(pattern: str, die_maps: list[np.ndarray]) -> Obse
     }
 
 
-def _build_observation(pattern: str, lot_ids: list[str]) -> Observation:
-    """그룹 1개의 관측. die_map을 읽어 quantitative로 계산, 불가하면 스켈레톤 폴백."""
-    die_maps = _fetch_die_maps(lot_ids)
+def _member_keys(
+    pattern: str, lot_ids: list[str], vlm_results: list[dict]
+) -> list[tuple[str, str]]:
+    """스태킹 멤버 규칙(팀 확정): ① 판정 pattern이 그룹 pattern과 일치하는 웨이퍼만.
+
+    is_normal 등 fab.db 라벨로 거르면 안 된다(정답 누출) — 반드시 ① CNN 판정으로 거른다.
+    """
+    member_lots = set(lot_ids)
+    return [
+        (r["lot_id"], r["wafer_id"])
+        for r in vlm_results
+        if r["lot_id"] in member_lots and r["pattern"] == pattern
+    ]
+
+
+def _build_observation(
+    pattern: str, lot_ids: list[str], vlm_results: list[dict] | None = None
+) -> Observation:
+    """그룹 1개의 관측. die_map을 읽어 quantitative로 계산, 불가하면 스켈레톤 폴백.
+
+    멤버 규칙을 기본 경로에도 적용한다 — 로트 전체(정상 웨이퍼 포함)를 스태킹하면 신호가
+    희석돼 signature가 오염된다(SC-CENTER-01 실측: 전체 192장 random@edge vs 멤버 29장
+    cluster@center, 발견문제_로그 #4). vlm_results가 없는 단독 호출은 종전대로 로트 전체.
+    """
+    keys = _member_keys(pattern, lot_ids, vlm_results or [])
+    die_maps = _fetch_die_maps_by_keys(keys) if keys else _fetch_die_maps(lot_ids)
     if not die_maps:
         return _skeleton(pattern)
     try:
@@ -150,7 +173,12 @@ def observe_groups(state: RCAState) -> dict:
         groups = [_observe_group_live(group, state) for group in state["groups"]]
     else:
         groups = [
-            {**group, "observation": _build_observation(group["pattern"], group["lot_ids"])}
+            {
+                **group,
+                "observation": _build_observation(
+                    group["pattern"], group["lot_ids"], state.get("vlm_results")
+                ),
+            }
             for group in state["groups"]
         ]
     return {"groups": groups}
@@ -173,18 +201,12 @@ def _get_vlm_reader():
 def _observe_group_live(group: dict, state: RCAState) -> dict:
     """결정적 관측(quantitative) + VLM 자연어 오버레이.
 
-    스태킹 멤버 규칙(팀 확정): 개별 판독 pattern이 그룹 pattern과 일치하는 웨이퍼만 —
-    vlm_results로 필터한다(기본 경로는 로트 전체를 쓰지만, VLM 입력 이미지는 신호 희석을
-    피해야 하므로 여기서는 규칙을 적용). VLM 이미지 분기(Scratch 단일)는 어댑터가 처리.
+    스태킹 멤버 규칙은 기본 경로와 공통(_member_keys) — 신호 희석 방지.
+    VLM 이미지 분기(Scratch 단일)는 어댑터가 처리.
     """
     from wafer_reading.vlm.adapter import VLMCallError
 
-    member_lots = set(group["lot_ids"])
-    keys = [
-        (r["lot_id"], r["wafer_id"])
-        for r in state["vlm_results"]
-        if r["lot_id"] in member_lots and r["pattern"] == group["pattern"]
-    ]
+    keys = _member_keys(group["pattern"], group["lot_ids"], state["vlm_results"])
     die_maps = _fetch_die_maps_by_keys(keys)
     if not die_maps:
         return {**group, "observation": _build_observation(group["pattern"], group["lot_ids"])}
