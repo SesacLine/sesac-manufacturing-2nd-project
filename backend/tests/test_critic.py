@@ -90,3 +90,44 @@ def test_status_insufficient_when_none_accepted():
     result = _run([_hyp(cause="x", investigated=False, evidence={"drift_detected": None})])
     assert result["accepted"] == []
     assert result["status"] == "insufficient_evidence"
+
+
+# --- 0724 규칙 순서 재배치: judge_unknown 조건(②KG메커니즘 ③미조사)이 채택 게이트(⑤반대근거)보다 앞.
+#     suspect 미탐으로 normal_ratio=None인 근거없음/미조사 행이 P3로 오기각되지 않아야 한다. ---
+
+def test_no_kg_mechanism_wins_over_null_normal_ratio():
+    # 버그 재현: 근거없음인데 suspect 미탐(normal_ratio=None) → 옛 순서면 P3 오기각.
+    #           새 순서는 ②KG메커니즘이 먼저라 judge_unknown(P5) 유지.
+    result = _run([_hyp(cause="nokg_nonull", tier="근거없음", investigated=False,
+                        evidence={"normal_ratio": None, "drift_detected": None})])
+    assert _tokens(result)["nokg_nonull"] == TOKEN_NO_KG_MECHANISM
+
+
+def test_not_investigated_wins_over_null_normal_ratio():
+    # 버그 재현: 자동 폴백(미조사)인데 suspect 미탐(normal_ratio=None) → 옛 순서면 P3 오기각.
+    #           새 순서는 ③미조사가 먼저라 NOT_INVESTIGATED(judge_unknown) 유지.
+    result = _run([_hyp(cause="fallback_nonull", investigated=False,
+                        evidence={"normal_ratio": None, "drift_detected": None})])
+    assert _tokens(result)["fallback_nonull"] == TOKEN_NOT_INVESTIGATED
+
+
+def test_semi_auto_pending_wins_over_null_normal_ratio():
+    result = _run([_hyp(cause="semi_nonull", tier="반자동", investigated=False,
+                        evidence={"normal_ratio": None, "drift_detected": None})])
+    assert _tokens(result)["semi_nonull"] == TOKEN_SEMI_AUTO_PENDING
+
+
+def test_investigated_auto_with_null_normal_ratio_still_p3():
+    # 채택 게이트 불변 회귀: 조사됐고(investigated=True, drift 있음) KG 메커니즘 있는 자동 행이
+    # normal_ratio만 None이면 여전히 ⑤반대근거(P3)로 기각 — 재배치가 채택 게이트를 안 흔든다.
+    result = _run([_hyp(cause="inv_nonull", evidence={"normal_ratio": None})])
+    assert _tokens(result)["inv_nonull"] == TOKEN_NO_COUNTER_EVIDENCE
+
+
+def test_trap_still_p2_even_with_null_normal_ratio():
+    # 함정 회귀: 시간역전(①)은 normal_ratio·미조사와 무관하게 여전히 최우선 사살.
+    result = _run([_hyp(cause="trap_nonull", tier="반자동", investigated=False,
+                        evidence={"maintenance_ts": "2026-03-10 00:00:00",
+                                  "defect_ts": "2026-03-05 00:00:00",
+                                  "normal_ratio": None, "drift_detected": None})])
+    assert _tokens(result)["trap_nonull"] == TOKEN_TIME_ORDER
