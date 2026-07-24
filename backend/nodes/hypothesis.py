@@ -193,29 +193,29 @@ def _build_group_prompt(
     후보별 KG sentence는 프롬프트 폭발 방지로 뺐다(옵션 A라 evidence 무영향, 서사 재료만 축소).
     """
     cause_lines = "\n".join(
-        f"  - {c['cause']}: 확인할 신호={c['evidence']}, 예상 방향={c.get('direction')}"
+        f"  - {c['cause']}: signal_to_check={c['evidence']}, expected_direction={c.get('direction')}"
         for c in candidates
     )
     max_points = 500 * len(params)
-    return f"""너는 웨이퍼 결함의 원인 가설들을 fab 운영데이터로 검증하는 에이전트다.
+    return f"""You are an agent that verifies root-cause hypotheses for a wafer defect against fab operational data.
 
-[검증 대상 — 아래 값은 확정된 사실이다. 바꾸거나 지어내지 마라]
-- 의심 장비(equipment_id): {suspect}
-- 공정 단계(step): {candidates[0]['step']}
-- 검증 시간창(time_range): {time_range[0]} ~ {time_range[1]}
-- 조사할 원인 가설 목록 (신호=telemetry param):
+[Verification targets — the values below are established facts. Do not change or fabricate them]
+- Suspect equipment (equipment_id): {suspect}
+- Process step (step): {candidates[0]['step']}
+- Verification time window (time_range): {time_range[0]} ~ {time_range[1]}
+- Candidate causes to investigate (signal = telemetry param):
 {cause_lines}
 
-[도구 호출 규칙]
-- query_telemetry는 반드시 **한 번만** 호출하라: params={params!r} 전부를 한 리스트에 담고,
-  max_points={max_points}로 호출한다. param마다 따로 부르지 마라.
-- 도구 인자로는 위의 equipment_id / params / time_range / max_points 만 사용하라.
+[Tool-call rules]
+- Call query_telemetry exactly **once**: put all of params={params!r} into a single list and
+  call it with max_points={max_points}. Do not call it once per param.
+- As tool arguments use only the equipment_id / params / time_range / max_points given above.
 
-[보고 규칙]
-- 인용하는 수치는 반드시 도구가 반환한 값이어야 한다. 값을 추정하거나 지어내지 마라.
-- 조회 결과 데이터가 없는 param은 "없음"으로 보고하라. 없는 것을 있는 것처럼 말하지 마라.
-- 호출을 마친 뒤, param별로 무엇을 확인했고 어느 가설을 뒷받침하는지/반박하는지
-  한 문단으로 정리하라.
+[Reporting rules]
+- Every figure you cite must be a value returned by the tool. Do not estimate or fabricate values.
+- For any param with no returned data, report it as "none". Do not present missing data as if it exists.
+- After the call, write one paragraph summarizing, per param, what you checked and which
+  hypothesis it supports or refutes.
 """
 
 
@@ -263,7 +263,7 @@ def _to_hypotheses_batch(candidates, result, suspect, base_evidence) -> list[Hyp
             evidence["telemetry_param"] = param
             evidence["telemetry_series"] = [{"ts": p.get("ts"), "value": p.get("value")} for p in series]
             evidence["telemetry_normal_range"] = list(normal_range) if normal_range else None
-            evidence["telemetry_summary"] = f"{param} {len(series)}개 포인트, 정상범위 {normal_range}"
+            evidence["telemetry_summary"] = f"{param}: {len(series)} points, normal range {normal_range}"
         hypotheses.append({
             "cause": candidate["cause"],
             "matched_cause": candidate.get("matched_cause"),   # 평가 전용 운반
@@ -322,7 +322,7 @@ async def _verify_candidate(
             "drift_detected": _detect_drift(series, normal_range),  # 이탈 여부(방향은 drift_direction으로 별도)
             "drift_direction": direction,
             "direction_match": _direction_match(direction, candidate.get("direction")),
-            "telemetry_summary": f"{candidate['evidence']} {len(series)}개 포인트, 정상범위 {normal_range}",
+            "telemetry_summary": f"{candidate['evidence']}: {len(series)} points, normal range {normal_range}",
             # §2.7 리치 보존 — 근거 모달 telemetry 섹션이 그대로 소비
             "telemetry_collected": True,
             "telemetry_param": candidate["evidence"],
