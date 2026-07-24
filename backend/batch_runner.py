@@ -71,7 +71,7 @@ def process_stream_item(
     - **바깥 신호**(namespace 빔): 배치 노드 완료 → state_delta=부분상태(결과 누적용).
     - **current_step**: 완료 노드명을 NODE_TO_STEP_INDEX로 조회해 max(현재, 조회값)(단조 증가, §8.1).
       바깥 이름과 서브그래프 내부 이름(④~⑦)이 같은 표를 공유한다(내부명=옛 바깥명, §8.2c).
-      표에 없는 노드(observe_groups·run_groups)는 current_step을 그대로 둔다.
+      표에 없는 노드(run_groups)는 current_step을 그대로 둔다.
     """
     is_inner = bool(namespace)
     new_step = current_step

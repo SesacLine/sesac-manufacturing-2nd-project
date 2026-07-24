@@ -10,13 +10,13 @@ GID = "g1"
 
 
 def _run(hyps):
-    """review_hypotheses를 최소 state로 돌려 critic_result[GID]를 반환."""
+    """review_hypotheses를 최소 GroupState로 돌려 critic_result를 반환(#33 평탄화)."""
     state = {
-        "groups": [{"group_id": GID, "pattern": "Center", "lot_ids": ["L1"]}],
-        "hypotheses": {GID: hyps},
+        "group_id": GID, "pattern": "Center", "lot_ids": ["L1"],
+        "hypotheses": hyps,
     }
-    out = asyncio.run(review_hypotheses(state, GID, mcp=None))   # firewall — mcp 미사용
-    return out["critic_result"][GID]
+    out = asyncio.run(review_hypotheses(state, mcp=None))   # firewall — mcp 미사용
+    return out["critic_result"]
 
 
 def _hyp(**ev):

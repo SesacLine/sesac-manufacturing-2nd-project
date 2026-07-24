@@ -17,7 +17,7 @@ fab 재조회 없이 ④가 채운 evidence만 읽는다(faithfulness firewall).
 from __future__ import annotations
 
 from ..mcp_client import MCPClient
-from ..state import CriticResult, Hypothesis, RCAState
+from ..state import CriticResult, GroupState, Hypothesis
 
 # 고정 사유 토큰(사유코드) — API가 verdict 3-state 승격을 이 토큰으로만 분기한다
 # (API 명세 §2.7 "verdict 매핑 주의": 자연어 reject_reason 본문 매칭 금지).
@@ -37,14 +37,14 @@ TOKEN_SEMI_AUTO_PENDING = "SEMI_AUTO_PENDING"
 TOKEN_NOT_INVESTIGATED = "NOT_INVESTIGATED"
 
 
-async def review_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> dict:
-    """hypotheses[group_id]를 규칙대로 채택/기각하고 critic_result[group_id]를 채운다.
+async def review_hypotheses(state: GroupState, mcp: MCPClient) -> dict:
+    """이 그룹의 hypotheses를 규칙대로 채택/기각하고 critic_result를 채운다.
 
     문서 순서(①시간정합 ②반대근거 ③faithfulness ④KG메커니즘) 그대로 적용한다.
     채택 후보가 0개면 status="insufficient_evidence", 아니면 "accepted".
     기각 항목에는 reject_reason(표시용 자연어)과 reject_token(고정 사유코드)을 같이 싣는다.
     """
-    candidates = state["hypotheses"].get(group_id, [])
+    candidates = state["hypotheses"]
 
     accepted: list[Hypothesis] = []
     rejected: list[dict] = []
@@ -88,7 +88,7 @@ async def review_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> d
 
     status: str = "accepted" if accepted else "insufficient_evidence"
     result: CriticResult = {"status": status, "accepted": accepted, "rejected": rejected}
-    return {"critic_result": {group_id: result}}
+    return {"critic_result": result}
 
 
 def _check_time_consistency(hypothesis: Hypothesis) -> bool:

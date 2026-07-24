@@ -18,10 +18,13 @@ LOT_IDS = ["LOT1", "LOT2"]
 
 
 def _state_with_no_candidates() -> dict:
+    # #33 평탄화: 배치 RCAState가 아니라 그룹 1건짜리 GroupState를 받는다.
     return {
-        "groups": [{"group_id": GROUP_ID, "pattern": PATTERN, "lot_ids": LOT_IDS, "status": "ok"}],
-        "graphrag_candidates": {},  # group_id 키 자체가 없음 → response.py:42 unmapped와 동일 조건
-        "critic_result": {},
+        "group_id": GROUP_ID,
+        "pattern": PATTERN,
+        "lot_ids": LOT_IDS,
+        "candidates": [],           # 후보 0건 → unmapped
+        "critic_result": None,
     }
 
 
@@ -51,28 +54,24 @@ _REJECTED = [
 
 def _state_with_candidates_but_zero_accepted() -> dict:
     return {
-        "groups": [{"group_id": GROUP_ID, "pattern": PATTERN, "lot_ids": LOT_IDS, "status": "ok"}],
-        "graphrag_candidates": {
-            GROUP_ID: {"pattern": PATTERN, "candidates": [{"cause": "cause-A"}, {"cause": "cause-B"}]},
-        },
-        "critic_result": {
-            GROUP_ID: {"status": "insufficient_evidence", "accepted": [], "rejected": _REJECTED},
-        },
+        "group_id": GROUP_ID,
+        "pattern": PATTERN,
+        "lot_ids": LOT_IDS,
+        "candidates": [{"cause": "cause-A"}, {"cause": "cause-B"}],
+        "critic_result": {"status": "insufficient_evidence", "accepted": [], "rejected": _REJECTED},
     }
 
 
 EXPECTED_UNMAPPED = {
     "final_response": {
-        GROUP_ID: {
-            "group_id": GROUP_ID,
-            "pattern": PATTERN,
-            "status": "unmapped",
-            "reason": "이 결함 패턴은 원인 매핑 데이터가 없어 판독까지만 지원됩니다.",
-            "lot_ids": LOT_IDS,
-            "lot_count": len(LOT_IDS),
-            "hypotheses": [],
-            "summary": f"{PATTERN} 패턴은 원인 분석 데이터가 없습니다(KG 매핑 대상 3종 밖).",
-        }
+        "group_id": GROUP_ID,
+        "pattern": PATTERN,
+        "status": "unmapped",
+        "reason": "이 결함 패턴은 원인 매핑 데이터가 없어 판독까지만 지원됩니다.",
+        "lot_ids": LOT_IDS,
+        "lot_count": len(LOT_IDS),
+        "hypotheses": [],
+        "summary": f"{PATTERN} 패턴은 원인 분석 데이터가 없습니다(KG 매핑 대상 3종 밖).",
     }
 }
 
@@ -83,19 +82,17 @@ EXPECTED_INSUFFICIENT_HYPOTHESES = [
 
 EXPECTED_INSUFFICIENT = {
     "final_response": {
-        GROUP_ID: {
-            "group_id": GROUP_ID,
-            "pattern": PATTERN,
-            "status": "insufficient",
-            "reason": (
-                "매핑된 원인 후보는 있으나 시간 정합·정상 로트 대조에서 "
-                "채택 가능한 후보가 없어 판단 불가(근거부족)."
-            ),
-            "lot_ids": LOT_IDS,
-            "lot_count": len(LOT_IDS),
-            "hypotheses": EXPECTED_INSUFFICIENT_HYPOTHESES,
-            "summary": f"{PATTERN} 패턴은 판단 불가 — 채택 가능한 근거 있는 가설이 없습니다.",
-        }
+        "group_id": GROUP_ID,
+        "pattern": PATTERN,
+        "status": "insufficient",
+        "reason": (
+            "매핑된 원인 후보는 있으나 시간 정합·정상 로트 대조에서 "
+            "채택 가능한 후보가 없어 판단 불가(근거부족)."
+        ),
+        "lot_ids": LOT_IDS,
+        "lot_count": len(LOT_IDS),
+        "hypotheses": EXPECTED_INSUFFICIENT_HYPOTHESES,
+        "summary": f"{PATTERN} 패턴은 판단 불가 — 채택 가능한 근거 있는 가설이 없습니다.",
     }
 }
 
@@ -104,7 +101,7 @@ EXPECTED_INSUFFICIENT = {
 def test_respond_without_llm_unmapped_matches_golden_from_current_response_py():
     from backend.nodes.response import respond_without_llm
 
-    result = respond_without_llm(_state_with_no_candidates(), GROUP_ID)
+    result = respond_without_llm(_state_with_no_candidates())
     assert result == EXPECTED_UNMAPPED
 
 
@@ -112,7 +109,7 @@ def test_respond_without_llm_unmapped_matches_golden_from_current_response_py():
 def test_respond_without_llm_insufficient_matches_golden_from_current_response_py():
     from backend.nodes.response import respond_without_llm
 
-    result = respond_without_llm(_state_with_candidates_but_zero_accepted(), GROUP_ID)
+    result = respond_without_llm(_state_with_candidates_but_zero_accepted())
     assert result == EXPECTED_INSUFFICIENT
 
 
@@ -120,8 +117,8 @@ def test_respond_without_llm_insufficient_matches_golden_from_current_response_p
 def test_respond_without_llm_insufficient_hypotheses_start_at_h0_for_evidence_modal():
     from backend.nodes.response import respond_without_llm
 
-    result = respond_without_llm(_state_with_candidates_but_zero_accepted(), GROUP_ID)
-    hyps = result["final_response"][GROUP_ID]["hypotheses"]
+    result = respond_without_llm(_state_with_candidates_but_zero_accepted())
+    hyps = result["final_response"]["hypotheses"]
     assert len(hyps) >= 1
     assert hyps[0]["hypothesis_id"] == "h0", "근거 모달 드릴다운이 h0부터 열려야 한다(§2.7)"
 

@@ -81,7 +81,8 @@ class _CapturingKG:
 def test_graphrag_passes_observation_to_kg_client():
     state = observe_groups(_state(["Edge-Ring"]))                # ③이 만든 groups를
     kg = _CapturingKG()
-    graphrag.fetch_graphrag_candidates(state, kg)                # ④가 소비
+    # #33 평탄화: ④는 배치 groups가 아니라 그룹 1건짜리 GroupState를 받는다.
+    graphrag.fetch_graphrag_candidates(state["groups"][0], kg)   # ④가 소비
     (pattern, observation), = kg.calls
     assert pattern == "Edge-Ring"
     assert observation is not None

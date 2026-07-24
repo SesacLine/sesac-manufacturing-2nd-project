@@ -29,3 +29,10 @@
 | D14 | **step=None 후보에 mapping.process를 step 폴백**(`_with_step_fallback`) | 문헌직결(direct) 가설은 KG가 step=NULL로 내는데 그대로 commonality 돌리면 전체공정 최다통과 장비(함정 포함)로 쏠려 정답이 엉뚱한 장비에서 검증→P4 기각. mapping.process(빌드타임 공정 정규화)로 빈칸만 보충, path.step 있으면 불가침. 근본 교정은 kg_rca 6번(`kg_step보충_제안.md` 전달됨) — 반영되면 폴백 자연 무동작 |
 | D15 | **그룹 검증 시간창 = 전체 로트 min(ts_in)~max(ts_out) 합집합**(`_group_time_range`) | 이전엔 대표(첫 로트) 구간만 썼는데 SC-CENTER-01 실측에서 첫 로트 창이 시나리오 telemetry 공백(coverage_gap)과 겹쳐 원인 시계열 0포인트→정답 P4 사망. 로트가 며칠 흩어져 지나가므로 합집합이 그룹 창. 비용: get_lot_history 그룹당 1콜→N콜(수용) |
 | D16 | **재랭킹 2순위 키 = commonality_ratio 내림차순**(`_rank_hypotheses`, D1 정렬키에 반영됨) | 세기 동률에서 "원인 장비라면 결함 로트 전부가 지났어야 한다"는 인과 필요조건으로 가른다. SC-CENTER-01 실측: 정답 CLEAN-01(8/8) vs 오답 DEPO-02(5/8) — 이 키로 top-1 달성. 이미 수집 중이던 신호(commonality analysis, 기획안 "모든 가설 공통 호출")의 랭킹 연결 |
+
+> **2026-07-24 추가 (D17, LangGraph 골격 step 3 = #33 시그니처 평탄화).** #38이 남긴 임시 어댑터를
+> 걷어낸 순수 구조 리팩터. 상세 설계 공유는 `docs/langgraph_골격_설계공유_v1.0.md`.
+
+| # | 결정 | 근거 / 되돌릴 조건 |
+|---|---|---|
+| D17 | **그룹 노드는 `GroupState`를 직접 받고, 필수 키 누락은 즉시 오류(fail-fast)**(#33) — #38의 어댑터(그룹 하나짜리 가짜 `RCAState` 재구성) 5개와 `_group_for_node`를 제거. `graph.py`가 ④~⑦ 노드 함수를 직접 등록하고 `kg_client`·`mcp`는 `functools.partial`로 조립 시점에 주입한다. 이로써 도달 불가가 된 폴백(⑤ `if group is None`, ⑦/⑦' `... if group else "unknown"`)을 삭제 — 필수 키가 빠지면 조용히 `"unknown"` 카드를 만드는 대신 `KeyError`로 즉시 드러난다 | 순수 구조 변경(행위 보존): 함수 내부 알고리즘 무변경, `rationale` 제외 골든 SHA256 일치로 실증(전/후 동일 배치). **후속 주의**: `add_node`는 순수 함수일 때만 타입힌트로 input schema·`Command` 분기 대상을 추론하는데 `partial`은 그 추론에서 빠진다 — 나중에 노드를 `Command[Literal[...]]` 직접 라우팅으로 바꾸면 `destinations=`를 명시해야 한다. 리네임 `graphrag→kg`는 step 8 보류 |
