@@ -53,25 +53,25 @@ async def review_hypotheses(state: GroupState, mcp: MCPClient) -> dict:
             rejected.append({
                 **h,
                 "reject_token": TOKEN_TIME_ORDER,
-                "reject_reason": "시간 정합 실패 — 원인이 결함 발생보다 늦음",
+                "reject_reason": "Time-order violation — cause occurs later than the defect",
             })
         elif not _check_negative_evidence(h):
             rejected.append({
                 **h,
                 "reject_token": TOKEN_NO_COUNTER_EVIDENCE,
-                "reject_reason": "반대증거(normal_ratio) 미수행",
+                "reject_reason": "Counter-evidence (normal_ratio) not collected",
             })
         elif not _check_faithfulness(h):
             rejected.append({
                 **h,
                 "reject_token": TOKEN_FAITHFULNESS,
-                "reject_reason": "faithfulness 위반 — 확인 안 된 값을 근거로 사용",
+                "reject_reason": "Faithfulness violation — cited an unverified value as evidence",
             })
         elif not _check_kg_mechanism(h):
             rejected.append({
                 **h,
                 "reject_token": TOKEN_NO_KG_MECHANISM,
-                "reject_reason": "KG 메커니즘 연결(VERIFIED_BY) 없음",
+                "reject_reason": "No KG mechanism link (VERIFIED_BY)",
             })
         elif not h.get("investigated", False):
             # S2-6(C3): ④가 실제로 조사 못 한 행(반자동 전부 + 자동 폴백)은 판단 보류.
@@ -81,7 +81,7 @@ async def review_hypotheses(state: GroupState, mcp: MCPClient) -> dict:
             rejected.append({
                 **h,
                 "reject_token": token,
-                "reject_reason": "fab 증거 미조사로 판단 보류(judge_unknown)",
+                "reject_reason": "Fab evidence not investigated — judgment deferred (judge_unknown)",
             })
         else:
             accepted.append(h)
