@@ -27,9 +27,29 @@ from .critic import TOKEN_NO_KG_MECHANISM, TOKEN_SEMI_AUTO_PENDING, TOKEN_NOT_IN
 # NOT_INVESTIGATED = 자동 tier의 미조사 폴백(S2-6) — 반자동 SEMI_AUTO_PENDING과 같은 보류 버킷.
 _JUDGE_UNKNOWN_TOKENS = {TOKEN_NO_KG_MECHANISM, TOKEN_SEMI_AUTO_PENDING, TOKEN_NOT_INVESTIGATED}
 
-# TODO(Walking Skeleton, 스텝7에서 교체 대상): summary를 LLM으로 자연어 합성하는 대신
-# 결정적 템플릿 문자열로 채운다 — 전체 배선을 LLM 비용 없이 먼저 검증하기 위함.
-# description(그룹 대표 VLM 서술, §2.5)도 VLM 미연동 동안 None이다(프론트 summary_line fallback).
+# ── 사용자 노출용 그룹 서술(description, API 명세 §2.5) ──────────────────────────────
+# 설계 결정: VLM(노드③)은 **영어 서술만** 생성하고(프롬프트 단순·출력 자연스러움), 한국어 번역은
+# 이 응답 단계에서 한다. 번역기(translate: str→str)는 조립 시점 partial로 주입된다
+# (graph.py ← deps.response_translator, RESPONSE_LLM=1일 때만 실체·아니면 None).
+#   · VLM 실생성 판별 = 관측 메타 `vlm_track` 존재(VLM_LIVE 경로 성공 시에만 붙는다).
+#   · 스켈레톤/결정적 폴백 문구는 지어낸 값이라 **노출 금지 → None**(프론트가 summary_line으로
+#     fallback, §2.5 동작 그대로). 즉 vlm_track이 없으면 무조건 None.
+#   · translate 미주입(기본/CI)이면 원문(영어)을 그대로 운반 — 결정적, LLM 비용 0.
+#   · 번역 실패는 원문(영어)으로 폴백 — 실제 관측 내용을 잃지 않게(곱게 무너짐).
+
+
+def _group_description(state: GroupState, translate=None) -> str | None:
+    """§2.5 description — VLM이 실제로 생성한 그룹 서술만 (번역해) 운반한다(없으면 None)."""
+    obs = state.get("observation") or {}
+    if not obs.get("vlm_track"):  # VLM 실생성 아님(스켈레톤/폴백) → 노출 금지
+        return None
+    english = obs.get("total_description")
+    if not english or translate is None:  # 번역기 미주입 → 원문 운반(결정적)
+        return english
+    try:
+        return translate(english)
+    except Exception:  # noqa: BLE001 — 번역 실패해도 원문 보존(내용 유지)
+        return english
 
 
 def _ordered_hypotheses(critic: dict | None) -> list[dict]:
@@ -53,12 +73,13 @@ def _ordered_hypotheses(critic: dict | None) -> list[dict]:
     return ordered
 
 
-def generate_response(state: GroupState) -> dict:
+def generate_response(state: GroupState, translate=None) -> dict:
     """채택 가설이 있는 그룹의 최종 카드를 조립한다(UC-1, status="reviewed").
 
     후보 0건/채택 0건 분기는 라우팅(route_on_candidates·route_on_verdicts)이 갈라 ⑦'로 보내므로
-    여기 오지 않는다 — 이 함수는 채택 ≥1만 처리한다(골격설계 §6). LLM 실패 시 아래 템플릿
-    summary를 except에 남기면 status="reviewed"가 유지된다(§5.3.5, 실모델 연동 담당 몫).
+    여기 오지 않는다 — 이 함수는 채택 ≥1만 처리한다(골격설계 §6). summary는 결정론적 템플릿(내부용,
+    LLM 아님 — 확정). translate는 조립 시점 partial로 주입되는 영어→한국어 번역기(없으면 원문 운반)
+    — description에만 쓴다.
     """
     pattern = state["pattern"]
     lot_ids = list(state["lot_ids"])
@@ -74,19 +95,22 @@ def generate_response(state: GroupState) -> dict:
     return _final(
         state["group_id"], pattern, lot_ids,
         status="reviewed", reason=None, hypotheses=ordered, summary=summary,
+        description=_group_description(state, translate),
     )
 
 
-def respond_without_llm(state: GroupState) -> dict:
+def respond_without_llm(state: GroupState, translate=None) -> dict:
     """LLM을 부르지 않는 응답 — 후보 0건(UC-3)/채택 0건(UC-2) 두 경우를 만든다(골격설계 §5.2·§5.2.1).
 
     라우팅이 이 노드로 보낸 케이스만 처리한다: candidates가 비면 unmapped(hypotheses=[]),
     아니면 insufficient(⑦과 동일 헬퍼로 정렬 배열+h{n}+verdict 재현 — 근거 모달이 hypothesis_id로
-    열려야 하므로 반드시 배열을 채운다, §2.7). description은 두 경우 모두 카드에 실어 보낸다.
+    열려야 하므로 반드시 배열을 채운다, §2.7). description은 두 경우 모두 카드에 실어 보낸다
+    (translate는 그 번역용 — 관측 옮기기라 "LLM 미사용" 불변식과 충돌 아님, 원인 생성은 여전히 없음).
     """
     group_id = state["group_id"]
     pattern = state["pattern"]
     lot_ids = list(state["lot_ids"])
+    description = _group_description(state, translate)
 
     # UC-3: 애초에 KG 매핑 대상(Center/Edge-Ring/Scratch) 밖이라 후보가 없던 그룹.
     if not state.get("candidates"):
@@ -98,6 +122,7 @@ def respond_without_llm(state: GroupState) -> dict:
             reason="이 결함 패턴은 원인 매핑 데이터가 없어 판독까지만 지원됩니다.",
             hypotheses=[],
             summary=f"{pattern} 패턴은 원인 분석 데이터가 없습니다(KG 매핑 대상 3종 밖).",
+            description=description,
         )
 
     # UC-2: 후보는 있었지만 Critic이 하나도 채택 못 한 경우 — 판단 불가(근거부족).
@@ -114,6 +139,7 @@ def respond_without_llm(state: GroupState) -> dict:
         ),
         hypotheses=ordered,
         summary=f"{pattern} 패턴은 판단 불가 — 채택 가능한 근거 있는 가설이 없습니다.",
+        description=description,
     )
 
 
@@ -126,6 +152,7 @@ def _final(
     reason: str | None,
     hypotheses: list[dict],
     summary: str,
+    description: str | None,
 ) -> dict:
     return {
         "final_response": {
@@ -136,6 +163,7 @@ def _final(
             "lot_ids": lot_ids,
             "lot_count": len(lot_ids),
             "hypotheses": hypotheses,  # 정렬·h{n}·verdict 포함 (대표 = index 0)
-            "summary": summary,
+            "summary": summary,        # 결정론적 템플릿(내부용, LLM 아님)
+            "description": description,  # ③VLM(영어) → 한국어 번역, §2.5 (없으면 None → 프론트 summary_line)
         }
     }

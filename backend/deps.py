@@ -102,3 +102,33 @@ def mcp_client() -> MCPClient:
     if _mcp_client is None:
         _mcp_client = MCPClient()
     return _mcp_client
+
+
+_response_llm = None
+
+# ⑦ description 번역 프롬프트 — VLM 영어 서술 → 한국어. 충실 번역만(추가·삭제·해석 금지).
+# faithfulness firewall: 이건 "생성"이 아니라 "옮기기"라 evidence 밖 사실이 새로 생기지 않는다.
+_TRANSLATE_PROMPT = (
+    "다음은 반도체 웨이퍼 결함 형상을 서술한 영어 문장이다. 사실을 더하거나 빼지 말고, "
+    "해석·원인 추정 없이 자연스러운 한국어로만 번역하라. 번역문만 출력하라.\n\n{text}"
+)
+
+
+def response_translator():
+    """⑦ 응답노드에 주입할 영어→한국어 번역 콜러블(str→str). RESPONSE_LLM=1일 때만 실체,
+    아니면 None(응답노드가 원문 영어를 그대로 운반 — 결정적, LLM 비용 0).
+
+    ChatOpenAI(temperature=0)로 재현성 확보(hypothesis._make_model과 같은 관례).
+    """
+    if os.getenv("RESPONSE_LLM", "").lower() not in ("1", "true", "yes"):
+        return None
+    global _response_llm
+    if _response_llm is None:
+        from langchain_openai import ChatOpenAI
+        _response_llm = ChatOpenAI(model=os.environ["OPENAI_MODEL"], temperature=0)
+    llm = _response_llm
+
+    def translate(english: str) -> str:
+        return llm.invoke(_TRANSLATE_PROMPT.format(text=english)).content.strip()
+
+    return translate

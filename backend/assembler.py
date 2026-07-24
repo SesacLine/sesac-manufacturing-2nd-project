@@ -32,7 +32,7 @@ def build_analysis_payload(analysis_id: str, final: dict) -> dict:
     return {
         "analysis_id": analysis_id,
         "pattern": pattern,
-        "description": None,  # VLM 미연동(§2.5 🔲) — 프론트 summary_line fallback
+        "description": final.get("description"),  # ③VLM(영어)→한국어 번역, response._describe_ko 소관(§2.5). 없으면 None → 프론트 summary_line fallback
         "status": final["status"],
         "reason": final.get("reason"),
         "lot_count": final["lot_count"],
