@@ -72,7 +72,10 @@ class Citation(TypedDict):
 
 
 class GraphRAGCandidate(TypedDict):
-    """③ GraphRAG 노드가 kg_rca 순회 결과에서 그대로 옮겨 담는 후보 1건.
+    """④ KG 조회 노드가 kg_rca 순회 결과에서 그대로 옮겨 담는 후보 1건.
+
+    morphology_score·entry_signature·entry_score는 ④ 내부(재랭킹/진입 추적) 전용이라
+    런타임에만 붙이고 **여기 선언하지 않는다**(팀 결정 07-24). 하위 노드는 읽지 않는다.
 
     필드는 kg_rca/outputs/hypotheses.json의 path/verification/score를 평탄화한 것.
     kg_rca 07-13 갱신으로 `route`/`score.confidence`는 출력에서 빠졌다(대신 `scenario_hint`,
@@ -91,7 +94,8 @@ class GraphRAGCandidate(TypedDict):
     # {density, continuity, angular_coverage, clock_positions}. shape@zone은 하드 매칭 키이고
     # 이 값들은 VLM 관측과 소프트 매칭하는 랭킹 신호다(노드 속성이 아니라 FORMS_IN 엣지
     # 속성 — 같은 shape@zone 노드가 공정마다 다른 모폴로지를 가질 수 있게). 형상 경유가 아니면 None.
-    # TODO(④ graphrag 노드): 관측 모폴로지와 비교해 후보 랭킹 가점을 적용 — 아직 미구현.
+    # ④ graphrag가 morphology_rank로 관측과 대조한다. **감점 전용(demote-only)이 확정**이다
+    # — 일치해도 가점하지 않는다(문헌 근거 순위를 형상 휴리스틱이 덮어쓰지 않게).
     morphology: NotRequired[dict | None]
     scenario_hint: NotRequired[ScenarioHint | None]
     tier: Tier
