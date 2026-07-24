@@ -23,7 +23,7 @@ personalspace/0711 work/kg_mapping_vocabulary.md 참고.
 from __future__ import annotations
 
 from ..mcp_client import MCPClient
-from ..state import EvidenceEntry, GraphRAGCandidate, Hypothesis, RCAState
+from ..state import EvidenceEntry, GraphRAGCandidate, GroupState, Hypothesis
 from langgraph.prebuilt import create_react_agent    # 또는 수동 루프(LangGraph_fs.md 7.2)
 from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphRecursionError
@@ -50,17 +50,13 @@ from datetime import datetime, timedelta
 #   (슬라이스1의 verify_one/_build_prompt는 배치로 흡수·삭제 — 필요하면 git 히스토리 참고)
 
 
-async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> dict:
-    """group_id의 graphrag_candidates 각각에 증거를 모아 hypotheses[group_id]를 채운다."""
-    group = next((g for g in state["groups"] if g["group_id"] == group_id), None)
-    if group is None:
-        return {"hypotheses": {group_id: []}}
-    lot_ids = group["lot_ids"]
+async def build_hypotheses(state: GroupState, mcp: MCPClient) -> dict:
+    """이 그룹의 candidates 각각에 증거를 모아 hypotheses를 채운다."""
+    lot_ids = state["lot_ids"]
 
-    graphrag_result = state["graphrag_candidates"].get(group_id)
-    candidates = graphrag_result["candidates"] if graphrag_result else []
+    candidates = state["candidates"]
     if not candidates:
-        return {"hypotheses": {group_id: []}}
+        return {"hypotheses": []}
     candidates = _with_step_fallback(candidates)   # 처방2-b: step=None → mapping.process 보충
 
     time_range = await _group_time_range(lot_ids, mcp)
@@ -99,7 +95,7 @@ async def build_hypotheses(state: RCAState, group_id: str, mcp: MCPClient) -> di
     for hyp in hypotheses:                # 시간정합 기준(defect_ts) 일괄 스탬프 — ④가 수집(firewall)
         hyp["evidence"]["defect_ts"] = defect_ts
 
-    return {"hypotheses": {group_id: hypotheses}}
+    return {"hypotheses": hypotheses}
 
 
 # S2-5: 배치당 에이전트 루프 스텝 상한 (기획안 §9 "검증 라운드 상한" 이행).

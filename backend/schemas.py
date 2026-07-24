@@ -37,15 +37,16 @@ STEPS = [
     "response_gen",
 ]
 
-# LangGraph 노드명 → steps[] 인덱스. vlm_describe(3)는 대응 노드가 없어 건너뛴다
-# (AGENT_GUIDE §5: 임의 매핑 금지 — vlm.py의 웨이퍼 단위 서술은 vlm_describe가 아니다).
+# LangGraph 노드명 → steps[] 인덱스. ③ observe_groups(v1.5에서 VLM 관측이 Grouper 뒤로 이동)가
+# steps[3]이다 — #33에서 복원(그 전엔 3이 공백이라 진행표시가 2→4로 건너뛰었다).
 # 서브그래프 내부명(fetch~generate)도 이 표를 공유한다(내부명=옛 바깥명). respond_without_llm(⑦')도
 # response_gen(7)이라 7로 매핑한다 — unmapped/insufficient 그룹이 종단(⑦') 시 current_step이 7에
-# 도달하게(골격설계 §8.4 "unmapped면 끝으로 간다" 정합). observe_groups=3은 #33/step7 몫으로 아직 공백.
+# 도달하게(골격설계 §8.4 "unmapped면 끝으로 간다" 정합).
 NODE_TO_STEP_INDEX = {
     "select_low_yield_lots": 0,
     "read_wafer_maps": 1,
     "group_by_pattern": 2,
+    "observe_groups": 3,
     "fetch_graphrag_candidates": 4,
     "build_hypotheses": 5,
     "review_hypotheses": 6,

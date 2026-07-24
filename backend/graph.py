@@ -4,16 +4,17 @@
 바깥 그래프는 groups를 순차로 돌며 그 서브그래프를 호출하는 run_groups 노드 하나로 팬아웃한다.
 Send 병렬화는 범위 밖(§7.1) — MCP 싱글턴 세션 재사용(mcp_client/client.py) 때문에 순차로 시작한다.
 
-step 2(행위 보존): ④⑤⑥⑦ 노드 함수는 **아직 옛 시그니처**((state, group_id, mcp) 등)를 그대로 두고,
-서브그래프 노드는 그 함수를 GroupState로 브리지하는 **어댑터**다. 시그니처 평탄화는 step 3(#33).
-라우팅(후보 0건/채택 0건 컷)과 Normal 가드는 step 4에서 조건부 엣지로 꺼낸다 — 지금 서브그래프는
-선형(④→⑤→⑥→⑦)이라 옛 코드의 "노드 내부 분기"와 동작이 같다.
+step 3(#33, 행위 보존): ④⑤⑥⑦ 노드 함수가 **GroupState를 직접 받는다**. #38이 임시로 두었던
+브리지 클로저와 그룹 dict 재구성 헬퍼는 제거됐고, 반환도 `{group_id: 값}` 중첩 없이 납작하다.
+그룹 키 dict로 다시 모으는 일은 바깥의 run_groups 한 곳에서만 한다.
+라우팅(후보 0건/채택 0건 컷)은 조건부 엣지로 그래프 위상에 박혀 있다(step 4).
 """
 
 from __future__ import annotations
 
 import contextvars
 import logging
+from functools import partial
 
 from langgraph.graph import END, StateGraph
 
@@ -64,83 +65,24 @@ def route_on_verdicts(state: GroupState) -> str:
     return "generate_response"
 
 
-def _group_for_node(gstate: GroupState) -> dict:
-    """옛 노드 함수가 state["groups"]에서 group_id로 찾아 쓰는 그룹 dict를 GroupState에서 되만든다."""
-    return {
-        "group_id": gstate["group_id"],
-        "pattern": gstate["pattern"],
-        "lot_ids": gstate["lot_ids"],
-        "status": "",
-        "observation": gstate.get("observation"),
-    }
-
-
 def _build_group_subgraph(kg_client: KGClient, mcp: MCPClient):
-    """④~⑦ 그룹 서브그래프(state=GroupState). 노드는 옛 시그니처 함수를 감싼 어댑터다.
+    """④~⑦ 그룹 서브그래프(state=GroupState). 노드 함수를 직접 등록한다(step 3, #33).
 
-    각 어댑터는 "그 그룹 하나짜리 fake RCAState"를 만들어 옛 함수를 부르고, 반환 dict에서
-    자기 그룹의 슬라이스를 꺼내 GroupState 키로 돌려준다(dict[group_id] 중첩이 한 겹 벗겨진다).
+    노드 함수가 GroupState를 그대로 받으므로 #38의 브리지 클로저(그룹 하나짜리 RCAState를
+    되만들어 옛 시그니처로 넘기던 것)는 사라졌다. kg_client·mcp 같은 의존성은 LangGraph가
+    노드를 fn(state)로 부르기 때문에 partial로 조립 시점에 묶어 둔다.
     함수 내부 알고리즘·MCP 호출 순서·캐싱은 한 줄도 안 바뀐다.
     """
-
-    async def fetch_kg(gstate: GroupState) -> dict:
-        gid = gstate["group_id"]
-        fake = {"groups": [_group_for_node(gstate)]}
-        out = graphrag.fetch_graphrag_candidates(fake, kg_client)
-        result = out["graphrag_candidates"][gid]
-        return {"candidates": result["candidates"]}
-
-    async def build(gstate: GroupState) -> dict:
-        gid = gstate["group_id"]
-        fake = {
-            "groups": [_group_for_node(gstate)],
-            "graphrag_candidates": {
-                gid: {"pattern": gstate["pattern"], "candidates": gstate["candidates"]}
-            },
-        }
-        out = await hypothesis.build_hypotheses(fake, gid, mcp)
-        return {"hypotheses": out["hypotheses"][gid]}
-
-    async def review(gstate: GroupState) -> dict:
-        gid = gstate["group_id"]
-        fake = {
-            "groups": [_group_for_node(gstate)],
-            "hypotheses": {gid: gstate["hypotheses"]},
-        }
-        out = await critic.review_hypotheses(fake, gid, mcp)
-        return {"critic_result": out["critic_result"][gid]}
-
-    async def generate(gstate: GroupState) -> dict:
-        gid = gstate["group_id"]
-        fake = {
-            "groups": [_group_for_node(gstate)],
-            "graphrag_candidates": {
-                gid: {"pattern": gstate["pattern"], "candidates": gstate["candidates"]}
-            },
-            "critic_result": {gid: gstate.get("critic_result")},
-        }
-        out = response.generate_response(fake, gid)
-        return {"final_response": out["final_response"][gid]}
-
-    async def respond(gstate: GroupState) -> dict:
-        gid = gstate["group_id"]
-        fake = {
-            "groups": [_group_for_node(gstate)],
-            "graphrag_candidates": {
-                gid: {"pattern": gstate["pattern"], "candidates": gstate.get("candidates", [])}
-            },
-            "critic_result": {gid: gstate.get("critic_result")},
-        }
-        out = response.respond_without_llm(fake, gid)
-        return {"final_response": out["final_response"][gid]}
-
     sub = StateGraph(GroupState)
     # 노드명은 옛 바깥 노드명을 그대로 물려받는다(NODE_TO_STEP_INDEX 4·5·6·7과 대응, §8.2c).
-    sub.add_node("fetch_graphrag_candidates", fetch_kg)
-    sub.add_node("build_hypotheses", build)
-    sub.add_node("review_hypotheses", review)
-    sub.add_node("generate_response", generate)
-    sub.add_node("respond_without_llm", respond)
+    sub.add_node(
+        "fetch_graphrag_candidates",
+        partial(graphrag.fetch_graphrag_candidates, kg_client=kg_client),
+    )
+    sub.add_node("build_hypotheses", partial(hypothesis.build_hypotheses, mcp=mcp))
+    sub.add_node("review_hypotheses", partial(critic.review_hypotheses, mcp=mcp))
+    sub.add_node("generate_response", response.generate_response)
+    sub.add_node("respond_without_llm", response.respond_without_llm)
     sub.set_entry_point("fetch_graphrag_candidates")
     # ④ 뒤: 후보 0건이면 ⑤⑥ 건너뛰고 ⑦'로(§6.1).
     sub.add_conditional_edges(

@@ -20,7 +20,7 @@ Root Cause "확정"이 아니라 "가설(채택) + 근거"까지가 스코프다
 
 from __future__ import annotations
 
-from ..state import RCAState
+from ..state import GroupState
 from .critic import TOKEN_NO_KG_MECHANISM, TOKEN_SEMI_AUTO_PENDING, TOKEN_NOT_INVESTIGATED
 
 # judge_unknown(미조사·근거없음) → verdict="judge_unknown". 나머지 사유는 "rejected".
@@ -53,18 +53,17 @@ def _ordered_hypotheses(critic: dict | None) -> list[dict]:
     return ordered
 
 
-def generate_response(state: RCAState, group_id: str) -> dict:
+def generate_response(state: GroupState) -> dict:
     """채택 가설이 있는 그룹의 최종 카드를 조립한다(UC-1, status="reviewed").
 
     후보 0건/채택 0건 분기는 라우팅(route_on_candidates·route_on_verdicts)이 갈라 ⑦'로 보내므로
     여기 오지 않는다 — 이 함수는 채택 ≥1만 처리한다(골격설계 §6). LLM 실패 시 아래 템플릿
     summary를 except에 남기면 status="reviewed"가 유지된다(§5.3.5, 실모델 연동 담당 몫).
     """
-    group = next((g for g in state["groups"] if g["group_id"] == group_id), None)
-    pattern = group["pattern"] if group else "unknown"
-    lot_ids = list(group["lot_ids"]) if group else []
+    pattern = state["pattern"]
+    lot_ids = list(state["lot_ids"])
 
-    critic = state["critic_result"].get(group_id)
+    critic = state.get("critic_result")
     ordered = _ordered_hypotheses(critic)
     accepted = list(critic["accepted"]) if critic else []
 
@@ -73,25 +72,24 @@ def generate_response(state: RCAState, group_id: str) -> dict:
     ]
     summary = f"{pattern} 패턴 — 가설 {len(accepted)}건 채택:\n" + "\n".join(lines)
     return _final(
-        group_id, pattern, lot_ids,
+        state["group_id"], pattern, lot_ids,
         status="reviewed", reason=None, hypotheses=ordered, summary=summary,
     )
 
 
-def respond_without_llm(state: RCAState, group_id: str) -> dict:
+def respond_without_llm(state: GroupState) -> dict:
     """LLM을 부르지 않는 응답 — 후보 0건(UC-3)/채택 0건(UC-2) 두 경우를 만든다(골격설계 §5.2·§5.2.1).
 
     라우팅이 이 노드로 보낸 케이스만 처리한다: candidates가 비면 unmapped(hypotheses=[]),
     아니면 insufficient(⑦과 동일 헬퍼로 정렬 배열+h{n}+verdict 재현 — 근거 모달이 hypothesis_id로
     열려야 하므로 반드시 배열을 채운다, §2.7). description은 두 경우 모두 카드에 실어 보낸다.
     """
-    group = next((g for g in state["groups"] if g["group_id"] == group_id), None)
-    pattern = group["pattern"] if group else "unknown"
-    lot_ids = list(group["lot_ids"]) if group else []
-    graphrag_result = state["graphrag_candidates"].get(group_id)
+    group_id = state["group_id"]
+    pattern = state["pattern"]
+    lot_ids = list(state["lot_ids"])
 
     # UC-3: 애초에 KG 매핑 대상(Center/Edge-Ring/Scratch) 밖이라 후보가 없던 그룹.
-    if not graphrag_result or not graphrag_result["candidates"]:
+    if not state.get("candidates"):
         return _final(
             group_id,
             pattern,
@@ -103,7 +101,7 @@ def respond_without_llm(state: RCAState, group_id: str) -> dict:
         )
 
     # UC-2: 후보는 있었지만 Critic이 하나도 채택 못 한 경우 — 판단 불가(근거부족).
-    critic = state["critic_result"].get(group_id)
+    critic = state.get("critic_result")
     ordered = _ordered_hypotheses(critic)
     return _final(
         group_id,
@@ -131,15 +129,13 @@ def _final(
 ) -> dict:
     return {
         "final_response": {
-            group_id: {
-                "group_id": group_id,
-                "pattern": pattern,
-                "status": status,          # reviewed | insufficient | unmapped (§2.2/§2.5)
-                "reason": reason,
-                "lot_ids": lot_ids,
-                "lot_count": len(lot_ids),
-                "hypotheses": hypotheses,  # 정렬·h{n}·verdict 포함 (대표 = index 0)
-                "summary": summary,
-            }
+            "group_id": group_id,
+            "pattern": pattern,
+            "status": status,          # reviewed | insufficient | unmapped (§2.2/§2.5)
+            "reason": reason,
+            "lot_ids": lot_ids,
+            "lot_count": len(lot_ids),
+            "hypotheses": hypotheses,  # 정렬·h{n}·verdict 포함 (대표 = index 0)
+            "summary": summary,
         }
     }
