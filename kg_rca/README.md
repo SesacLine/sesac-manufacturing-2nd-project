@@ -61,8 +61,24 @@ SpatialSignature ──FORMS_IN─────┘                        Cause
 | `[반자동]` | `Maintenance` / `Recipe` | fab 조회는 되지만 조인 키·기대값이 없어 판정은 사람 몫 |
 | `[근거없음]` | 없음 | 문헌 서술로만 존재 (예: RTP 원인 — fab 6스텝 밖) |
 
-전체 명세는 [`KG_schema_v1.4.md`](../docs/KG_schema_v1.4.md) (정본), fab 데이터 스키마는
-[`fab.md`](fab.md) 참조. [`backup/schema.md`](backup/schema.md)는 v1 기록용.
+전체 명세는 [`KG_schema_v1.4.md`](../docs/KG_schema_v1.4.md) (정본), fab.db 테이블 스키마는
+[`secsgem-mcp/README.md` §3](../secsgem-mcp/README.md) (정본 — 7테이블 전체).
+[`backup/schema.md`](backup/schema.md)는 v1 기록용.
+
+**장비군별 파라미터 (Quick Reference).** 파라미터 집합이 갈리는 단위는 개별 장비가 아니라
+**장비군(공정 스텝)** 이다 — ETCH-01/02/03은 파라미터가 같고, ETCH와 DEPO는 다르다.
+정본은 [`data/seeds/parameters.json`](data/seeds/parameters.json)(고유 21종, 각 항목의 `steps` 필드),
+아래는 그걸 장비군별로 편 것이다 — `rf_power`·`chamber_pressure`는 ETCH·DEPO 양쪽에서
+계측되어 두 번 나온다(그래서 표의 슬롯 합 23 ≠ 고유 21).
+
+| 장비군 | 파라미터 이름 | 개수 |
+|---|---|---|
+| **LITHO** | `exposure_dose` · `focus_offset` · `stage_temp` · `alignment_offset` | 4 |
+| **ETCH** | `rf_power` · `chamber_pressure` · `he_flow` · `temperature` · `etch_rate` | 5 |
+| **DEPO** | `chamber_pressure` · `rf_power` · `gas_flow` · `susceptor_temp` · `deposition_rate` | 5 |
+| **CMP** | `down_force` · `slurry_flow` · `pad_usage_hours` | 3 |
+| **CLEAN** | `flow_rate` · `megasonic_power` · `chemical_temp` · `rinse_time` | 4 |
+| **EDS** | `chuck_temp` · `contact_resistance` | 2 |
 
 ## 준비
 

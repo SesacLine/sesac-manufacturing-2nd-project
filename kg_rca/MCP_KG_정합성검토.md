@@ -1,10 +1,10 @@
 # SECS/GEM MCP 문서 ↔ KG 출력 정합성 검토
 
-> 갱신: 2026-07-13 (MCP 문서 07-13 12:22 개정판 반영)
+> 갱신: 2026-07-23 (X1E pad_usage_hours 해소 반영 · 스키마 v2.5 재빌드 반영)
 > 대조 기준:
 > - `SECS GEM MCP 문서_v0 1.md` (2026-07-13 12:22 — §5 E2E 시나리오 3종·§6 Agent 결합 신설,
 >   매핑표에서 Center-세정 노즐 행 및 Edge-bead removal 취소선 삭제)
-> - `outputs/hypotheses.json` (schema **v2.4**, 가설 642건 — CLEAN·Edge-Ring-CMP 문서 반영) + `KG_output_명세.md`
+> - `outputs/hypotheses.json` (schema **v2.5**, 가설 772건 — 07-22 재빌드, Center 375·Scratch 107·Edge-Ring 290) + `KG_output_명세.md`
 > - `mapping_table.yaml` (원본 유지 — KG 매칭 키워드는 KG 모듈 소유)
 
 ---
