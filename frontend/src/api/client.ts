@@ -5,9 +5,11 @@ import type {
   AnalysisList,
   Batch,
   BatchAccepted,
+  CauseStats,
   ErrorDetail,
   Evidence,
   LotWafers,
+  YieldDaily,
   YieldSummary,
 } from "./types";
 
@@ -56,6 +58,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   yieldSummary: () => request<YieldSummary>("/yield-summary"),
+  /** §2.8 v1.1 — 일별 수율 전 구간 + 분석 이벤트 오버레이 (대시보드 추이 차트) */
+  yieldDaily: () => request<YieldDaily>("/yield-daily"),
+  /** §2.9 v1.1 — 장비 구성·패턴 Pareto·채택 원인 집계 (도넛/막대/칩) */
+  causeStats: () => request<CauseStats>("/stats/causes"),
   analyses: (sort: "latest" | "oldest", limit: number, offset: number) =>
     request<AnalysisList>(`/analyses?sort=${sort}&limit=${limit}&offset=${offset}`),
   analysis: (analysisId: string) =>

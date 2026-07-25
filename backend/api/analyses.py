@@ -39,7 +39,8 @@ def get_analysis(analysis_id: str) -> dict:
 @router.get("/analyses/{analysis_id}/evidence/{hypothesis_id}")
 def get_evidence(analysis_id: str, hypothesis_id: str) -> dict:
     payload = _load_payload(analysis_id)
-    if payload["status"] == "unmapped":
+    # unmapped(지식 공백)·novel(미지 패턴 OSR, v1.1) 둘 다 가설이 없어 근거 상세가 없다.
+    if payload["status"] in ("unmapped", "novel"):
         raise HTTPException(
             status_code=404, detail="이 그룹은 원인 매핑이 없어 근거를 제공하지 않습니다."
         )

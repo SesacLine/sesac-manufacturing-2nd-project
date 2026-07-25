@@ -19,7 +19,7 @@
 
 ```
                      [React 대시보드 (:5173)]
-                              │ HTTP (API 8종)
+                              │ HTTP (API 10종)
                               ▼
                      [FastAPI + LangGraph (:8000)]
                               │
@@ -37,7 +37,7 @@
 
 | 폴더 | 역할 | 상태 |
 |---|---|---|
-| `backend/` | FastAPI + LangGraph 오케스트레이션. 파이프라인 ⓪~⑥ 실행 + API 8종 제공 | API 8종 구현 완료 |
+| `backend/` | FastAPI + LangGraph 오케스트레이션. 파이프라인 ⓪~⑥ 실행 + API 10종 제공 | API 10종 구현 완료 |
 | `frontend/` | React + TypeScript 대시보드 3화면 + 근거 모달 | 구현 완료 |
 | `kg_rca/` | GraphRAG. 도메인 문헌 → Neo4j 적재 → LLM KG 추출 → 결정적 순회로 원인 후보 생성 | 완성, 계속 갱신 중 |
 | `secsgem-mcp/` | MCP 서버. SECS/GEM 시뮬레이터가 만든 가상 fab 데이터(`fab.db`)를 9종 도구로 조회 | 완성 |
@@ -114,20 +114,23 @@ pytest -q -m "not data" backend    # 11건 — fab.db 없이 도는 계약 스�
 cd frontend && npm run build       # 타입체크 + 빌드
 ```
 
-## API 8종
+## API 10종
 
-Base URL `http://localhost:8000/api/v1` (+ `GET /health`). 계약 정본은 `docs/API_명세서_v1.0.md`.
+Base URL `http://localhost:8000/api/v1` (+ `GET /health`). 계약 정본은 `docs/API_명세서_v2.0.md`
+(v1.0은 이력 보존용 — 정본 아님).
 
 | 엔드포인트 | 역할 | 화면 |
 |---|---|---|
 | `GET /yield-summary` | 최근 7일 수율 추이(2시리즈) | 1 대시보드 |
-| `GET /analyses` | 분석 결과 대기열 | 1 대시보드 |
+| `GET /analyses` | 분석 결과 대기열 (+confidence·yield_impact) | 1 대시보드 |
 | `POST /batches` | 배치 실행 — 202 즉시 반환, 백그라운드 실행 | 1 대시보드 |
 | `GET /batches/{id}` | 배치 진행 상태 (폴링 대상) | 2 진행 |
-| `GET /analyses/{id}` | 분석 결과 상세 (가설 카드) | 3 결과 |
+| `GET /analyses/{id}` | 분석 결과 상세 (가설 카드·권장 조치) | 3 결과 |
 | `GET /lots/{id}/wafers` | 로트 판독 웨이퍼 목록 | 3 결과 |
 | `GET /lots/{id}/wafers/{wid}/die-map` | 웨이퍼맵 PNG (유일한 비-JSON 응답) | 3 결과 |
 | `GET /analyses/{id}/evidence/{hid}` | 근거 3섹션 | 근거 모달 |
+| `GET /yield-daily` | 일별 수율 전 구간 + 이벤트 오버레이 (v2.0) | 1 대시보드 |
+| `GET /stats/causes` | 장비·원인·패턴 집계 (v2.0) | 1 대시보드 |
 
 **배치가 비동기인 이유**: 파이프라인이 MCP를 수백 번 호출해 수 분씩 걸린다. 동기로 처리하면 화면이
 멈추므로 접수만 하고 즉시 `batch_id`를 반환하고, 프론트가 1.5초 간격으로 폴링해 진행 단계와 도구
@@ -139,7 +142,7 @@ Base URL `http://localhost:8000/api/v1` (+ `GET /health`). 계약 정본은 `doc
 | 궁금한 것 | 문서 |
 |---|---|
 | 백엔드 구조·모듈·설계 포인트·알려진 버그 | `backend/README.md` |
-| API 계약 (정본) | `docs/API_명세서_v1.0.md` |
+| API 계약 (정본) | `docs/API_명세서_v2.0.md` |
 | 개발 규칙·읽기 지도·수정 금지 영역 | `docs/AGENT_GUIDE.md` |
 | 계약 밖 내부 정책 결정 12건 | `docs/BACKEND_DECISIONS.md` |
 | 남은 갭 목록 | `docs/BACKEND_GAP.md` |

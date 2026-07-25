@@ -38,7 +38,7 @@
   함정 P2 시간역전 44건 명시 기각). 처방 4종은 BACKEND_DECISIONS D13~D16. **상세 정본은
   `docs/hypo_critic_설계공유_v1.0.md`(팀 공유)와 `personalspace_rca`의 hypo_critic_py.md·
   terms_of_reference.md·hypo_critic_test_result.md**(그 문서들은 구 번호 ④/⑤로 표기).
-- 정본: `docs/semiconductor_proposal.md`(기획 전체, 배경·차별점·평가방법), `docs/API_명세서_v1.0.md`(프론트↔백엔드 API 계약)
+- 정본: `docs/semiconductor_proposal.md`(기획 전체, 배경·차별점·평가방법), `docs/API_명세서_v2.0.md`(프론트↔백엔드 API 계약 — v1.0은 이력 보존용)
 
 ## 다섯 개의 하위 프로젝트
 
@@ -50,7 +50,7 @@
 | 폴더 | 역할 | 상태 |
 |---|---|---|
 | `frontend/` | React + Vite 대시보드. 3화면 + 근거 모달, dev 서버 `:5173` | 최초 구현 완료 |
-| `backend/` | FastAPI + LangGraph 오케스트레이션. 파이프라인 ⓪~⑦(v1.5 구조) 실행 + API 8종 | v1.5 구조 구현됨(07-23), 계속 갱신 중 |
+| `backend/` | FastAPI + LangGraph 오케스트레이션. 파이프라인 ⓪~⑦(v1.5 구조) 실행 + API 10종 | v1.5 구조 구현됨(07-23), 계속 갱신 중 |
 | `wafer_reading/` | 웨이퍼맵 판독 모듈(07-23 신설, #26·#39) — `classifier/`(ResNet-18 5클래스 학습·추론), `stacking`(그룹 스택맵), `quantitative`(die-matrix→KG 어휘 관측), `vlm/` | 구현됨. 학습 체크포인트는 커밋 금지(재학습으로 재생성) |
 | `kg_rca/` | 지식그래프(KG). 도메인 문헌 → Neo4j 적재 → LLM KG 추출 → 결정적 그래프 순회로 원인 후보(`hypotheses.json`) 생성 | 완성, 계속 갱신 중 |
 | `secsgem-mcp/` | MCP 서버. SECS/GEM 시뮬레이터가 만든 가상 fab 운영 데이터(`fab.db`)를 9종 도구로 조회 | 완성 |
@@ -127,8 +127,9 @@
 WM-811K의 나머지 결함 패턴은 전부 `Unknown`(= "새로운 결함 패턴")으로 처리하고 **`Normal`은 정상 웨이퍼이므로 그룹을 만들지 않는다.**
 KG~응답생성 경로는 3종에만 연결된다.
 
-**API 계약 8종 구현 완료**(2026-07-20 커밋 `32b3690`). 정본은 **`docs/API_명세서_v1.0.md` §2**
-(§2.1~§2.7 — §3.1은 계약이 아니라 "엔드포인트별 에러 요약"이니 헷갈리지 말 것).
+**API 계약 10종 구현 완료**(8종 07-20 커밋 `32b3690` + 차트 2종 07-25 v2.0). 정본은
+**`docs/API_명세서_v2.0.md` §2**(§2.1~§2.9 — §3.1은 계약이 아니라 "엔드포인트별 에러 요약"이니
+헷갈리지 말 것. v1.0 문서는 이력 보존용으로 남아 있으나 정본 아님).
 전부 `/api/v1` prefix, 라우터는 `backend/api/` 하위:
 
 ```
@@ -140,8 +141,15 @@ GET  /api/v1/analyses/{analysis_id}                           분석 결과 상�
 GET  /api/v1/analyses/{analysis_id}/evidence/{hypothesis_id}  근거 상세 (모달)
 GET  /api/v1/lots/{lot_id}/wafers                             로트 웨이퍼맵 판독
 GET  /api/v1/lots/{lot_id}/wafers/{wafer_id}/die-map          웨이퍼맵 이미지
+GET  /api/v1/yield-daily                                      일별 수율+이벤트 오버레이 (v2.0 §2.8)
+GET  /api/v1/stats/causes                                     장비·원인·패턴 집계 (v2.0 §2.9)
 GET  /health                                                  (prefix 밖, main.py 직접)
 ```
+
+v2.0 주요 확장(전부 additive): `status`에 `novel`(CNN Unknown=미지 패턴 OSR — 구 unmapped에서
+분리) · `confidence`(R1, medium|low — high 없음) · `yield_impact`(그룹 수율영향 %p) ·
+`actions`(권장 조치 구조화 {type, hold, text}) · 가설 카드 `cluster_id`/`is_primary`(원인군, R2).
+서버 "오늘"은 `EVENT_DATE`(기본 2026-04-01, env 오버라이드 가능) — 날짜에 now() 금지.
 
 ⚠️ 구 엔드포인트 `POST /batch/run` · `GET /batch/results`는 **삭제됐다**(각각 `POST /api/v1/batches`,
 `GET /api/v1/analyses`로 대체). 옛 문서나 코드 주석에서 보더라도 쓰지 말 것.
@@ -304,7 +312,7 @@ faithfulness / 경로 정합성 / **단일경로 vs 다중가설탐색 RCA 품�
 | 스켈레톤 구축 로그·팀 결정사항·컴포넌트별 개선목록 (가장 자주 갱신) | `docs/skeleton_kickoff.md` |
 | ⑤ Hypothesis·⑥ Critic 설계·검증 전체(팀 공유 정본) | `docs/hypo_critic_설계공유_v1.0.md` (구 번호 ④/⑤로 표기) |
 | 백엔드 내부 정책 결정(D1~D16) | `docs/BACKEND_DECISIONS.md` |
-| 프론트↔백엔드 API 계약 8종(정본) | `docs/API_명세서_v1.0.md` |
+| 프론트↔백엔드 API 계약 10종(정본) | `docs/API_명세서_v2.0.md` |
 | KG 스키마 전체 명세(정본) | `docs/KG_schema_v1.4.md` |
 | `hypotheses.json` 출력 필드별 상세 명세(정본) | `kg_rca/KG_output_명세.md` |
 | KG 진행상황·남은 문제 | `kg_rca/STATUS.md` |

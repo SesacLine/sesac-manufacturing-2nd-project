@@ -61,6 +61,52 @@ def _confidence(accepted: list[dict]) -> str:
         return "medium"
     return "low"
 
+
+# ── 권장 조치(구조화, 와이어프레임 v8 정합) ────────────────────────────────────────────
+# OCAP 취지의 3+1 분류: containment(격리)/corrective(시정)/preventive(예방)/investigation(조사).
+# type은 영문 enum(§3 vocabulary 노선 — 라벨은 프론트 소유), text는 사용자 노출 한국어.
+# hold=True는 "로트 Hold·격리" 성격의 즉시 조치 표시. 전부 결정론적 템플릿(LLM 아님) —
+# AI 제안일 뿐 실행은 엔지니어 판단(와이어프레임 문구와 동일 스탠스).
+
+
+def _group_actions(status: str, pattern: str, lot_count: int, top: dict | None) -> list[dict]:
+    """그룹(분석) 단위 권장 조치 목록. status와 대표 채택 가설(top)에서 결정론적으로 만든다."""
+    hold = {
+        "type": "containment",
+        "hold": True,
+        "text": f"영향 로트 {lot_count}건 Hold·격리 여부 검토 (수율영향 기반 disposition)",
+    }
+    if status == "reviewed" and top is not None:
+        equipment = top.get("equipment") or "의심 장비"
+        return [
+            hold,
+            {"type": "corrective", "hold": False,
+             "text": f"{equipment} 점검 — {top['cause']} 관련 부위·파라미터 확인"},
+            {"type": "preventive", "hold": False,
+             "text": "재발 방지 — 관련 알람 임계·PM 주기 재검토"},
+        ]
+    if status == "insufficient":
+        return [
+            hold,
+            {"type": "investigation", "hold": False,
+             "text": "수동 조사 이관 — 담당 엔지니어 배정"},
+            {"type": "investigation", "hold": False,
+             "text": "후보 장비 정상 로트 표본 확대·텔레메트리 보강 후 재분석"},
+        ]
+    if status == "novel":
+        return [
+            hold,
+            {"type": "investigation", "hold": False,
+             "text": "전문가 재판독 — 신규 패턴 여부 확정"},
+            {"type": "investigation", "hold": False,
+             "text": "신규 패턴 후보 등록 — 데이터 축적 후 재학습 검토"},
+        ]
+    # unmapped: 이상 자체가 매핑 밖(지식 공백) — Hold보다는 온톨로지 확충이 조치.
+    return [
+        {"type": "investigation", "hold": False,
+         "text": f"{pattern} 패턴 원인 매핑(온톨로지) 확충 검토"},
+    ]
+
 # ── 사용자 노출용 그룹 서술(description, API 명세 §2.5) ──────────────────────────────
 # 설계 결정: VLM(노드③)은 **영어 서술만** 생성하고(프롬프트 단순·출력 자연스러움), 한국어 번역은
 # 이 응답 단계에서 한다. 번역기(translate: str→str)는 조립 시점 partial로 주입된다
@@ -136,6 +182,7 @@ def generate_response(state: GroupState, translate=None) -> dict:
         state["group_id"], pattern, lot_ids,
         status="reviewed", reason=None, hypotheses=ordered, summary=summary,
         description=_group_description(state, translate), confidence=confidence,
+        actions=_group_actions("reviewed", pattern, len(lot_ids), accepted[0] if accepted else None),
     )
 
 
@@ -152,8 +199,27 @@ def respond_without_llm(state: GroupState, translate=None) -> dict:
     lot_ids = list(state["lot_ids"])
     description = _group_description(state, translate)
 
-    # UC-3: 애초에 KG 매핑 대상(Center/Edge-Ring/Scratch) 밖이라 후보가 없던 그룹.
+    # 후보 0건 그룹의 판단불가 세분류 (와이어프레임 v8 (a)/(b), API v1.1):
+    #   novel    — CNN이 Unknown(미지 패턴, OSR)으로 판정한 그룹. 억지 분류 대신 abstain —
+    #              이상은 유효하므로 격리+전문가 재판독 대상.
+    #   unmapped — 기지 패턴인데 KG 후보가 없던 그룹(지식 공백). 판독까지만 지원.
     if not state.get("candidates"):
+        if pattern == "Unknown":
+            return _final(
+                group_id,
+                pattern,
+                lot_ids,
+                status="novel",
+                reason=(
+                    "알려진 패턴 어디에도 맞지 않는 새 시각 패턴(open-set) 후보입니다. "
+                    "억지 분류 대신 판단 불가로 처리하며, 이상은 유효하므로 격리·재판독 대상입니다."
+                ),
+                hypotheses=[],
+                summary=f"{pattern} 패턴은 미확인 신규 패턴(OSR) — 전문가 재판독 대상입니다.",
+                description=description,
+                confidence="low",  # R1: 채택 원인 없음 → 불확실
+                actions=_group_actions("novel", pattern, len(lot_ids), None),
+            )
         return _final(
             group_id,
             pattern,
@@ -164,6 +230,7 @@ def respond_without_llm(state: GroupState, translate=None) -> dict:
             summary=f"{pattern} 패턴은 원인 분석 데이터가 없습니다(KG 매핑 대상 3종 밖).",
             description=description,
             confidence="low",  # R1: 채택 원인 없음 → 불확실
+            actions=_group_actions("unmapped", pattern, len(lot_ids), None),
         )
 
     # UC-2: 후보는 있었지만 Critic이 하나도 채택 못 한 경우 — 판단 불가(근거부족).
@@ -182,6 +249,7 @@ def respond_without_llm(state: GroupState, translate=None) -> dict:
         summary=f"{pattern} 패턴은 판단 불가 — 채택 가능한 근거 있는 가설이 없습니다.",
         description=description,
         confidence="low",  # R1: 채택 0건 → 불확실(판단 불가)
+        actions=_group_actions("insufficient", pattern, len(lot_ids), None),
     )
 
 
@@ -196,12 +264,13 @@ def _final(
     summary: str,
     description: str | None,
     confidence: str,
+    actions: list[dict],
 ) -> dict:
     return {
         "final_response": {
             "group_id": group_id,
             "pattern": pattern,
-            "status": status,          # reviewed | insufficient | unmapped (§2.2/§2.5)
+            "status": status,          # reviewed | insufficient | unmapped | novel (§2.2/§2.5, v1.1)
             "reason": reason,
             "lot_ids": lot_ids,
             "lot_count": len(lot_ids),
@@ -209,5 +278,7 @@ def _final(
             "summary": summary,        # 결정론적 템플릿(내부용, LLM 아님)
             "description": description,  # ③VLM(영어) → 한국어 번역, §2.5 (없으면 None → 프론트 summary_line)
             "confidence": confidence,  # R1: medium|low — 확정("high") 없음. 표현 층 불확실 표시
+            # 그룹 단위 권장 조치 [{type, hold, text}] — 결정론적 템플릿(API v1.1, 와이어프레임 v8 정합)
+            "actions": actions,
         }
     }

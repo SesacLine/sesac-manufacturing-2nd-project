@@ -202,7 +202,7 @@ critic_result를 받음
 | 서술(description) 운반·번역 지점 | `response.py::_group_description` |
 | 카드 → API 응답 변환 | `backend/assembler.py::build_analysis_payload` |
 | 어느 경로로 갈지 정하는 곳 | `backend/graph.py::route_on_candidates` · `route_on_verdicts` |
-| 응답 필드 계약(정본) | `docs/API_명세서_v1.0.md` §2.5 |
+| 응답 필드 계약(정본) | `docs/API_명세서_v2.0.md` §2.5 |
 
 ## 부록 B. 용어
 

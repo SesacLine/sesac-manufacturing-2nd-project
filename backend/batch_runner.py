@@ -21,7 +21,7 @@ import sqlite3
 from typing import Any
 
 from . import deps, store
-from .assembler import build_analysis_payload
+from .assembler import build_analysis_payload, compute_yield_impact
 from .config import DATA_EPOCH, EVENT_DATE_COMPACT, fab_db_path
 from .graph import _CURRENT_GROUP, build_graph
 from .graph_client import KGClient
@@ -218,17 +218,43 @@ async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -
     store.finish_batch(batch_id, result_ids)
 
 
+def _defect_date(lot_ids: list[str]) -> str | None:
+    """그룹 로트들의 결함 발생일(데이터축) — EDS 통과일 최댓값. §2.8 이벤트 오버레이의 x좌표.
+
+    벽시계가 아니라 fab.db lot_history에서 읽는다(§1 시각 규약). fab.db가 없으면 None(곱게 무너짐).
+    """
+    if not lot_ids:
+        return None
+    try:
+        con = sqlite3.connect(fab_db_path())
+        try:
+            placeholders = ",".join("?" * len(lot_ids))
+            row = con.execute(
+                f"SELECT MAX(date(ts_out)) FROM lot_history "
+                f"WHERE step = 'EDS' AND lot_id IN ({placeholders})",
+                lot_ids,
+            ).fetchone()
+        finally:
+            con.close()
+        return row[0]
+    except Exception:  # noqa: BLE001 — fab.db 부재/오류 시 이벤트 날짜만 비운다
+        return None
+
+
 def _persist_results(batch_id: str, seq: int, state: dict) -> list[str]:
     """그룹별 final_response를 analysis payload로 조립·저장하고 result_ids를 돌려준다.
 
     같은 정규화 패턴으로 접히는 그룹이 여럿이면(예: 비매핑 결함 여러 종이 전부 Unknown)
-    unmapped끼리는 로트를 합쳐 1건으로 저장한다 — analysis_id가 패턴+배치 단위 유니크라
+    unmapped/novel끼리는 로트를 합쳐 1건으로 저장한다 — analysis_id가 패턴+배치 단위 유니크라
     (§3) 충돌을 피하기 위한 잠정 규칙(BACKEND_DECISIONS.md D4).
+
+    v1.1: yield_impact(⓪ lot_yields 기반)·defect_date(EDS 최종일)·top 필드(장비/공정/등급)·
+    confidence를 함께 저장한다 — §2.2 목록·§2.8/§2.9 차트의 원천.
     """
     by_pattern: dict[str, dict] = {}
     for final in state.get("final_response", {}).values():
         pattern = normalize_pattern(final["pattern"])
-        if pattern in by_pattern and final["status"] == "unmapped":
+        if pattern in by_pattern and final["status"] in ("unmapped", "novel"):
             merged = by_pattern[pattern]
             merged["lot_ids"] = merged["lot_ids"] + final["lot_ids"]
             merged["lot_count"] = len(merged["lot_ids"])
@@ -236,15 +262,22 @@ def _persist_results(batch_id: str, seq: int, state: dict) -> list[str]:
         if pattern not in by_pattern:
             by_pattern[pattern] = dict(final)
 
+    lot_yields = state.get("lot_yields") or {}
     result_ids: list[str] = []
     for pattern, final in by_pattern.items():
         analysis_id = f"grp_{pattern_slug(pattern)}_{EVENT_DATE_COMPACT}_{seq:02d}"
+        # 수율영향은 병합(unmapped/novel) 확정 뒤의 최종 lot_ids로 계산해 payload에 주입한다.
+        final["yield_impact"] = compute_yield_impact(final["lot_ids"], lot_yields)
         payload = build_analysis_payload(analysis_id, final)
         top_cause = (
             payload["hypotheses"][0]["cause"]
             if payload["status"] == "reviewed" and payload["hypotheses"]
             else None
         )
+        # top 가설의 장비/공정/등급 — 차트(§2.8/§2.9) 집계용 비정규화 캐시.
+        # equipment는 §2.5 카드에 없는 내부 필드라 노드 출력(final.hypotheses[0])에서 읽는다.
+        top_node = (final.get("hypotheses") or [{}])[0] if top_cause else {}
+        top_card = payload["hypotheses"][0] if top_cause else {}
         store.save_analysis(
             analysis_id=analysis_id,
             batch_id=batch_id,
@@ -254,6 +287,12 @@ def _persist_results(batch_id: str, seq: int, state: dict) -> list[str]:
             lot_count=payload["lot_count"],
             top_cause=top_cause,
             payload=payload,
+            confidence=payload.get("confidence", "low"),
+            yield_impact=payload.get("yield_impact"),
+            defect_date=_defect_date(final["lot_ids"]),
+            top_equipment=top_node.get("equipment"),
+            top_stage=top_card.get("stage"),
+            top_tier=top_card.get("tier"),
         )
         result_ids.append(analysis_id)
     return result_ids

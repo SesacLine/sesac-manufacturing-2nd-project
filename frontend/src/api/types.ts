@@ -1,7 +1,8 @@
-/** API 계약 타입 — 정본 docs/API_명세서_v1.0.md. 키는 snake_case 그대로 쓴다(§1). */
+/** API 계약 타입 — 정본 docs/API_명세서_v2.0.md. 키는 snake_case 그대로 쓴다(§1). */
 
 export type Pattern = "Center" | "Edge-Ring" | "Scratch" | "Unknown" | "Normal";
-export type AnalysisStatus = "reviewed" | "insufficient" | "unmapped";
+/** v1.1: novel = CNN Unknown(미지 패턴, OSR) — 구 unmapped에서 분리(판단불가 세분류 (b)) */
+export type AnalysisStatus = "reviewed" | "insufficient" | "unmapped" | "novel";
 export type BatchStatus = "running" | "completed" | "failed";
 export type LogStatus = "done" | "running" | "error";
 export type Tier = "auto" | "semi_auto" | "none";
@@ -25,13 +26,15 @@ export interface YieldSummary {
   series: { name: SeriesName; points: (number | null)[] }[];
 }
 
-/** §2.2 */
+/** §2.2 (v1.1: confidence·yield_impact 추가 — 대기열 확신 수준·수율영향 컬럼) */
 export interface AnalysisSummary {
   analysis_id: string;
   pattern: Pattern;
   lot_count: number;
   top_cause: string | null;
   status: AnalysisStatus;
+  confidence: Confidence; // 구 저장분은 서버가 "low" 폴백
+  yield_impact: number | null; // %p (음수 = 라인 평균을 끌어내림). 구 저장분 null
 }
 export interface AnalysisList {
   count: number;
@@ -79,6 +82,14 @@ export interface Hypothesis {
   cluster_id?: string | null; // R2 원인군 묶기 — 같은 값 = fab 증거 동일한 원인군. 없으면 단독
   is_primary?: boolean; // R2 cause 대표 행
 }
+/** v1.1 권장 조치 — type 키는 서버 enum, 한국어 라벨은 ACTION_TYPE_LABELS(프론트 소유) */
+export type ActionType = "containment" | "corrective" | "preventive" | "investigation";
+export interface RecommendedAction {
+  type: ActionType;
+  hold: boolean; // true = 로트 Hold·격리 성격의 즉시 조치
+  text: string;
+}
+
 export interface Analysis {
   analysis_id: string;
   pattern: Pattern;
@@ -86,9 +97,39 @@ export interface Analysis {
   status: AnalysisStatus;
   reason: string | null;
   confidence: Confidence; // R1 확신 수준(불확실 표시) — 구 저장분 대비 서버가 "low" 폴백
+  yield_impact: number | null; // v1.1 그룹 수율영향 %p (Nullable)
+  actions: RecommendedAction[]; // v1.1 권장 조치 (구 저장분 [])
   lot_count: number;
   lot_ids: string[];
   hypotheses: Hypothesis[]; // 받은 순서 신뢰 — index 0이 대표(§2.5 정렬 불변식)
+}
+
+/** §2.8 v1.1 — 일별 수율 + 분석 이벤트 오버레이 */
+export interface YieldDay {
+  date: string;
+  yield: number; // 0~100, 소수 1자리
+}
+export interface YieldEvent {
+  date: string; // defect_date (데이터축 EDS 최종일)
+  analysis_id: string;
+  pattern: Pattern;
+  status: AnalysisStatus;
+  cause: string | null;
+  equipment: string | null;
+  stage: Stage | null;
+  tier: Tier | null;
+  confidence: Confidence;
+}
+export interface YieldDaily {
+  days: YieldDay[];
+  events: YieldEvent[];
+}
+
+/** §2.9 v1.1 — 장비 구성(도넛)·패턴 Pareto·패턴별 채택 원인 집계 */
+export interface CauseStats {
+  equipment: { equipment_id: string; stage: Stage | null; count: number }[];
+  causes: { pattern: Pattern; cause: string; stage: Stage | null; tier: Tier | null; count: number }[];
+  patterns: { pattern: Pattern; wafer_count: number; mapped: boolean }[];
 }
 
 /** §2.6 */

@@ -112,4 +112,5 @@ def test_api_contract_invariants_hold_with_new_routing_in_place():
     assert min(NODE_TO_STEP_INDEX.values()) == 0
 
     hints = typing.get_type_hints(FinalResponse, include_extras=True)
-    assert typing.get_args(hints["status"]) == ("reviewed", "insufficient", "unmapped")
+    # v1.1: novel(미지 패턴 OSR) 추가 — 판단불가 세분류 (b).
+    assert typing.get_args(hints["status"]) == ("reviewed", "insufficient", "unmapped", "novel")
