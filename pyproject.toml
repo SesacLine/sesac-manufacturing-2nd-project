@@ -30,6 +30,8 @@ dependencies = [
     # 공통
     "pydantic>=2.6",
     "python-dotenv>=1.2.2",
+    "langchain>=1.0,<2",  # langfuse.langchain.CallbackHandler가 버전 분기용으로 import
+    "langfuse>=4.14.1",
     "pytest",
     "torch>=2.7,<2.10",
     "torchvision>=0.22,<0.25",
