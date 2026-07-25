@@ -178,6 +178,22 @@ async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -
     # ⑦ description 영어→한국어 번역기 주입(RESPONSE_LLM=1일 때만 실체, 아니면 None=원문 운반).
     graph = build_graph(kg_client, logging_mcp, batch_id=batch_id, translate=deps.response_translator())
 
+    # Langfuse 트레이싱(LANGFUSE_TRACING=1일 때만 실체, 아니면 None). 콜백은 LLM 노드를
+    # 자동 캡처(모델명·토큰·비용·input/output)하고 비-LLM 노드도 span으로 잡는다.
+    # config=None은 LangGraph에서 무해(no-op)라 트레이싱 꺼진 경로는 기존과 동일하다.
+    handler = deps.langfuse_handler()
+    run_config = None
+    if handler is not None:
+        run_config = {
+            "callbacks": [handler],
+            "metadata": {
+                "langfuse_session_id": batch_id,        # 배치 1회 = 세션 1개(그룹 묶기)
+                "langfuse_tags": ["rca-batch"],
+                "cursor_date": cursor_date,
+                "cursor_end": cursor_end,
+            },
+        }
+
     state: dict = {
         "cursor_date": cursor_date,
         "cursor_end": cursor_end,
@@ -195,7 +211,9 @@ async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -
     # delta=None), 바깥 신호만 결과 누적. current_step은 완료 노드의 인덱스로 단조 증가한다.
     # (observe_groups=인덱스3 매핑은 #33/step7 몫 — 지금은 그 자리가 비어 3을 건너뛴다.)
     current_step = 0
-    async for namespace, update in graph.astream(state, stream_mode="updates", subgraphs=True):
+    async for namespace, update in graph.astream(
+        state, stream_mode="updates", subgraphs=True, config=run_config
+    ):
         new_step, delta = process_stream_item(namespace, update, current_step)
         if delta:
             state.update(delta)
