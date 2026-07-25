@@ -132,3 +132,34 @@ def response_translator():
         return llm.invoke(_TRANSLATE_PROMPT.format(text=english)).content.strip()
 
     return translate
+
+
+_langfuse_handler = None
+_langfuse_checked = False   # 결과가 None이어도 유효하므로, "시도했는가"를 따로 기억한다
+
+
+def langfuse_handler():
+    """배치 그래프에 붙일 Langfuse CallbackHandler를 돌려준다.
+
+    LANGFUSE_TRACING=1 + 키(public/secret)가 있을 때만 실체, 아니면 None
+    (트레이싱 완전 비활성 — CI·미설정 환경 무영향, 결정적). response_translator와 같은 관례.
+    핸들러는 get_client() 싱글턴을 공유하므로 앱 전체에서 하나만 만든다.
+    """
+    global _langfuse_handler, _langfuse_checked
+    if _langfuse_checked:
+        return _langfuse_handler
+    _langfuse_checked = True
+
+    if os.getenv("LANGFUSE_TRACING", "").lower() not in ("1", "true", "yes"):
+        return None
+    if not (os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY")):
+        print("[deps] LANGFUSE_TRACING=1 이지만 키가 없음 - 트레이싱 비활성")
+        return None
+    try:
+        # import는 함수 안(지연) — 미설치·미설정 환경에서 deps import 자체가 깨지지 않게.
+        from langfuse.langchain import CallbackHandler
+        _langfuse_handler = CallbackHandler()
+    except Exception as exc:  # noqa: BLE001 — 옵저버빌리티 실패가 배치를 죽이면 안 됨
+        print(f"[deps] Langfuse 초기화 실패({exc!r}) - 트레이싱 비활성")
+        _langfuse_handler = None
+    return _langfuse_handler
