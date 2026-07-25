@@ -189,7 +189,8 @@ class FinalResponse(TypedDict):
 
     group_id: str
     pattern: str
-    status: Literal["reviewed", "insufficient", "unmapped"]
+    # novel(v1.1) = CNN Unknown(미지 패턴, OSR) 그룹 — 구 unmapped에서 분리(판단불가 세분류 (b)).
+    status: Literal["reviewed", "insufficient", "unmapped", "novel"]
     reason: str | None
     lot_ids: list[str]
     lot_count: int
@@ -197,6 +198,7 @@ class FinalResponse(TypedDict):
     summary: str                                 # 결정론적 템플릿 요약(내부용, LLM 아님 — 확정)
     description: str | None                       # ③VLM 실생성 서술(한국어 번역). 없으면 None → 프론트 summary_line
     confidence: Literal["medium", "low"]         # R1: 확신 수준(불확실 표시). "high"(확정) 없음 — RCA 스코프=가설
+    actions: list[dict]                          # 그룹 권장 조치 [{type: containment|corrective|preventive|investigation, hold, text}] (v1.1)
 
 
 def merge_by_group(old: dict, new: dict) -> dict:
@@ -246,6 +248,8 @@ class RCAState(TypedDict):
     cursor_date: str
     cursor_end: str
     target_lot_ids: list[str]
+    # ⓪이 함께 내보내는 창 전체 로트 수율 맵(lot_id→0~1) — 그룹별 yield_impact 계산 원천.
+    lot_yields: NotRequired[dict[str, float]]
     cnn_results: list[CNNResult]  # 구 vlm_results — 생산자가 ① CNN(cnn.py)이 되며 키·타입 함께 개명(07-24)
     groups: list[Group]
     # ② grouper 산출(이슈 #69): 다수결이 Normal인 로트 — 저수율인데 판독상 정상(맵 비가시

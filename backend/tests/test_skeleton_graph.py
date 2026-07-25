@@ -100,7 +100,8 @@ def test_subgraph_unmapped_path_routes_to_respond_without_llm():
     }
     out = asyncio.run(sub.ainvoke(gstate))
     final = out["final_response"]
-    assert final["status"] == "unmapped"
+    # v1.1: Unknown(미지 패턴)은 unmapped에서 novel로 분리됐다(판단불가 세분류 (b), OSR).
+    assert final["status"] == "novel"
     assert final["hypotheses"] == []
     assert final["pattern"] == "Unknown"
     assert final["lot_ids"] == ["L1"]

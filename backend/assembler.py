@@ -14,6 +14,24 @@ from .schemas import normalize_pattern, normalize_tier
 _NORMAL_RATIO_WEAK_THRESHOLD = 0.5
 
 
+def compute_yield_impact(lot_ids: list[str], lot_yields: dict[str, float]) -> float | None:
+    """그룹의 수율영향(%p) — "이 그룹 로트들이 창 라인평균을 몇 %p 끌어내렸나".
+
+    계산식(확정): impact = Σ_{lot∈group}(y_lot − ȳ_window) / N_window × 100
+      · ȳ_window = 커서 창 전체 로트(정상 포함) 수율 단순평균, N_window = 창 전체 로트 수
+      · "그룹 로트들을 평균 수율로 치환했을 때 대비 라인 평균이 얼마나 낮아졌나"의 정확한 분해 —
+        그룹별 impact 합 ≈ 전체 저수율 그룹이 만든 평균 하락분이라 그룹 간 비교·정렬에 정합.
+      · 저수율 그룹은 음수(예: -3.8). 소수 1자리 반올림.
+    창 밖 로트(수율 미상)는 건너뛴다. 창 데이터가 없으면 None(§2.2/§2.5 Nullable).
+    """
+    if not lot_yields:
+        return None
+    n_window = len(lot_yields)
+    window_avg = sum(lot_yields.values()) / n_window
+    delta = sum(lot_yields[l] - window_avg for l in lot_ids if l in lot_yields)
+    return round(delta / n_window * 100, 1)
+
+
 def build_analysis_payload(analysis_id: str, final: dict) -> dict:
     """final_response[group_id] 1건을 §2.5 응답 + 가설별 §2.7 근거로 조립한다.
 
@@ -39,6 +57,10 @@ def build_analysis_payload(analysis_id: str, final: dict) -> dict:
         # ⑤/⑥ 게이트가 못 거른 환각을 프론트가 "단정하지 않음"으로 표현하게 하는 신호(eval R1·B1).
         # 구 저장분엔 없을 수 있어 기본 "low"(가장 보수적) 폴백.
         "confidence": final.get("confidence", "low"),
+        # v1.1: 그룹 수율영향(%p, Nullable) — compute_yield_impact 결과를 batch_runner가 주입.
+        "yield_impact": final.get("yield_impact"),
+        # v1.1: 그룹 권장 조치 [{type, hold, text}] — ⑦ 결정론적 템플릿(_group_actions).
+        "actions": final.get("actions", []),
         "lot_count": final["lot_count"],
         "lot_ids": final["lot_ids"],
         "hypotheses": hypotheses_out,

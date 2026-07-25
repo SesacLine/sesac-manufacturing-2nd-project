@@ -75,6 +75,11 @@ EXPECTED_UNMAPPED = {
         # 테스트 state에 observation이 없어 영어 서술 소스가 없음 → 한국어 description도 None
         "description": None,
         "confidence": "low",  # R1: 채택 원인 없음(unmapped) → 불확실
+        # v1.1 권장 조치 — unmapped(지식 공백)는 온톨로지 확충 조사만
+        "actions": [
+            {"type": "investigation", "hold": False,
+             "text": f"{PATTERN} 패턴 원인 매핑(온톨로지) 확충 검토"},
+        ],
     }
 }
 
@@ -99,6 +104,15 @@ EXPECTED_INSUFFICIENT = {
         # 테스트 state에 observation이 없어 영어 서술 소스가 없음 → 한국어 description도 None
         "description": None,
         "confidence": "low",  # R1: 채택 0건(insufficient) → 불확실
+        # v1.1 권장 조치 — insufficient(NFF)는 격리 + 수동 조사
+        "actions": [
+            {"type": "containment", "hold": True,
+             "text": f"영향 로트 {len(LOT_IDS)}건 Hold·격리 여부 검토 (수율영향 기반 disposition)"},
+            {"type": "investigation", "hold": False,
+             "text": "수동 조사 이관 — 담당 엔지니어 배정"},
+            {"type": "investigation", "hold": False,
+             "text": "후보 장비 정상 로트 표본 확대·텔레메트리 보강 후 재분석"},
+        ],
     }
 }
 
@@ -145,6 +159,15 @@ EXPECTED_REVIEWED = {
         ),
         "description": None,                  # observation 없음 → None
         "confidence": "low",                  # R1: evidence 없음 → 불확실
+        # v1.1 권장 조치 — reviewed는 격리 + 대표 가설 기반 시정 + 예방
+        "actions": [
+            {"type": "containment", "hold": True,
+             "text": f"영향 로트 {len(LOT_IDS)}건 Hold·격리 여부 검토 (수율영향 기반 disposition)"},
+            {"type": "corrective", "hold": False,
+             "text": "EQ-9 점검 — cause-X 관련 부위·파라미터 확인"},
+            {"type": "preventive", "hold": False,
+             "text": "재발 방지 — 관련 알람 임계·PM 주기 재검토"},
+        ],
     }
 }
 

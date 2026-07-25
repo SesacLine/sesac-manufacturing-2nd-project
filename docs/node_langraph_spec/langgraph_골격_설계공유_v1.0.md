@@ -219,4 +219,4 @@
 | 파이프라인 전체 개요 | 루트 `CLAUDE.md` "파이프라인" 절 |
 | 골격 이전에 재작성된 ⑤·⑥ 노드 설계 | `docs/hypo_critic_설계공유_v1.0.md` |
 | 내부 정책 결정 이력 | `docs/BACKEND_DECISIONS.md` |
-| 프론트↔백엔드 API 계약(이번 변경 없음) | `docs/API_명세서_v1.0.md` |
+| 프론트↔백엔드 API 계약(이번 변경 없음) | `docs/API_명세서_v2.0.md` |

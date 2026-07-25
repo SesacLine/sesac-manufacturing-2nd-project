@@ -2,6 +2,7 @@
  *  매핑에 없는 키는 raw id를 그대로 표시한다(열린 문자열 fallback — §2.4 "절대 하지 말 것"). */
 
 import type {
+  ActionType,
   AnalysisStatus,
   BatchStatus,
   Confidence,
@@ -49,6 +50,7 @@ export const STATUS_LABELS: Record<AnalysisStatus, string> = {
   reviewed: "검토완료",
   insufficient: "판단불가",
   unmapped: "미매핑",
+  novel: "신규 패턴", // v1.1 — 미확인 신규 패턴(OSR), 격리·재판독 대상
 };
 
 export const BATCH_STATUS_LABELS: Record<BatchStatus, string> = {
@@ -73,6 +75,14 @@ export const TIER_LABELS: Record<Tier, string> = {
 export const CONFIDENCE_LABELS: Record<Confidence, string> = {
   medium: "잠정 지지",
   low: "불확실",
+};
+
+/** v1.1 권장 조치 type 라벨 — OCAP 취지의 3+1 분류(와이어프레임 v8) */
+export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
+  containment: "① 격리 — 지금 확산 차단 (Containment)",
+  corrective: "② 시정 — 원인 제거 (Corrective)",
+  preventive: "③ 예방 — 재발 방지 (Preventive)",
+  investigation: "추가 조사 (Investigation)",
 };
 
 export const REASON_LABELS: Record<UnavailableReason, string> = {

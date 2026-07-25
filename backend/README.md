@@ -1,23 +1,24 @@
 # backend — FastAPI + LangGraph
 
-RCA 파이프라인 ⓪~⑥ 실행과 API 8종 제공. 프로젝트 전체 소개·설치·실행은 루트 `README.md`,
-API 계약 정본은 `docs/API_명세서_v1.0.md`를 본다. 이 문서는 **백엔드 내부 구조와 주의점**만 다룬다.
+RCA 파이프라인 ⓪~⑥ 실행과 API 10종 제공. 프로젝트 전체 소개·설치·실행은 루트 `README.md`,
+API 계약 정본은 `docs/API_명세서_v2.0.md`를 본다. 이 문서는 **백엔드 내부 구조와 주의점**만 다룬다.
 
 ## 모듈 구조
 
 ```
 backend/
   main.py            # 앱 조립만 (CORS·/api/v1 prefix·라우터 등록·저장소 초기화)
-  api/               # 계약 라우트 8종 — 엔드포인트는 전부 여기
+  api/               # 계약 라우트 10종 — 엔드포인트는 전부 여기
     yield_summary.py  # GET /yield-summary                                  §2.1
     analyses.py       # GET /analyses · /{id} · /{id}/evidence/{hid}        §2.2·2.5·2.7
     batches.py        # POST /batches · GET /batches/{id}                   §2.3·2.4
     lots.py           # GET /lots/{id}/wafers · .../die-map                 §2.6·2.6.1
+    charts.py         # GET /yield-daily · GET /stats/causes                §2.8·2.9 (v2.0)
   batch_runner.py    # 배치 백그라운드 실행 + 진행/로그 방출 + 결과 저장
-  assembler.py       # 파이프라인 결과 → API 응답(§2.5+§2.7) 조립
+  assembler.py       # 파이프라인 결과 → API 응답(§2.5+§2.7) 조립 + yield_impact 계산
   store.py           # app_state.db 접근 (batch·analysis·wafer_reading·cursor)
   schemas.py         # enum 정규화(tier 한글→영문, pattern 5종) + steps 8키 매핑
-  config.py          # EVENT_DATE(2026-04-01) 등 상수
+  config.py          # EVENT_DATE(기본 2026-04-01, env 오버라이드 가능) 등 상수
   deps.py            # KGClient·MCPClient 싱글턴
   state.py           # RCAState — 파이프라인 전체가 공유하는 상태 타입
   graph.py           # LangGraph StateGraph 조립 + _run_per_group(그룹 순회)
