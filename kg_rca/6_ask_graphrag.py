@@ -295,9 +295,13 @@ LEGEND = """검증 등급 — 'fab.db에 있느냐'가 아니라 '에이전트�
 # 표의 cause id(cmp_pad_wear)와 추출된 Cause(pad_condition_degrades)는 어휘가 달라
 # 순수 유사도로는 못 잇는다 — 그 간극을 메우는 매칭 키워드는 아래 상수로 KG 모듈이 소유한다.
 # 표에 항목이 늘면 여기 키워드만 추가하면 된다 (키 = 표의 cause id).
+#
+# 소유가 MCP 쪽이므로 **원본을 직접 읽는다**(kg_rca에 사본을 두지 않는다 — 사본은 표류한다).
+# KG가 쓰는 필드는 cause·telemetry_signature(param/drift)·process·prob·citation 뿐이고,
+# 시뮬레이터 전용 필드(part·maint_event·shape)는 읽지 않는다.
 # =========================
 
-MAPPING_PATH = BASE_DIR / "mapping_table.yaml"
+MAPPING_PATH = BASE_DIR.parent / "secsgem-mcp" / "simulator" / "mapping_table.yaml"
 
 # 표의 cause id -> 추출된 Cause를 잇는 매칭 표현들 (소문자, 공백 구분)
 MAPPING_MATCH_KEYWORDS: dict[str, list[str]] = {
