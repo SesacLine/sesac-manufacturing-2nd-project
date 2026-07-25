@@ -14,3 +14,9 @@ jobs:
       # 테스트는 secsgem-mcp 안에서 — 테스트가 simulator/*.yaml 등 상대경로를 읽어 cwd 의존적임
       - run: pytest -q -m "not data"
         working-directory: secsgem-mcp
+      # backend·kg_rca는 위 스텝이 커버하지 못한다(cwd≠rootdir이라 pytest가 testpaths를 무시).
+      # 지금까지 무게이트였으므로 우선 관찰 모드로 켜고, ubuntu에서 안정 확인 후 게이트로 승격한다.
+      - name: backend + kg_rca tests (observe only)
+        if: always()
+        run: pytest -q -m "not data" backend/tests kg_rca/tests
+        continue-on-error: true
