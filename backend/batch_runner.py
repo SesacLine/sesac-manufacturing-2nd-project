@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import inspect
+import logging
 import sqlite3
 from typing import Any
 
@@ -27,6 +28,8 @@ from .graph import _CURRENT_GROUP, build_graph
 from .graph_client import KGClient
 from .mcp_client import MCPClient
 from .schemas import NODE_TO_STEP_INDEX, normalize_pattern, pattern_slug
+
+logger = logging.getLogger(__name__)
 
 # create_task로 띄운 배치 태스크가 GC로 사라지지 않게 참조를 붙잡아 둔다.
 _running_tasks: set[asyncio.Task] = set()
@@ -169,6 +172,16 @@ async def run_batch(batch_id: str, kg_client: KGClient, mcp: MCPClient) -> None:
             {"time": _now_hms(), "tool": "pipeline", "message": str(exc), "status": "error"},
         )
         store.fail_batch(batch_id, f"배치 실행 실패 — {exc}")
+    finally:
+        # run_batch는 create_task로 뜬 장수 백그라운드 코루틴이라 프로세스 종료 훅에 안 걸린다.
+        # 배치가 끝날 때(성공/실패 무관) 잔여 트레이스를 강제 전송해 마지막 트레이스 유실을 막는다.
+        # shutdown()이 아니라 flush() — 서버는 계속 살아 다음 배치도 트레이싱해야 하므로 안 닫는다.
+        if deps.langfuse_handler() is not None:   # 트레이싱 off면 get_client() 초기화도 건드리지 않는다
+            try:
+                from langfuse import get_client
+                get_client().flush()
+            except Exception:   # noqa: BLE001 — flush 실패가 배치 결과를 삼키면 안 됨
+                logger.warning("Langfuse flush 실패(무시)")
 
 
 async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -> None:
