@@ -66,6 +66,11 @@
   "조사하지 못했다"는 사실을 그대로 기록한 것이지 오류가 아니다.
 - 모든 행에 `cluster_id`(str)·`is_primary`(bool)가 붙는다. `자동` 등급 조사 행에는
   `rationale`(LLM 서술)이 붙는다.
+- **⚠️ `evidence.commonality_ratio`와 `evidence.direction_match`는 0726부터 채택을 좌우한다.**
+  ⑥의 인과 서명 규칙(P6)이 이 둘을 읽어 `공통률 1.0 AND direction_match is True`가 아니면
+  기각한다(`node_spec_06_critic.md` §4-5). 전에는 근거 모달 표시용 참고 필드였지만 지금은
+  **하드 계약**이다 — 조사된(`investigated=True`) 행에서 이 둘이 비면 그 후보는 채택될 수 없다.
+  pre-pass가 suspect를 못 잡아 `commonality_ratio`가 `None`으로 남는 경우가 그 예다.
 - **내가 건드리지 않는 키**: `critic_result`, `final_response`.
 
 ### 1-3. 새로 도입/변경한 필드 (`state.py`)
@@ -187,6 +192,13 @@ build_hypotheses(candidates, lot_ids, mcp)
 - **선택**: 실측 방향(`_drift_direction`)과 KG 예상 방향을 대조(`_direction_match`)한다. 어느
   한쪽이라도 불확실하면 판정하지 않고 `None`으로 둔다("확실할 때만 판정" 원칙).
 - **되돌릴 조건**: KG가 방향을 안 준 후보(`direction=null`)는 여전히 판정 불가(n/a)로 남는다.
+- **0726 승격 — 이 필드의 무게가 달라졌다**: `direction_match`는 랭킹 보조 신호였다가 ⑥ P6의
+  **채택 조건**이 됐다(`node_spec_06_critic.md` §4-5). 그래서 `None`("확실할 때만 판정"의 산물)이
+  이제 **채택 불가**를 뜻한다. 이 보수적 기본값이 환각 억제에 그대로 기여한다 — 음성 시나리오
+  UNMATCHED-02에서 공통률 1.0 · 이탈 지속 99% · 특이성 0.76인 최강 노이즈 행이, 오직 KG가 방향을
+  안 줬다는 이유로 막혔다. 다만 대가가 있다: 자동 tier 중 방향 보유율이 **Center 83% · Scratch 95% ·
+  Edge-Ring 76%**라, 방향 없는 후보는 진짜 원인이어도 채택될 수 없다. **KG의 `direction` 채움률이
+  곧 시스템 성능 상한**이 됐다(KG 팀 요청 사항).
 
 ---
 
@@ -224,10 +236,14 @@ build_hypotheses(candidates, lot_ids, mcp)
 - **단위 테스트**: `backend/tests/test_hypothesis_agent.py`(테스트 함수 17개). 배치 판정 분배,
   방향 대조, 클러스터 주석, 재랭킹 5단 키(특이성 포함), 스텝 상한 초과 시 미조사 폴백, 시간창 계산을 고정한다.
   fab.db 없이 mock으로 실행된다(`pytest -q -m "not data"` = CI와 동일 조건).
+- **E2E**: ground truth **11개 전량 실행 완료(0726)** — 3개 패턴 + 음성 2건.
+  `backend/tests/eval_hypocritic_scenario.py`(실LLM+실MCP 수동 하네스), 결과는
+  `personalspace_rca/0725 work/hypo_critic_test_result.md`. 재랭킹(B2 포함)이 정답을 상위로
+  올리는지, 방향 대조가 경쟁 가설을 가르는지가 여기서 확인된다.
 - **아직 검증 못 한 케이스**:
   - `반자동` 실제 조사 경로(현재는 전원 판단 보류로만 나감).
-  - Edge-Ring/Scratch E2E(지금은 SC-CENTER-01 1개 시나리오만 실행).
   - 실제 LLM이 여러 후보의 `rationale`을 어떻게 분담하는지(현재 배치 1루프가 서술을 공유).
+  - 단일경로 vs 다중가설 baseline 비교(기획안 §10 핵심 실험) — 미착수.
 
 ---
 
@@ -235,10 +251,11 @@ build_hypotheses(candidates, lot_ids, mcp)
 
 | # | 항목 | 내 제안 | 결정 필요 |
 |---|---|---|---|
-| 1 | `반자동` 실제 판정 경로 없음(전원 보류) | Maintenance 텍스트 판정 주체(사람 API vs LLM 의미매칭) 결정 후 구현 | **팀 안건** |
-| 2 | `drift=False`(정상범위 안)도 채택되는 기준 — 채택 수가 많음 | 반대증거 게이트(`normal_ratio` 임계) 도입 검토 | **팀 안건** |
+| 1 | `반자동` 실제 판정 경로 없음(전원 보류) | Maintenance 텍스트 판정 주체(사람 API vs LLM 의미매칭) 결정 후 구현. 붙는 시점에 ⑥ P6를 **tier 조건부**로 바꿔야 한다(정비 근거엔 telemetry 방향이 없다) | **팀 안건** |
+| 2 | ~~`drift=False`도 채택되는 기준 — 채택 수가 많음~~ | **✅ 0726 해소** — ⑥ 인과 서명(P6)이 `direction_match is True`를 요구한다. 채택 353→49건 | 완료 |
 | 3 | 라이브 KG 경로(LiveKGClient)엔 `matched_cause`/`mapped_process`가 없음 | 조회 시점에 계산하도록 설계 | 후속 이슈 |
-| 4 | 시나리오 10개 잔여 + 단일경로 baseline 비교(기획안 §10 핵심 실험) | 다음 작업으로 진행 | 다음 작업 |
+| 4 | ~~시나리오 10개 잔여~~ → **11개 전량 완료(0726)**. 단일경로 baseline 비교(기획안 §10 핵심 실험)는 미착수 | baseline 비교를 다음 작업으로 | 다음 작업 |
+| 5 | **KG `direction` 채움률이 성능 상한이 됐다**(§4-5) | 자동 tier 방향 보유: Center 83% · Scratch 95% · Edge-Ring 76%. 방향 없는 후보는 채택 불가 | **KG 팀 요청** |
 
 ---
 

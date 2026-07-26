@@ -42,7 +42,7 @@
     **⑤ Hypothesis / ⑥ Critic**이다(④는 KG 조회). 07-23 이전 문서·주석의 "④/⑤"는 구 번호다.
 - **Hypothesis·Critic 갱신(2026-07-23, 현행 번호 ⑤/⑥)**: 스켈레톤을 크게 벗어났다. ⑤는 자동 tier
   LLM 그룹 조사관(배치 telemetry)·방향 대조·cause 클러스터·**fab 재랭킹**·스텝 상한까지, ⑥은
-  4규칙 + `investigated` 소비(judge_unknown 분기)까지 구현됨(슬라이스2 S2-1~6). 이어 ground truth
+  **6규칙**(07-26 P6 인과 서명 추가) + `investigated` 소비(judge_unknown 분기)까지 구현됨(슬라이스2 S2-1~6). 이어 ground truth
   E2E 평가(슬라이스3)로 **SC-CENTER-01 근본원인 top-1 달성**(정답 193위 rejected → 0위 accepted,
   함정 P2 시간역전 44건 명시 기각). 처방 4종은 BACKEND_DECISIONS D13~D16. **상세 정본은
   `docs/node_langraph_spec/node_spec_05_hypothesis.md`·`node_spec_06_critic.md`**(구

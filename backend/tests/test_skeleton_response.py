@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import inspect
 
-from backend.nodes.critic import TOKEN_SEMI_AUTO_PENDING, TOKEN_TIME_ORDER
+from backend.nodes.critic import TOKEN_NO_CAUSAL_SIGNATURE, TOKEN_SEMI_AUTO_PENDING, TOKEN_TIME_ORDER
 
 GROUP_ID = "grp-Center-2026-07-23"
 PATTERN = "Center"
@@ -296,17 +296,21 @@ def test_ordered_hypotheses_accepted_first_then_rejected_with_hids_and_verdicts(
     rejected = [
         {"cause": "R_time", "reject_token": TOKEN_TIME_ORDER, "reject_reason": "시간역전"},
         {"cause": "R_semi", "reject_token": TOKEN_SEMI_AUTO_PENDING, "reject_reason": "보류"},
+        # P6는 반박(rejected)이지 보류(judge_unknown)가 아니다 — 공통률 미달·방향 불일치는
+        # "안 봤다"가 아니라 적극적 반대 증거. 보류 버킷에 잘못 넣으면 환각 억제가 반감된다.
+        {"cause": "R_causal", "reject_token": TOKEN_NO_CAUSAL_SIGNATURE, "reject_reason": "인과 서명 없음"},
     ]
     ordered = _ordered_hypotheses({"accepted": accepted, "rejected": rejected})
 
     # 채택이 전부 앞, 비채택이 전부 뒤 (대표=index 0 = 첫 accepted)
-    assert [h["cause"] for h in ordered] == ["A0", "A1", "R_time", "R_semi"]
-    assert [h["hypothesis_id"] for h in ordered] == ["h0", "h1", "h2", "h3"]
-    assert [h["verdict"] for h in ordered] == ["accepted", "accepted", "rejected", "judge_unknown"]
+    assert [h["cause"] for h in ordered] == ["A0", "A1", "R_time", "R_semi", "R_causal"]
+    assert [h["hypothesis_id"] for h in ordered] == ["h0", "h1", "h2", "h3", "h4"]
+    assert [h["verdict"] for h in ordered] == ["accepted", "accepted", "rejected", "judge_unknown", "rejected"]
     # accepted는 verdict_reason 없음, 비채택은 reject_reason을 싣는다
     assert ordered[0]["verdict_reason"] is None and ordered[1]["verdict_reason"] is None
     assert ordered[2]["verdict_reason"] == "시간역전"
     assert ordered[3]["verdict_reason"] == "보류"
+    assert ordered[4]["verdict_reason"] == "인과 서명 없음"
 
 
 # ── 갭3: critic_result None 방어경로 → 빈 배열 ──────────────────────────────────────────

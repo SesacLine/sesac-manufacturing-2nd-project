@@ -53,9 +53,35 @@ def verdict_of(h: dict) -> str:
     return "judge_unknown" if h["reject_token"] in _JUDGE_UNKNOWN_TOKENS else "rejected"
 
 
-def trap_equipments(gt: dict) -> list[str]:
+def _trap_tokens(gt: dict) -> list[str]:
     """traps_to_reject 문자열에서 장비 토큰(':' 앞)을 뽑는다. 예: 'LITHO-01: ...' → 'LITHO-01'."""
     return [t.split(":", 1)[0].strip() for t in gt.get("traps_to_reject", [])]
+
+
+def _cause_site_equipments(gt: dict) -> set[str]:
+    return {s[0] for s in (gt.get("cause_sites") or [])}
+
+
+def trap_equipments(gt: dict) -> list[str]:
+    """장비 단위 함정 — **cause_sites 장비는 제외**한다.
+
+    함정이 장비가 아니라 그 장비의 특정 이벤트인 경우가 있다(SCRATCH-01의
+    "CMP-02: 종결 교체(t0+9d)를 원인으로 오독 금지" — CMP-02는 정답 장비다).
+    장비 단위로 함정 취급하면 정답 행이 통째로 ⚠함정으로 오분류된다(0726 오경보 수정).
+    이벤트형 함정은 event_trap_equipments로 분리해 별도 표시한다.
+    """
+    site_eq = _cause_site_equipments(gt)
+    return [e for e in _trap_tokens(gt) if e not in site_eq]
+
+
+def event_trap_equipments(gt: dict) -> list[str]:
+    """이벤트형 함정(정답 장비와 겹침) — 장비 단위 판정 대상이 아니다.
+
+    이 장비의 행이 채택되는 것 자체는 정상(정답 장비니까). 봐야 할 건 "결함 이후의
+    정비 이벤트를 원인으로 삼았는가"이고, 그건 ① 시간정합(P2_TIME_ORDER)이 잡는다.
+    """
+    site_eq = _cause_site_equipments(gt)
+    return [e for e in _trap_tokens(gt) if e in site_eq]
 
 
 def install_firewall_spy(mcp) -> dict:
@@ -145,6 +171,47 @@ async def main() -> None:
         print(f"  {i:>2} {_fnum(ev.get('commonality_ratio')):>5} {_fnum(ev.get('normal_ratio')):>5} "
               f"{persist:>5} {maxdev:>8} {_fnum(ev.get('specificity')):>6}  "
               f"{h.get('cluster_id')} / {h.get('matched_cause')}")
+
+    # --- ⑦ 표현층 신호 (0726 보강) ---
+    # R1 confidence(#71/#78)는 _confidence()가 accepted 규모로 정한다(_MANY_ACCEPTED=3 이하 + 강지지
+    # 1건 이상일 때만 medium). 실측 채택이 25~37건이라 medium 분기가 사실상 무발화 → 정답 배치와
+    # 환각 배치가 똑같이 low로 붙는다. 그 규모를 같이 찍어 임계 재설정의 근거를 남긴다.
+    # 장비·클러스터 종수는 "정답은 수렴하고 환각은 흩어지는가"(B1 조합신호 옵션 a) 재료.
+    accepted_rows = [h for h in ordered if verdict_of(h) == "accepted"]
+    n_equip = len({h.get("equipment") for h in accepted_rows})
+    n_cluster = len({h.get("cluster_id") for h in accepted_rows})
+    print("\n=== ⑦ 표현층 ===")
+    print(f"  confidence={final.get('confidence')}  "
+          f"(accepted {len(accepted_rows)}건 / 장비 {n_equip}종 / 클러스터 {n_cluster}종)")
+    print(f"  actions: {[a.get('type') for a in (final.get('actions') or [])]}")
+
+    # --- B1 조합게이트 가설 시뮬레이션 (0726) ---
+    # 처방설계 §5에서 단일 신호 게이트는 전부 기각됐다(특이성 단독 → CENTER-03 정답 사망,
+    # 공통률 단독 → UNMATCHED-02 우연 1.0에 뚫림). 아직 시험 안 된 건 **결합**이다:
+    #   comm == 1.0  AND  direction_match == True
+    # 실제로 코드를 바꾸기 전에 "이 게이트를 걸었다면 어떻게 됐을까"만 계산해 찍는다(행위 무변경).
+    #   - 통과 0건  → status가 insufficient로 떨어졌을 것(unmatched에서 이게 나와야 환각 억제)
+    #   - 정답 포함 → 정답을 죽이지 않음(matched에서 이게 나와야 함)
+    #   - 함정 포함 → 게이트가 함정을 통과시킴(이러면 이 방향도 기각)
+    def _passes_gate(h: dict) -> bool:
+        ev = h.get("evidence") or {}
+        cr = ev.get("commonality_ratio")
+        return cr is not None and cr >= 0.999 and ev.get("direction_match") is True
+
+    gate_rows = [h for h in accepted_rows if _passes_gate(h)]
+    gate_causes = sorted({str(h.get("matched_cause")) for h in gate_rows})
+    gate_equips = sorted({str(h.get("equipment")) for h in gate_rows})
+    gate_traps = sorted({str(h.get("equipment")) for h in gate_rows if h.get("equipment") in traps})
+    gate_has_true = any(h.get("matched_cause") in true_causes for h in gate_rows) if true_causes else False
+    print("\n=== B1 조합게이트 시뮬레이션 (comm==1.0 AND direction_match) ===")
+    print(f"  통과 {len(gate_rows)}/{len(accepted_rows)}건  장비={gate_equips}  matched_cause={gate_causes}")
+    if true_causes:
+        print(f"  정답 보존: {gate_has_true}" + ("" if gate_has_true else "  ⚠ 게이트가 정답을 죽임 → 이 방향 기각"))
+    else:
+        print(f"  기대: 통과 0건(=insufficient로 전환)  실제: {len(gate_rows)}건"
+              + ("  ✅ 환각 차단" if not gate_rows else "  ❌ 게이트 뚫림"))
+    if gate_traps:
+        print(f"  ⚠ 함정이 게이트 통과: {gate_traps} → 이 방향 재검토 필요")
 
     # --- 진단 지표 (S3-3a 보강: 정답 덤프·시간재료·집계) ---
     print("\n=== 진단 ===")
@@ -240,6 +307,14 @@ async def main() -> None:
                   + (f" (예: {with_mts[0]})" if with_mts else "  ⚠ PM 미수집 → P2 비교 재료 부재"))
     else:
         print("② 함정 없음(이 시나리오)")
+
+    # ②' 이벤트형 함정 — 정답 장비 위의 특정 이벤트 오독(예: 결함 이후의 종결 교체를 원인으로).
+    # 장비 채택은 정상이므로 채택 여부로 판정하지 않고, P2 시간정합이 발화했는지만 본다.
+    for t in event_trap_equipments(gt):
+        rows = [h for h in ordered if h.get("equipment") == t]
+        p2 = sum(1 for h in rows if h.get("reject_token") == "P2_TIME_ORDER")
+        print(f"②' 이벤트형 함정 {t}(정답 장비 겸용): {len(rows)}건 중 P2 시간역전 기각 {p2}건"
+              + ("  ✅ 사후 이벤트 방어 작동" if p2 else "  ⚠ P2 무발화 — 시간 방어 재료 확인 필요"))
 
     # ③ suspect 확정 여부 (전부 None이면 데이터 정합 문제)
     with_equip = [h for h in ordered if h.get("equipment")]
