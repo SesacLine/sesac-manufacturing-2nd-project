@@ -15,8 +15,10 @@ run_batch는:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import datetime
 import inspect
+import logging
 import sqlite3
 from typing import Any
 
@@ -29,6 +31,8 @@ from .mcp_client import MCPClient
 # ⑦ 노드를 타지 않는 normal_reading(#69)도 같은 조치 템플릿을 쓴다(문구 단일 소스).
 from .nodes.response import group_actions
 from .schemas import NODE_TO_STEP_INDEX, normalize_pattern, pattern_slug
+
+logger = logging.getLogger(__name__)
 
 # create_task로 띄운 배치 태스크가 GC로 사라지지 않게 참조를 붙잡아 둔다.
 _running_tasks: set[asyncio.Task] = set()
@@ -171,6 +175,20 @@ async def run_batch(batch_id: str, kg_client: KGClient, mcp: MCPClient) -> None:
             {"time": _now_hms(), "tool": "pipeline", "message": str(exc), "status": "error"},
         )
         store.fail_batch(batch_id, f"배치 실행 실패 — {exc}")
+    finally:
+        # run_batch는 create_task로 뜬 장수 백그라운드 코루틴이라 프로세스 종료 훅에 안 걸린다.
+        # 배치가 끝날 때(성공/실패 무관) 잔여 트레이스를 강제 전송해 마지막 트레이스 유실을 막는다.
+        # shutdown()이 아니라 flush() — 서버는 계속 살아 다음 배치도 트레이싱해야 하므로 안 닫는다.
+        if deps.langfuse_handler() is not None:   # 트레이싱 off면 get_client() 초기화도 건드리지 않는다
+            try:
+                from langfuse import get_client
+                # flush()는 동기 blocking(큐가 빌 때까지 호출 스레드를 막음)이다. run_batch는
+                # 이벤트 루프 위 코루틴이라 직접 부르면 flush 동안 루프 전체가 멈춘다 —
+                # export timeout을 60초로 올린 뒤(U9)엔 엔드포인트가 죽었을 때 최악 60초까지
+                # 다른 요청(배치 상태 폴링·/health 등)을 얼린다. 워커 스레드로 옮겨 루프를 살린다.
+                await asyncio.to_thread(get_client().flush)
+            except Exception:   # noqa: BLE001 — flush 실패가 배치 결과를 삼키면 안 됨
+                logger.warning("Langfuse flush 실패(무시)")
 
 
 async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -> None:
@@ -179,6 +197,12 @@ async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -
     logging_mcp = LoggingMCP(mcp, batch_id)
     # ⑦ description 영어→한국어 번역기 주입(RESPONSE_LLM=1일 때만 실체, 아니면 None=원문 운반).
     graph = build_graph(kg_client, logging_mcp, batch_id=batch_id, translate=deps.response_translator())
+
+    # Langfuse 트레이싱(LANGFUSE_TRACING=1일 때만 실체, 아니면 None). 콜백은 LLM 노드를
+    # 자동 캡처(모델명·토큰·비용·input/output)하고 비-LLM 노드도 span으로 잡는다.
+    # config=None은 LangGraph에서 무해(no-op)라 트레이싱 꺼진 경로는 기존과 동일하다.
+    handler = deps.langfuse_handler()
+    run_config = {"callbacks": [handler]} if handler is not None else None
 
     state: dict = {
         "cursor_date": cursor_date,
@@ -196,14 +220,45 @@ async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -
     # (namespace, update)로 받는다(§8.2). 안쪽 신호는 진행 표시 전용(process_stream_item이
     # delta=None), 바깥 신호만 결과 누적. current_step은 완료 노드의 인덱스로 단조 증가한다.
     # (observe_groups=인덱스3 매핑은 #33/step7 몫 — 지금은 그 자리가 비어 3을 건너뛴다.)
+    #
+    # 트레이스 속성(name·session·tags)은 config metadata의 langfuse_* 키로는 LangGraph
+    # subgraphs 구조에서 트레이스 레벨에 안 붙었다(Step 7 실측 — 일반 metadata는 관측치에
+    # 전파되나 langfuse_session_id/tags는 소비만 되고 트레이스에 미적용). 그래서 v4 권장대로
+    # 루트 span + propagate_attributes로 감싼다:
+    #   - start_as_current_observation(name="rca-batch"): 이 활성 span 컨텍스트에 astream이
+    #     만드는 LangGraph 체인·generation·agent span이 attach돼 한 트레이스로 묶인다(Step 7
+    #     실측 — 이 래퍼를 빼면 콜백 span들이 트레이스에서 유실됨). 래퍼 span 자체는 트레이스에
+    #     관측치로 안 남지만 그룹핑 앵커 역할을 한다.
+    #   - propagate_attributes: baggage로 트레이스 레벨에 trace_name(빈 이름 해소)·
+    #     session=batch_id(배치 1회=세션 1개)·tags=["rca-batch"]를 실제 부착(Step 7 실측).
+    # 트레이싱 off/실패해도 배치에 영향 없도록 try/except + ExitStack로 격리(원칙 #2).
     current_step = 0
-    async for namespace, update in graph.astream(state, stream_mode="updates", subgraphs=True):
-        new_step, delta = process_stream_item(namespace, update, current_step)
-        if delta:
-            state.update(delta)
-        if new_step > current_step:
-            current_step = new_step
-            store.update_batch_step(batch_id, current_step)
+    with contextlib.ExitStack() as stack:
+        if handler is not None:
+            try:
+                from langfuse import get_client, propagate_attributes
+                stack.enter_context(
+                    get_client().start_as_current_observation(as_type="span", name="rca-batch")
+                )
+                stack.enter_context(
+                    propagate_attributes(
+                        trace_name="rca-batch",
+                        session_id=batch_id,
+                        tags=["rca-batch"],
+                        metadata={"cursor_date": cursor_date, "cursor_end": cursor_end},
+                    )
+                )
+            except Exception:  # noqa: BLE001 — 옵저버빌리티 실패가 배치를 죽이면 안 됨
+                logger.warning("Langfuse 트레이스 속성 설정 실패(무시)")
+        async for namespace, update in graph.astream(
+            state, stream_mode="updates", subgraphs=True, config=run_config
+        ):
+            new_step, delta = process_stream_item(namespace, update, current_step)
+            if delta:
+                state.update(delta)
+            if new_step > current_step:
+                current_step = new_step
+                store.update_batch_step(batch_id, current_step)
 
     seq = int(batch_id.rsplit("_", 1)[1])
     result_ids = _persist_results(batch_id, seq, state)
