@@ -6,10 +6,12 @@ import pytest
 
 pytestmark = pytest.mark.data   # CI(-m "not data")에서는 제외
 
+_ROOT = pathlib.Path(__file__).resolve().parents[1]  # secsgem-mcp/ — cwd 무관하게 고정 (#86)
+
 
 def _cards():
     return [json.loads(p.read_text(encoding="utf-8"))
-            for p in sorted(pathlib.Path("datasets/ground_truth").glob("SC-*.json"))]
+            for p in sorted((_ROOT / "datasets/ground_truth").glob("SC-*.json"))]
 
 
 def test_defect_alone_underdetermines_cause():

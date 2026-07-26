@@ -1,7 +1,9 @@
 import yaml, pathlib
 
+_ROOT = pathlib.Path(__file__).resolve().parents[1]  # secsgem-mcp/ — cwd 무관하게 고정 (#86)
+
 def _load(p):
-    return yaml.safe_load(pathlib.Path(p).read_text(encoding="utf-8"))
+    return yaml.safe_load((_ROOT / p).read_text(encoding="utf-8"))
 
 def test_route_steps_have_equipment():
     fab = _load("simulator/fab_model.yaml")

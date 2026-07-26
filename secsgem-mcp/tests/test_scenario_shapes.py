@@ -6,10 +6,12 @@ import pytest
 
 pytestmark = pytest.mark.data   # fab.db 필요 — CI(-m "not data")에서는 제외
 
+_ROOT = pathlib.Path(__file__).resolve().parents[1]  # secsgem-mcp/ — cwd 무관하게 고정 (#86)
+
 
 def _cards():
     return [json.loads(p.read_text(encoding="utf-8"))
-            for p in sorted(pathlib.Path("datasets/ground_truth").glob("SC-*.json"))]
+            for p in sorted((_ROOT / "datasets/ground_truth").glob("SC-*.json"))]
 
 
 def _query(sql, params=()):
@@ -67,7 +69,7 @@ def test_no_event_cumulative_has_no_t0_maintenance():
     """무이벤트 누적형(maint_event: false) 원인은 t0에 정비 기록이 없어야 함 —
     시작점 단서는 T8 변화점뿐이라는 시나리오 전제의 데이터 검증."""
     import yaml
-    mapping = yaml.safe_load(pathlib.Path("simulator/mapping_table.yaml").read_text(encoding="utf-8"))
+    mapping = yaml.safe_load((_ROOT / "simulator/mapping_table.yaml").read_text(encoding="utf-8"))
     no_event = {c["cause"] for causes in mapping.values() for c in causes
                 if c.get("maint_event", True) is False}
     checked = 0
