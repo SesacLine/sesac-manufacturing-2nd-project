@@ -98,6 +98,10 @@ def install_firewall_spy(mcp) -> dict:
 
 async def main() -> None:
     scenario_id = sys.argv[1] if len(sys.argv) > 1 else "SC-CENTER-01"
+    # §10 비교 실험 Arm B(단일경로 + fab 검증): KG 1위 후보 **하나만** ⑤⑥에 태운다.
+    # Arm A(검증 없이 1위 직행)와 달리 "검증은 하되 후보를 안 넓힌 경우"를 재서,
+    # 성능 향상이 '검증' 덕인지 '다중 후보 탐색' 덕인지를 분리한다.
+    single_path = len(sys.argv) > 2 and sys.argv[2].lower() in ("single", "--single", "b")
     gt = load_gt(scenario_id)
     pattern = (gt.get("defect_patterns") or ["Center"])[0]
     lot_ids = gt["lot_ids"]
@@ -119,7 +123,14 @@ async def main() -> None:
         # ④ GraphRAG 조회 (kg_client, mcp 불요)
         state.update(fetch_graphrag_candidates(state, kg_client()))
         n_cand = len(state["candidates"])
-        print(f"\n④ 후보 조회: {n_cand}건")
+        if single_path:
+            state["candidates"] = state["candidates"][:1]
+            top = state["candidates"][0] if state["candidates"] else None
+            print(f"\n④ 후보 조회: {n_cand}건 → ⚠ Arm B 절단: 1건 "
+                  f"(1위 cause={top.get('cause') if top else None} / "
+                  f"matched={top.get('matched_cause') if top else None})")
+        else:
+            print(f"\n④ 후보 조회: {n_cand}건")
 
         # ⑤ Hypothesis (재랭킹까지)
         state.update(await H.build_hypotheses(state, mcp))
