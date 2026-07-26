@@ -83,5 +83,5 @@ def test_signature_entry_query_shape_unchanged(q):
     assert hasattr(q, "SIGNATURE_ENTRY_QUERY"), "형상 진입 쿼리 상수가 사라졌다"
     assert "SpatialSignature {id: $signature}" in q.SIGNATURE_ENTRY_QUERY, (
         "형상 진입 쿼리의 매칭 형태가 바뀌었다 — "
-        "backend/tests/test_live_kg_client.py의 FakeGraph 스텁도 같이 고칠 것"
+        "backend/tests/unit/test_live_kg_client.py의 FakeGraph 스텁도 같이 고칠 것"
     )

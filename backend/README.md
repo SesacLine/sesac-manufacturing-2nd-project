@@ -126,7 +126,7 @@ docstring에 명시된 동작). Hypothesis 노드처럼 다회 호출하는 패�
 pytest -q -m "not data" backend    # 11건 — fab.db 없이 도는 계약 스모크
 ```
 
-`backend/tests/test_api_smoke.py`가 라우팅·검증·404/422/빈 목록 형태와 `assembler`의 키 집합
+`backend/tests/server/test_api_contract.py`가 라우팅·검증·404/422/빈 목록 형태와 `assembler`의 키 집합
 계약을 확인한다. 레포 루트에서 `pytest -q -m "not data"`를 돌리면 secsgem-mcp 테스트 9건이
 실패하는데, 테스트가 cwd 상대경로(`simulator/mapping_table.yaml`)를 참조하는 기존 문제다
 (백엔드 변경과 무관).

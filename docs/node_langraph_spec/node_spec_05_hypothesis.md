@@ -233,11 +233,11 @@ build_hypotheses(candidates, lot_ids, mcp)
 
 ## 7. 테스트 현황
 
-- **단위 테스트**: `backend/tests/test_hypothesis_agent.py`(테스트 함수 17개). 배치 판정 분배,
+- **단위 테스트**: `backend/tests/unit/test_hypothesis_agent.py`(테스트 함수 17개). 배치 판정 분배,
   방향 대조, 클러스터 주석, 재랭킹 5단 키(특이성 포함), 스텝 상한 초과 시 미조사 폴백, 시간창 계산을 고정한다.
   fab.db 없이 mock으로 실행된다(`pytest -q -m "not data"` = CI와 동일 조건).
 - **E2E**: ground truth **11개 전량 실행 완료(0726)** — 3개 패턴 + 음성 2건.
-  `backend/tests/eval_hypocritic_scenario.py`(실LLM+실MCP 수동 하네스), 결과는
+  `backend/tests/e2e/eval_hypocritic_scenario.py`(실LLM+실MCP 수동 하네스), 결과는
   `personalspace_rca/0725 work/hypo_critic_test_result.md`. 재랭킹(B2 포함)이 정답을 상위로
   올리는지, 방향 대조가 경쟁 가설을 가르는지가 여기서 확인된다.
 - **아직 검증 못 한 케이스**:

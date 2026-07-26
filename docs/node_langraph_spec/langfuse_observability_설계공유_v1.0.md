@@ -168,7 +168,7 @@
 
 ## 7. 테스트 현황
 
-- **단위 테스트**: `backend/tests/test_deps_langfuse.py` — 게이트 off 경로 2종(TRACING 미설정 /
+- **단위 테스트**: `backend/tests/unit/test_deps_langfuse.py` — 게이트 off 경로 2종(TRACING 미설정 /
   키 없음)에서 핸들러가 None임을 보장. `backend/tests` 전체 176 passed(`-m "not data"`).
 - **라이브 검증(uvicorn + `POST /api/v1/batches`)**: 트레이스 1개, 단일 `[SPAN] rca-batch` 루트,
   orphans 0, 서버 로그 `Failed to export` 0. flush 수정(`da7faf1`) 후 재검증도 동일 재현

@@ -5,8 +5,8 @@
 
 실행 방법 (전부 @pytest.mark.data — CI의 `-m "not data"`에서는 자동 제외):
 
-    uv run pytest -q -m data backend/tests/test_e2e_wafer_reading_path.py
-    VLM_E2E=1 uv run pytest -q -m data backend/tests/test_e2e_wafer_reading_path.py
+    uv run pytest -q -m data backend/tests/e2e/test_e2e_wafer_reading_path.py
+    VLM_E2E=1 uv run pytest -q -m data backend/tests/e2e/test_e2e_wafer_reading_path.py
 
 - fab.db가 없으면 전부 skip된다(secsgem-mcp/README.md "데이터 준비" 선행).
 - VLM 실호출은 과금이 있으므로 환경변수 `VLM_E2E=1`을 준 사람만 돈다(대표 시나리오 1건만).
@@ -38,7 +38,7 @@ import pytest
 
 pytestmark = pytest.mark.data  # fab.db 필요 — CI(-m "not data")에서는 제외
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 FAB_DB = REPO_ROOT / "secsgem-mcp" / "datasets" / "fab.db"
 GT_DIR = REPO_ROOT / "secsgem-mcp" / "datasets" / "ground_truth"
 HYPOTHESES = REPO_ROOT / "kg_rca" / "outputs" / "hypotheses.json"
@@ -52,7 +52,7 @@ BASELINES: dict[str, tuple[str, str, bool | None]] = {
     "SC-CENTER-03": ("Center", "ring@edge", True),  # ⚠️ 〃
     "SC-EDGE-RING-01": ("Edge-Ring", "ring@edge", True),
     "SC-EDGE-RING-02": ("Edge-Ring", "ring@edge", True),
-    "SC-EDGE-RING-03": ("Edge-Ring", "ring@edge", False),  # ⚠️ 문자열 대조 한계 — 정답 후보(excessive_down_force@CMP)는 존재하나 자동 tier라 matched_cause가 없음(로그 #8)
+    "SC-EDGE-RING-03": ("Edge-Ring", "ring@edge", True),  # 07-27 갱신 — 옛 한계("자동 tier라 matched_cause 없음")가 P1(matched_cause tier무관 라벨링)+KG 재빌드로 해소돼 cmp_edge_overpolish 매칭 확보
     "SC-SCRATCH-01": ("Scratch", "ring@edge", True),  # ⚠️ 오염 — Scratch 스택 희석(quantitative는 스택 기반, §8-1)
     "SC-SCRATCH-02": ("Scratch", "random@edge", True),  # ⚠️ 〃
     "SC-SCRATCH-03": ("Scratch", "random@edge", True),  # ⚠️ 〃
