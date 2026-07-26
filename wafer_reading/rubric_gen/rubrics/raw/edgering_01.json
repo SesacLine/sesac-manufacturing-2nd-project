@@ -1,0 +1,47 @@
+{
+  "defect_types": "Edge-Ring",
+  "spatial_rubric": {
+    "zone": "Must-hit keywords: wafer periphery, outer edge, wafer perimeter, edge. A correct answer should state that defects are concentrated along the wafer edge/periphery, with the interior/center much less affected.",
+    "distribution": "Must-hit keywords: near-continuous ring, circumferential, dense band, lower diffuse interior density. The distribution is a ring around the outer wafer edge, not a localized central cluster.",
+    "clock_position": "No specific clock positions are mentioned. Correct answers should not invent 12 o'clock, 3 o'clock, 6 o'clock, 9 o'clock, or quadrant-specific localization.",
+    "coordinates_hint": "No explicit coordinates are provided. Correct answers may refer generically to the perimeter/edge versus center/interior, but should not invent x-y coordinates or die coordinates.",
+    "spatial_avoid": [
+      "center-localized",
+      "central cluster",
+      "bullseye",
+      "single quadrant",
+      "top-left",
+      "bottom-right",
+      "12 o'clock",
+      "3 o'clock",
+      "6 o'clock",
+      "9 o'clock",
+      "radial spoke",
+      "diagonal streak",
+      "localized spot",
+      "coordinates",
+      "x-y location"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must-hit keywords: edge-ring, ring-like, circumferential band, bright band. The morphology should be described as a ring around the wafer perimeter.",
+    "density": "Must-hit keywords: dense at edge, lower density interior, diffuse interior, relatively uniform thickness. Correct answers should mention high defect density in the edge band and much lower density toward the center.",
+    "geometric_structure": "Must-hit keywords: near-continuous ring, circular/circumferential band, uniform thickness. The geometric structure is an annular edge band rather than a line, scratch, or central cluster.",
+    "texture_description": "Must-hit keywords: granular, pixelated, scattered higher-intensity spots, embedded in the band. The texture is not smooth-only or composed of isolated linear features.",
+    "morphology_avoid": [
+      "linear scratch",
+      "straight line",
+      "isolated line",
+      "radial streak",
+      "spoke pattern",
+      "central blob",
+      "center cluster",
+      "smooth uniform disk",
+      "random isolated dots only",
+      "arc segment only",
+      "comet tail",
+      "wafer crack"
+    ]
+  },
+  "summary": "A clear edge-ring defect pattern: dense, bright, granular, near-continuous circumferential band along the wafer perimeter with relatively uniform thickness, while the center/interior remains comparatively lower-density and diffuse."
+}

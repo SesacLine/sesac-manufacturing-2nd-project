@@ -1,0 +1,44 @@
+{
+  "defect_types": "Scratch",
+  "spatial_rubric": {
+    "zone": "Must-hit keywords: upper-left, lower-right, wafer center, remaining area. Affected zone is a diagonal band crossing through the wafer center from the upper-left toward the lower-right; outside the band defects are sparse across the remaining wafer area.",
+    "distribution": "Must-hit keywords: concentrated, diagonal band, sparsely scattered, outside this band. Defects are concentrated along the diagonal scratch band with sparse scattered background defects elsewhere.",
+    "clock_position": "Must-hit keywords: upper-left to lower-right. No explicit clock positions are given; acceptable equivalent is approximately 10-11 o'clock toward 4-5 o'clock if described as an approximation.",
+    "coordinates_hint": "Must-hit keywords: diagonal, through center, upper-left, lower-right. Coordinate reference is a negative-slope diagonal trajectory across the wafer center from upper-left to lower-right.",
+    "spatial_avoid": [
+      "edge ring",
+      "peripheral ring",
+      "donut",
+      "bullseye",
+      "center-only",
+      "edge-only",
+      "radial spokes",
+      "horizontal band",
+      "vertical band",
+      "lower-left to upper-right",
+      "uniform distribution",
+      "random-only pattern"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must-hit keywords: narrow, elongated, linear streak, broken, segmented. Dominant morphology is a narrow elongated scratch-like linear streak with a broken segmented appearance.",
+    "density": "Must-hit keywords: dense rectangular defect clusters, isolated speckles, sparse background. The main diagonal contains dense aligned rectangular clusters, while isolated speckles appear around it.",
+    "geometric_structure": "Must-hit keywords: rectangular clusters, aligned, diagonal direction, linear. Geometric structure consists of dense rectangular clusters aligned along the same diagonal direction.",
+    "texture_description": "Must-hit keywords: segmented, broken, speckles, scratch-like. Texture is discontinuous and segmented with scattered isolated speckles surrounding the main streak.",
+    "morphology_avoid": [
+      "circular",
+      "annular",
+      "ring-shaped",
+      "spiral",
+      "crescent",
+      "checkerboard",
+      "grid",
+      "blob-like only",
+      "smooth continuous line only",
+      "clustered at edge only",
+      "starburst",
+      "comet tail"
+    ]
+  },
+  "summary": "A scratch defect appears as a diagonal band crossing the wafer from upper-left to lower-right through the center, with a narrow broken segmented linear morphology made of dense rectangular clusters and sparse scattered background speckles elsewhere."
+}

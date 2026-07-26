@@ -1,0 +1,44 @@
+{
+  "defect_types": "Edge-Ring",
+  "spatial_rubric": {
+    "zone": "Must-hit keywords: wafer periphery, outer edge, perimeter, edge ring; interior comparatively less dense/less affected; no center-localized cluster.",
+    "distribution": "Must-hit keywords: concentrated along periphery, near-continuous ring, around the outer edge, fairly uniform around most of the wafer, slight local intensity variation.",
+    "clock_position": "Must-hit keywords: most clock positions, around all/most of the circumference; no specific clock position is uniquely dominant.",
+    "coordinates_hint": "Must-hit keywords: edge/perimeter referenced rather than specific x-y coordinates; no explicit coordinates provided.",
+    "spatial_avoid": [
+      "center cluster",
+      "center-localized defect",
+      "isolated center spot",
+      "linear streak",
+      "scratch",
+      "radial line",
+      "single quadrant",
+      "localized corner",
+      "donut center void",
+      "crescent",
+      "edge exclusion only",
+      "random uniform across wafer"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must-hit keywords: thick circumferential band, ring-shaped pattern, near-continuous edge ring, band around perimeter.",
+    "density": "Must-hit keywords: high-density defects at edge, dense edge band, interior less dense, slight local intensity variation.",
+    "geometric_structure": "Must-hit keywords: circumferential, annular, ring, perimeter-following band; not a line or spot.",
+    "texture_description": "Must-hit keywords: mottled, pixelated texture, fairly uniform with local variation.",
+    "morphology_avoid": [
+      "thin line",
+      "linear scratch",
+      "distinct linear streaks",
+      "isolated center spot",
+      "localized center cluster",
+      "radial spoke",
+      "spiral",
+      "grid",
+      "checkerboard",
+      "comet tail",
+      "blob only",
+      "random speckle across entire wafer"
+    ]
+  },
+  "summary": "Dense, near-continuous Edge-Ring defect pattern concentrated along the wafer perimeter, forming a thick mottled circumferential band with high edge density and comparatively less affected interior."
+}

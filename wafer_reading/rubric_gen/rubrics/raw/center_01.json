@@ -1,0 +1,50 @@
+{
+  "defect_types": "Center",
+  "spatial_rubric": {
+    "zone": "Must-hit keywords: central region, exact center, wafer center, periphery, outer edge. A correct answer should state that defects are concentrated in the central zone with weaker scattered defects toward the outer edge.",
+    "distribution": "Must-hit keywords: concentrated, strongest intensity at exact center, gradual decrease, toward periphery, central cluster, scattered defects. The dominant distribution is center-concentrated with radial weakening outward.",
+    "clock_position": "Must-hit keywords: none specified. No clock positions are mentioned in the source analysis.",
+    "coordinates_hint": "Must-hit keywords: exact center, central region. No numerical coordinates are provided; references should remain qualitative and centered on the wafer midpoint.",
+    "spatial_avoid": [
+      "edge-dominant",
+      "edge ring",
+      "peripheral ring",
+      "donut",
+      "annular",
+      "notch-related",
+      "specific clock position",
+      "12 o'clock",
+      "3 o'clock",
+      "6 o'clock",
+      "9 o'clock",
+      "corner",
+      "quadrant-localized",
+      "linear band",
+      "diagonal stripe"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must-hit keywords: dense, roughly circular, central hotspot, bright core, surrounding halo, diffuse, blob-like. The morphology should be described as a center hotspot rather than a line, ring, or scratch.",
+    "density": "Must-hit keywords: dense core, elevated defect density, strongest intensity, gradual decrease, weaker scattered defects. Density is highest at the center and decreases outward.",
+    "geometric_structure": "Must-hit keywords: roughly circular, central cluster, halo, no sharp boundary. The structure is broad and rounded with a diffuse perimeter.",
+    "texture_description": "Must-hit keywords: bright core, diffuse halo, scattered defects, no sharp boundary. Texture is diffuse and blob-like rather than sharply outlined.",
+    "morphology_avoid": [
+      "linear",
+      "line-shaped",
+      "scratch",
+      "ring-shaped",
+      "donut-shaped",
+      "annular",
+      "edge band",
+      "sharp boundary",
+      "crack",
+      "arc",
+      "crescent",
+      "spiral",
+      "grid",
+      "checkerboard",
+      "radial spokes"
+    ]
+  },
+  "summary": "Dominant center-concentrated defect pattern with a dense bright core, roughly circular diffuse halo, and weaker scattered defects toward the wafer edge."
+}

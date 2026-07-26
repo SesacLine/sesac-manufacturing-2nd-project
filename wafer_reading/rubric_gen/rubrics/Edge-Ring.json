@@ -1,0 +1,1379 @@
+{
+  "schema_version": "wafer-rubric-v1",
+  "pattern": "Edge-Ring",
+  "n_samples": 5,
+  "min_support": 3,
+  "dimensions": {
+    "spatial": {
+      "must_hit": [
+        {
+          "phrase": "outer edge",
+          "support": 5,
+          "axes": [
+            "zone"
+          ]
+        },
+        {
+          "phrase": "near continuous ring",
+          "support": 4,
+          "axes": [
+            "distribution"
+          ]
+        },
+        {
+          "phrase": "edge",
+          "support": 4,
+          "axes": [
+            "coordinates_hint",
+            "zone"
+          ]
+        },
+        {
+          "phrase": "wafer periphery",
+          "support": 4,
+          "axes": [
+            "zone"
+          ]
+        }
+      ],
+      "must_avoid": [
+        {
+          "phrase": "single quadrant",
+          "support": 5
+        },
+        {
+          "phrase": "scratch",
+          "support": 3
+        },
+        {
+          "phrase": "center cluster",
+          "support": 3
+        },
+        {
+          "phrase": "radial spoke",
+          "support": 3
+        }
+      ]
+    },
+    "morphology": {
+      "must_hit": [
+        {
+          "phrase": "ring",
+          "support": 4,
+          "axes": [
+            "density",
+            "geometric_structure",
+            "pattern_type"
+          ]
+        },
+        {
+          "phrase": "circumferential band",
+          "support": 4,
+          "axes": [
+            "geometric_structure",
+            "pattern_type"
+          ]
+        },
+        {
+          "phrase": "edge ring",
+          "support": 3,
+          "axes": [
+            "pattern_type"
+          ]
+        }
+      ],
+      "must_avoid": [
+        {
+          "phrase": "spiral",
+          "support": 4
+        },
+        {
+          "phrase": "linear scratch",
+          "support": 4
+        },
+        {
+          "phrase": "checkerboard",
+          "support": 4
+        },
+        {
+          "phrase": "comet tail",
+          "support": 4
+        }
+      ]
+    }
+  },
+  "dropped": {
+    "low_support": [
+      {
+        "phrase": "perimeter",
+        "support": 2,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "concentrated along periphery",
+        "support": 2,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "around the outer edge",
+        "support": 2,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "wafer perimeter",
+        "support": 2,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "around all",
+        "support": 1,
+        "axes": [
+          "clock_position"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "most of the circumference",
+        "support": 1,
+        "axes": [
+          "clock_position"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "most clock positions",
+        "support": 1,
+        "axes": [
+          "clock_position"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "interior comparatively less dense",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "edge ring",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "slight local intensity variation",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "less affected",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "circumferential",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "dense band",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "lower diffuse interior density",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "all around ring",
+        "support": 1,
+        "axes": [
+          "clock_position"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "scattered center",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "edge radius",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "around outer edge",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "sparse",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "scattered defects toward center",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "peripheral",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "uniform around most clock positions",
+        "support": 1,
+        "axes": [
+          "clock_position"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "center only scattered",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "circumferential distribution",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "outer circumference",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "interior comparatively less affected",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "periphery",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "wafer edge",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "peripheral only",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "or rim",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "with no strong center localized cluster",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "circumference",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "such as outer radius",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "edge region",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "circumferential band",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "rim",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "sparse interior",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "concentrated along the perimeter",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "edge exclusion only",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "diagonal streak",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "6 o clock",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "12 o clock",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "top left",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "bullseye",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "center localized",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "bottom right",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "3 o clock",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "9 o clock",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "localized spot",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "central cluster",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "isolated center spot",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "crescent",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "donut center void",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "localized corner",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "center localized defect",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "linear streak",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "random uniform across wafer",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "radial line",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "coordinates",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "x y location",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "edge excluding",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "linear band across wafer",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "donut with clean edge",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "only at 3 o clock",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "only at 6 o clock",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "specific coordinates",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "only at 12 o clock",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "only at 9 o clock",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "localized at 6 o clock",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "central blob",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "center localized hotspot",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "linear scratch across wafer",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "localized at 9 o clock",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "random uniform across entire wafer",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "interior dominated",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "diagonal band",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "specific x",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "localized at 12 o clock",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "y coordinates",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "localized at 3 o clock",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "donut center",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "y coordinate",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "x coordinate",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "localized hotspot",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "diagonal line",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "central localization",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "mottled",
+        "support": 2,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "high density defects at edge",
+        "support": 2,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "slight local intensity variation",
+        "support": 2,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "thick circumferential band",
+        "support": 2,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "annular",
+        "support": 2,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "near continuous ring",
+        "support": 2,
+        "axes": [
+          "geometric_structure",
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "perimeter band",
+        "support": 2,
+        "axes": [
+          "geometric_structure",
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "sparse interior",
+        "support": 2,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "perimeter ring",
+        "support": 2,
+        "axes": [
+          "geometric_structure",
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "interior less dense",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "perimeter following band",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "pixelated texture",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "dense edge band",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "ring shaped pattern",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "circumferential",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "fairly uniform with local variation",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "band around perimeter",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "near continuous edge ring",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "lower density interior",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "relatively uniform thickness",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "uniform thickness",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "embedded in the band",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "dense at edge",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "ring like",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "granular",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "bright band",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "scattered higher intensity spots",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "diffuse interior",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "pixelated",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "circular",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "scattered center",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "periphery",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "blocky texture",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "fairly uniform around most clock positions",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "edge ring structure",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "high density ring",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "or slightly irregular texture",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "or near continuous ring pattern",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "rim ring",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "low density speckling",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "scattered speckling",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "circular ring",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "sparse scattered defects",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "intermittent brighter clusters around the rim",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "outer edge ring",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "thin band",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "intermittent brighter clusters",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "low density speckling inside",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "near continuous band",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "thin circumferential band",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "grid",
+        "support": 2,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "thin line",
+        "support": 2,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "radial streak",
+        "support": 2,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "central blob",
+        "support": 2,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "straight line",
+        "support": 2,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "spoke pattern",
+        "support": 2,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "grid pattern",
+        "support": 2,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "radial spoke",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "isolated center spot",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "distinct linear streaks",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "blob only",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "localized center cluster",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "random speckle across entire wafer",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "smooth uniform disk",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "wafer crack",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "isolated line",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "arc segment only",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "random isolated dots only",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "center cluster",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "center localized cluster",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "isolated dots only",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "clean perimeter",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "bullseye centered cluster",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "random uniform across wafer",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "uniform haze across full wafer",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "scratch line",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "radial spokes",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "crescent only",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "clustered center defects",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "large isolated blob",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "thick central disk",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "solid filled circle",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "solid disk",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "filled center",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "crescent",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "cluster only defect",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "cross pattern",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "arc only",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "starburst",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "uniform full wafer haze",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "random uniform distribution",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "radial streaks",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "dense center",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      }
+    ],
+    "conflict_resolved": [],
+    "instance_specific": []
+  },
+  "meta": {
+    "schema_version": "wafer-rubric-v1",
+    "support_ratio": 0.6,
+    "unscorable_dimensions": [],
+    "source_defect_types": [
+      "Edge-Ring"
+    ],
+    "summaries": [
+      "Dense, near-continuous Edge-Ring defect pattern concentrated along the wafer perimeter, forming a thick mottled circumferential band with high edge density and comparatively less affected interior.",
+      "A clear edge-ring defect pattern: dense, bright, granular, near-continuous circumferential band along the wafer perimeter with relatively uniform thickness, while the center/interior remains comparatively lower-density and diffuse.",
+      "Near-continuous Edge-Ring defect pattern with high-density defects concentrated around the wafer perimeter/outer edge, forming a thick mottled circumferential band and leaving the interior comparatively sparse with only scattered center defects.",
+      "Near-continuous edge-ring defect pattern with high-density defects concentrated at the wafer periphery, fairly uniform around most clock positions, and much lower defect density in the interior.",
+      "A clear edge-ring defect pattern: defects form a thin, near-continuous, high-density circumferential band along the wafer perimeter, with intermittent brighter rim clusters and only sparse low-density speckling in the interior."
+    ]
+  }
+}

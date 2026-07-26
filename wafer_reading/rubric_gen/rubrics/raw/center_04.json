@@ -1,0 +1,46 @@
+{
+  "defect_types": "Center",
+  "spatial_rubric": {
+    "zone": "Must-hit keywords: central region, exact center, middle region, periphery, outer edge. The affected zone is primarily the wafer center, with lower-intensity impact extending toward the edge.",
+    "distribution": "Must-hit keywords: concentrated, strongest intensity at exact center, gradual decrease, diffuse falloff, less intense toward periphery. Distribution is radially decreasing from the center outward.",
+    "clock_position": "No specific clock positions are mentioned. Must-hit keywords if referenced: none, not specified.",
+    "coordinates_hint": "Must-hit keywords: exact center, wafer center, central region. No numerical x/y coordinates are provided.",
+    "spatial_avoid": [
+      "edge-only",
+      "edge ring",
+      "peripheral ring",
+      "donut",
+      "annular",
+      "crescent",
+      "localized at 12 o'clock",
+      "localized at 3 o'clock",
+      "localized at 6 o'clock",
+      "localized at 9 o'clock",
+      "corner",
+      "linear scratch",
+      "random uniform distribution"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must-hit keywords: broad, diffuse central hotspot, dense roughly circular cluster, bright core, surrounding halo. Pattern is not a sharp isolated spot and not a ring.",
+    "density": "Must-hit keywords: dense at center, highest intensity, strongest intensity, gradual decrease, less intense outer edge. Density peaks at the wafer center and diminishes outward.",
+    "geometric_structure": "Must-hit keywords: roughly circular, central cluster, circular hotspot, core, halo. Geometry is circular/central rather than linear or annular.",
+    "texture_description": "Must-hit keywords: diffuse, mottled, bright core, mottled surrounding halo, diffuse falloff.",
+    "morphology_avoid": [
+      "sharp spot",
+      "thin ring",
+      "donut-shaped",
+      "annular ring",
+      "line",
+      "scratch",
+      "arc",
+      "crescent",
+      "radial spokes",
+      "grid",
+      "checkerboard",
+      "uniform speckle",
+      "edge bead"
+    ]
+  },
+  "summary": "A center defect pattern with a broad, diffuse, mottled circular hotspot centered on the wafer, highest intensity at the exact center, and gradual falloff toward the less-intense outer edge."
+}

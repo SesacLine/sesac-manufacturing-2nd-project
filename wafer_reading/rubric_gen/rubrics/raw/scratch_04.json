@@ -1,0 +1,45 @@
+{
+  "defect_types": "Scratch",
+  "spatial_rubric": {
+    "zone": "Must-hit keywords: narrow vertical band, slightly left of center, lower half, toward bottom edge. A correct answer should locate the main defect band left of the wafer center and extending downward into the lower portion.",
+    "distribution": "Must-hit keywords: concentrated, narrow band, sparse outside band, scattered across wafer. The dominant distribution is a localized high-density vertical streak with only sparse isolated defects elsewhere.",
+    "clock_position": "Must-hit keywords: bottom edge, lower half, 6 o'clock direction. No explicit clock position is provided, but the feature trends toward the bottom/6 o'clock side.",
+    "coordinates_hint": "Must-hit keywords: slightly left of center, lower half, bottom edge. No numerical coordinates are provided.",
+    "spatial_avoid": [
+      "right of center",
+      "upper half dominant",
+      "top edge",
+      "horizontal band",
+      "diagonal band",
+      "edge ring",
+      "full-wafer uniform",
+      "centered circular pattern",
+      "peripheral-only",
+      "random-only distribution"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must-hit keywords: scratch-like, straight, elongated streak, vertical line, linear continuity. The main morphology is a continuous narrow linear scratch feature.",
+    "density": "Must-hit keywords: high-density defects in the streak, low-density isolated defects elsewhere, sparse background. The scratch band is dense relative to the rest of the wafer.",
+    "geometric_structure": "Must-hit keywords: narrow width, straight line, elongated vertical band. The geometry should be described as thin, linear, and vertically oriented.",
+    "texture_description": "Must-hit keywords: isolated point-like defects, sparse scattered points, contrast to main line feature. Background defects should be described as individual sparse points rather than another structured pattern.",
+    "morphology_avoid": [
+      "circular",
+      "ring",
+      "donut",
+      "radial",
+      "arc",
+      "spiral",
+      "cluster-only",
+      "blob",
+      "haze",
+      "checkerboard",
+      "grid",
+      "grainy uniform texture",
+      "wide smear",
+      "horizontal scratch",
+      "diagonal scratch"
+    ]
+  },
+  "summary": "A scratch defect appears as a narrow, straight, high-density vertical band slightly left of center, extending through the lower half toward the bottom edge, with sparse isolated point defects elsewhere."
+}

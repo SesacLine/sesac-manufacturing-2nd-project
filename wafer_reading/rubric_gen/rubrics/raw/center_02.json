@@ -1,0 +1,54 @@
+{
+  "defect_types": "Center",
+  "spatial_rubric": {
+    "zone": "central region, exact center, wafer center; outer area/edge comparatively less affected",
+    "distribution": "center-concentrated defect density with strongest intensity at exact center and gradual decrease/fade toward the edge; radially symmetric distribution",
+    "clock_position": "none specified; no clock-position localization",
+    "coordinates_hint": "exact center of wafer; radial decrease outward from center; no specific x-y coordinates provided",
+    "spatial_avoid": [
+      "edge-ring",
+      "edge ring",
+      "donut",
+      "peripheral ring",
+      "linear feature",
+      "scratch",
+      "streak",
+      "localized edge",
+      "top edge",
+      "bottom edge",
+      "left edge",
+      "right edge",
+      "12 o'clock",
+      "3 o'clock",
+      "6 o'clock",
+      "9 o'clock",
+      "corner",
+      "random uniform"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "compact diffuse central cluster, bright core with broader surrounding halo, roughly circular, radially symmetric",
+    "density": "highest/strongest density or intensity at center, fading or gradually decreasing outward; outer wafer less dense",
+    "geometric_structure": "circular, radial, centered, symmetric halo; no sharp boundary and no directional elongation",
+    "texture_description": "diffuse cluster, bright central core, soft halo, faded outward texture",
+    "morphology_avoid": [
+      "sharp boundary",
+      "directional elongation",
+      "scratch-like",
+      "scratch",
+      "line",
+      "linear",
+      "ring",
+      "edge-ring",
+      "edge ring",
+      "arc",
+      "crescent",
+      "spiral",
+      "grid",
+      "checkerboard",
+      "band",
+      "stripe"
+    ]
+  },
+  "summary": "A radially symmetric center-concentrated defect pattern with a bright compact central cluster and diffuse halo fading outward; no edge-ring, linear, or scratch-like morphology."
+}

@@ -1,0 +1,45 @@
+{
+  "defect_types": "Edge-Ring",
+  "spatial_rubric": {
+    "zone": "Must mention wafer perimeter, outer edge, periphery, edge region, or edge zone as the affected area; must also indicate the interior or center is comparatively sparse or lower density.",
+    "distribution": "Must describe defects as concentrated along the wafer perimeter in a near-continuous ring around the outer edge, with no strong center-localized cluster.",
+    "clock_position": "Must indicate fairly uniform coverage around most clock positions or around the full circumference; no single dominant clock position is specified.",
+    "coordinates_hint": "No explicit x/y coordinates are given; acceptable coordinate reference is radial/peripheral only, such as outer radius, wafer edge, circumference, or rim.",
+    "spatial_avoid": [
+      "center cluster",
+      "center-localized hotspot",
+      "central blob",
+      "single quadrant",
+      "localized at 3 o'clock",
+      "localized at 6 o'clock",
+      "localized at 9 o'clock",
+      "localized at 12 o'clock",
+      "diagonal band",
+      "linear scratch across wafer",
+      "random uniform across entire wafer",
+      "interior-dominated",
+      "specific x/y coordinates"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must mention edge-ring, circumferential band, perimeter ring, rim ring, or near-continuous ring pattern.",
+    "density": "Must describe high-density defect pixels along the edge/ring and much lower density or sparse defects in the interior.",
+    "geometric_structure": "Must describe a thin circular or circumferential band following the wafer edge; slight irregularity around the ring is acceptable.",
+    "texture_description": "Must mention pixelated and/or slightly irregular texture, with possible localized brightening at a few edge segments.",
+    "morphology_avoid": [
+      "thick central disk",
+      "solid filled circle",
+      "radial spokes",
+      "comet tail",
+      "crescent only",
+      "scratch line",
+      "grid pattern",
+      "checkerboard",
+      "spiral",
+      "clustered center defects",
+      "large isolated blob",
+      "uniform haze across full wafer"
+    ]
+  },
+  "summary": "Near-continuous edge-ring defect pattern with high-density defects concentrated at the wafer periphery, fairly uniform around most clock positions, and much lower defect density in the interior."
+}
