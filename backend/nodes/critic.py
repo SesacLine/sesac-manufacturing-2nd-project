@@ -9,6 +9,7 @@ fab 재조회 없이 ④가 채운 evidence만 읽는다(faithfulness firewall).
                     자동 폴백 NOT_INVESTIGATED. "안 봤다"는 기각이 아니라 판단 보류
     ④ faithfulness — 자동 tier & 조사됨(investigated)인데 drift 판정이 비었으면 reject (P4)
     ⑤ 반대근거     — get_normal_lot_ratio를 안 돌렸으면(normal_ratio is None) reject (P3)
+    ⑥ 인과 서명    — 공통률 1.0 AND KG 예상 방향과 drift 일치가 아니면 reject (P6, S3-0726)
 
 규칙 순서 근거(0724 수정): judge_unknown 조건(②③)을 채택 게이트(④⑤)보다 먼저 확인한다. ⑤ pre-pass가
 suspect 장비를 못 찾으면 normal_ratio가 None으로 남는데, 이때 근거없음·미조사 후보가 ⑤ 반대근거 규칙에서
@@ -28,7 +29,7 @@ from ..state import CriticResult, GroupState, Hypothesis
 # 고정 사유 토큰(사유코드) — API가 verdict 3-state 승격을 이 토큰으로만 분기한다
 # (API 명세 §2.7 "verdict 매핑 주의": 자연어 reject_reason 본문 매칭 금지).
 # 내부 3버킷(adopt/reject/judge_unknown)을 프론트 verdict 3값에 매핑한다(hypo_critic_py.md §13-1 C1·C2):
-#   P2/P3/P4 = reject → verdict="rejected"
+#   P2/P3/P4/P6 = reject → verdict="rejected"
 #   P5(근거없음)·SEMI_AUTO_PENDING(반자동 미조사)·NOT_INVESTIGATED(자동 폴백) → verdict="judge_unknown"
 # (그룹 status "insufficient"와는 다른 층 — verdict는 가설 1건, status는 그룹 전체.)
 TOKEN_TIME_ORDER = "P2_TIME_ORDER"
@@ -41,6 +42,14 @@ TOKEN_SEMI_AUTO_PENDING = "SEMI_AUTO_PENDING"
 # S2-6(C3): 미조사 일반 토큰 — 반자동이 아닌데 investigated=False인 행(자동 tier의
 # suspect-None/에이전트 폭주 폴백). "안 봤다"는 기각이 아니라 판단 보류(judge_unknown).
 TOKEN_NOT_INVESTIGATED = "NOT_INVESTIGATED"
+# S3(0726): 인과 서명 게이트 — 채택 직전 마지막 관문. 상관(모든 로트가 지나감)과 인과
+# (그 파라미터가 KG 예상 방향으로 실제 이탈)를 가른다. 11개 시나리오 실측으로 도출:
+# 단독 신호는 둘 다 기각됐고(공통률 단독 → UNMATCHED-02 우연 1.0에 뚫림 / 특이성 단독 →
+# CENTER-03 정답이 -0.43으로 같이 죽음) 결합만이 정답 9/9 보존 + 환각 2/2 차단을 냈다.
+TOKEN_NO_CAUSAL_SIGNATURE = "P6_NO_CAUSAL_SIGNATURE"
+# 공통률 임계 — 부동소수 비교라 등호 대신 근사. "불량 로트 전부가 그 장비를 거쳤다"가
+# 원인의 필요조건(원인 장비는 시나리오 구성상 반드시 1.0).
+_COMMONALITY_MIN = 0.999
 
 
 async def review_hypotheses(state: GroupState, mcp: MCPClient) -> dict:
@@ -94,6 +103,17 @@ async def review_hypotheses(state: GroupState, mcp: MCPClient) -> dict:
                 "reject_token": TOKEN_NO_COUNTER_EVIDENCE,
                 "reject_reason": "Counter-evidence (normal_ratio) not collected",
             })
+        elif not _check_causal_signature(h):
+            # ⑥ 인과 서명(P6, S3-0726) — 채택 직전 마지막 게이트.
+            # "모든 불량 로트가 이 장비를 거쳤다"(상관)만으로는 부족하고, "그 파라미터가
+            # KG가 예측한 방향으로 실제 이탈했다"(기전)까지 있어야 채택한다.
+            # 이 규칙이 ③(미조사)보다 뒤에 있어야 한다 — 앞에 두면 미조사 행이
+            # judge_unknown이 아니라 P6 reject로 빠져 "안 봤다≠기각" 원칙(S2-6)이 깨진다.
+            rejected.append({
+                **h,
+                "reject_token": TOKEN_NO_CAUSAL_SIGNATURE,
+                "reject_reason": "No causal signature — correlation without a KG-predicted drift",
+            })
         else:
             accepted.append(h)
 
@@ -137,3 +157,25 @@ def _check_faithfulness(hypothesis: Hypothesis) -> bool:
 def _check_kg_mechanism(hypothesis: Hypothesis) -> bool:
     """VERIFIED_BY 경로(evidence_label != None)가 있는지 확인. 없으면 False(insufficient_evidence)."""
     return hypothesis["tier"] != "근거없음"
+
+
+def _check_causal_signature(hypothesis: Hypothesis) -> bool:
+    """상관이 아니라 인과인가 — 공통률 1.0 AND KG 예상 방향과 drift 방향 일치.
+
+    두 조건이 서로의 구멍을 메운다(11개 시나리오 실측):
+      - 공통률만 보면: LITHO-01처럼 모든 로트가 지나가는 무관 장비가 1.0으로 통과한다
+        (CENTER-01/02/03에서 각 14건 채택). 그 장비의 파라미터는 미동도 안 했다.
+      - 방향만 보면: 원인이 아닌 장비도 우연히 방향 맞는 이탈이 있을 수 있다
+        (CENTER-01 CMP 지속 100%·특이성 0.72 — 공통률 0.62로 걸러짐).
+
+    firewall 준수: evidence만 읽고 fab 재조회는 하지 않는다(⑤가 채운 값).
+
+    ⚠ 반자동 tier에 조사 경로가 붙으면 이 규칙을 tier 조건부로 바꿔야 한다 — 정비/레시피
+    근거는 telemetry 방향이 없어 direction_match가 구조적으로 성립하지 않는다. 지금은
+    반자동이 ③에서 judge_unknown으로 먼저 빠지므로 여기 도달하지 않는다.
+    """
+    evidence = hypothesis["evidence"]
+    ratio = evidence.get("commonality_ratio")
+    if ratio is None or ratio < _COMMONALITY_MIN:
+        return False
+    return evidence.get("direction_match") is True

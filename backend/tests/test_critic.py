@@ -4,6 +4,7 @@ from backend.nodes.critic import (
     review_hypotheses,
     TOKEN_TIME_ORDER, TOKEN_NO_COUNTER_EVIDENCE, TOKEN_FAITHFULNESS,
     TOKEN_NO_KG_MECHANISM, TOKEN_SEMI_AUTO_PENDING, TOKEN_NOT_INVESTIGATED,
+    TOKEN_NO_CAUSAL_SIGNATURE,
 )
 
 GID = "g1"
@@ -20,13 +21,16 @@ def _run(hyps):
 
 
 def _hyp(**ev):
-    """evidence 기본값(정상 통과 세트) 위에 덮어써 한 행을 만든다."""
+    """evidence 기본값(정상 통과 세트 — 규칙 ①~⑥ 전부 통과) 위에 덮어써 한 행을 만든다."""
     base = {
         "cause": "c", "tier": "자동", "stage": "CMP", "equipment": "CMP-01",
         "citations": [], "sentence": "...", "investigated": True,
         "evidence": {
             "maintenance_ts": None, "defect_ts": None,
             "normal_ratio": 0.1, "drift_detected": True,
+            # ⑥ 인과 서명(P6, 0726) — 불량 로트 전부가 거쳤고(1.0) KG 예상 방향과 일치.
+            # 이 두 값이 빠지면 기본 행이 P6로 기각된다(통과 조건이 늘었다).
+            "commonality_ratio": 1.0, "direction_match": True,
         },
     }
     base["evidence"].update(ev.pop("evidence", {}))
@@ -131,3 +135,74 @@ def test_trap_still_p2_even_with_null_normal_ratio():
                                   "defect_ts": "2026-03-05 00:00:00",
                                   "normal_ratio": None, "drift_detected": None})])
     assert _tokens(result)["trap_nonull"] == TOKEN_TIME_ORDER
+
+
+# --- 0726 규칙 ⑥ 인과 서명(P6): 상관 ≠ 인과 ---
+#     11개 시나리오 실측에서 도출. 각 테스트는 실제로 관측된 행 모양을 고정한다.
+
+def test_partial_commonality_rejects_p6():
+    # 불량 로트의 일부만 거친 장비 — UNMATCHED-01 대표행(comm=0.50)이 이 경로로 죽는다.
+    result = _run([_hyp(cause="halfcomm", evidence={"commonality_ratio": 0.5})])
+    assert _tokens(result)["halfcomm"] == TOKEN_NO_CAUSAL_SIGNATURE
+
+
+def test_direction_mismatch_rejects_p6():
+    # drift는 났는데 KG가 예상한 방향의 반대 — 경쟁 가설 판별(S2-1 방향 대조).
+    result = _run([_hyp(cause="wrongdir", evidence={"direction_match": False})])
+    assert _tokens(result)["wrongdir"] == TOKEN_NO_CAUSAL_SIGNATURE
+
+
+def test_direction_unknown_rejects_p6():
+    # None = KG가 방향을 안 줬거나 drift 자체가 없음. 통과시키면 안 된다 —
+    # UNMATCHED-02의 최강 노이즈행(comm=1.0·지속 99%·특이성 0.76)이 정확히 이 경우고,
+    # 세기 기반 게이트로는 절대 못 막던 행이다.
+    result = _run([_hyp(cause="nodir", evidence={"direction_match": None})])
+    assert _tokens(result)["nodir"] == TOKEN_NO_CAUSAL_SIGNATURE
+
+
+def test_commonality_missing_rejects_p6():
+    # pre-pass가 suspect를 못 잡아 공통률이 안 채워진 행 — 없는 근거로 채택하지 않는다.
+    result = _run([_hyp(cause="nocomm", evidence={"commonality_ratio": None})])
+    assert _tokens(result)["nocomm"] == TOKEN_NO_CAUSAL_SIGNATURE
+
+
+def test_trap_equipment_shape_rejects_p6():
+    # 함정 LITHO-01의 실측 모양: 모든 로트가 지나가지만(1.0) 파라미터는 미동도 안 함.
+    # CENTER-01/02/03에서 각 14건씩 채택되어 사용자에게 나가던 행이 여기서 죽는다.
+    result = _run([_hyp(cause="litho", equipment="LITHO-01",
+                        evidence={"commonality_ratio": 1.0, "direction_match": None})])
+    assert _tokens(result)["litho"] == TOKEN_NO_CAUSAL_SIGNATURE
+
+
+def test_not_investigated_wins_over_causal_signature():
+    # 규칙 순서 고정: ⑥는 ③(미조사) 뒤여야 한다. 앞이면 미조사 행이 P6 기각으로 빠져
+    # "안 봤다 ≠ 기각"(S2-6 C3) 원칙이 깨진다.
+    result = _run([_hyp(cause="fallback_p6", investigated=False,
+                        evidence={"commonality_ratio": 0.5, "direction_match": None,
+                                  "drift_detected": None})])
+    assert _tokens(result)["fallback_p6"] == TOKEN_NOT_INVESTIGATED
+
+
+def test_semi_auto_wins_over_causal_signature():
+    # 반자동은 telemetry 방향이 구조적으로 없다 — P6로 사살하지 않고 판단 보류 유지.
+    result = _run([_hyp(cause="semi_p6", tier="반자동", investigated=False,
+                        evidence={"commonality_ratio": 1.0, "direction_match": None,
+                                  "drift_detected": None})])
+    assert _tokens(result)["semi_p6"] == TOKEN_SEMI_AUTO_PENDING
+
+
+def test_counter_evidence_wins_over_causal_signature():
+    # ⑤가 ⑥보다 앞 — 반대근거 미수집이면 P3가 먼저 잡는다(사유 코드 안정성).
+    result = _run([_hyp(cause="p3_first",
+                        evidence={"normal_ratio": None, "commonality_ratio": 0.5})])
+    assert _tokens(result)["p3_first"] == TOKEN_NO_COUNTER_EVIDENCE
+
+
+def test_all_rejected_by_p6_yields_insufficient():
+    # 환각 억제의 핵심 경로 — UNMATCHED 시나리오가 이 모양이다.
+    # 채택 0 → status=insufficient_evidence → 조건부 엣지가 ⑦'(respond_without_llm)로 보낸다.
+    result = _run([_hyp(cause=f"n{i}", evidence={"commonality_ratio": 0.5})
+                   for i in range(3)])
+    assert result["accepted"] == []
+    assert result["status"] == "insufficient_evidence"
+    assert set(_tokens(result).values()) == {TOKEN_NO_CAUSAL_SIGNATURE}
