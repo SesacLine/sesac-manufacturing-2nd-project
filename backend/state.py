@@ -190,7 +190,9 @@ class FinalResponse(TypedDict):
     group_id: str
     pattern: str
     # novel(v1.1) = CNN Unknown(미지 패턴, OSR) 그룹 — 구 unmapped에서 분리(판단불가 세분류 (b)).
-    status: Literal["reviewed", "insufficient", "unmapped", "novel"]
+    # normal_reading(#69) = 저수율인데 판독상 정상 — 그룹 서브그래프를 타지 않고 batch_runner가
+    # normal_lots로 합성한다(맵 비가시 수율손실 의심. unmapped 재사용 금지 — 세분류 유지).
+    status: Literal["reviewed", "insufficient", "unmapped", "novel", "normal_reading"]
     reason: str | None
     lot_ids: list[str]
     lot_count: int

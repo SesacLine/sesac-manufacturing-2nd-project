@@ -319,6 +319,71 @@ def test_stats_and_events_after_save(client):
     assert items[0]["yield_impact"] == -3.1
 
 
+# ── #69: 판독상 정상 로트 전용 카드(normal_reading) ───────────────────────────────────
+def test_normal_lots_are_persisted_as_normal_reading_card(client):
+    """grouper가 분리한 normal_lots가 배치 저장에서 전용 analysis 1건으로 합성된다.
+
+    이 로트들은 그룹 서브그래프를 타지 않으므로 final_response가 없다 — 저장 단계가 유일한
+    노출 경로다(배선이 끊기면 "판독상 정상" 신호가 UI에서 통째로 사라진다).
+    """
+    from backend.batch_runner import _persist_results
+
+    state = {
+        "final_response": {},
+        "normal_lots": ["lot123", "lot456", "lot789"],
+        # 창 평균 대비 저수율 → yield_impact는 음수여야 한다(판독 정상 ≠ 수율 정상).
+        "lot_yields": {"lot123": 0.70, "lot456": 0.72, "lot789": 0.74, "lot999": 0.95},
+    }
+    ids = _persist_results("b_normal_1", 1, state)
+    assert ids == ["grp_normal_20260401_01"]
+
+    body = client.get(f"/api/v1/analyses/{ids[0]}").json()
+    assert body["status"] == "normal_reading"
+    assert body["pattern"] == "Normal"
+    assert body["confidence"] == "low"          # 채택 원인 없음 — R1 규약
+    assert body["hypotheses"] == []             # KG 경로를 안 탐
+    assert body["description"] is None          # 그룹 관측 없음 → 프론트 summary_line
+    assert body["lot_count"] == 3
+    assert body["lot_ids"] == ["lot123", "lot456", "lot789"]
+    assert body["yield_impact"] is not None and body["yield_impact"] < 0
+    # 조치는 조사 이관만 — 결함 패턴이 없어 Hold 근거가 없다.
+    assert [a["type"] for a in body["actions"]] == ["investigation", "investigation"]
+    assert not any(a["hold"] for a in body["actions"])
+
+    # §2.2 목록에도 확신·수율영향이 실린다(대기열 정렬 원천)
+    items = client.get("/api/v1/analyses?sort=latest&limit=10&offset=0").json()["items"]
+    assert [i["status"] for i in items] == ["normal_reading"]
+    assert items[0]["confidence"] == "low"
+
+
+def test_normal_reading_evidence_is_404(client):
+    """가설이 없으므로 근거 상세는 제공하지 않는다(unmapped·novel과 같은 계약)."""
+    from backend.batch_runner import _persist_results
+
+    _persist_results("b_normal_2", 2, {"final_response": {}, "normal_lots": ["lot1"]})
+    r = client.get("/api/v1/analyses/grp_normal_20260401_02/evidence/h1")
+    assert r.status_code == 404
+    assert isinstance(r.json()["detail"], str)
+
+
+def test_no_normal_card_when_no_normal_lots(client):
+    """normal_lots가 비면 카드를 만들지 않는다(빈 카드 노출 금지)."""
+    from backend.batch_runner import _persist_results
+
+    assert _persist_results("b_normal_3", 3, {"final_response": {}, "normal_lots": []}) == []
+    assert client.get("/api/v1/analyses").json()["count"] == 0
+
+
+def test_group_actions_normal_reading_template():
+    """조치 템플릿 단일 소스 — ⑦ 노드를 안 타도 같은 함수에서 문구가 나온다."""
+    from backend.nodes.response import group_actions
+
+    actions = group_actions("normal_reading", "Normal", 3, None)
+    assert len(actions) == 2
+    assert all(a["type"] == "investigation" and a["hold"] is False for a in actions)
+    assert "EDS" in actions[0]["text"]
+
+
 # ── v1.1: 서버시간(EVENT_DATE) env 오버라이드 ──────────────────────────────────────────
 def test_event_date_env_override(monkeypatch):
     """EVENT_DATE env로 서버 '오늘'을 바꿀 수 있다(기본 2026-04-01) — 재로드로 검증."""

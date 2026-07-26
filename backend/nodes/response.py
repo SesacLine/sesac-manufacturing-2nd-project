@@ -69,8 +69,12 @@ def _confidence(accepted: list[dict]) -> str:
 # AI 제안일 뿐 실행은 엔지니어 판단(와이어프레임 문구와 동일 스탠스).
 
 
-def _group_actions(status: str, pattern: str, lot_count: int, top: dict | None) -> list[dict]:
-    """그룹(분석) 단위 권장 조치 목록. status와 대표 채택 가설(top)에서 결정론적으로 만든다."""
+def group_actions(status: str, pattern: str, lot_count: int, top: dict | None) -> list[dict]:
+    """그룹(분석) 단위 권장 조치 목록. status와 대표 채택 가설(top)에서 결정론적으로 만든다.
+
+    공개 이름인 이유: ⑦ 노드를 타지 않는 normal_reading(#69)도 batch_runner가 이 함수를 불러
+    조치 템플릿을 만든다 — 조치 문구의 단일 소스를 유지하기 위해서다.
+    """
     hold = {
         "type": "containment",
         "hold": True,
@@ -100,6 +104,14 @@ def _group_actions(status: str, pattern: str, lot_count: int, top: dict | None) 
              "text": "전문가 재판독 — 신규 패턴 여부 확정"},
             {"type": "investigation", "hold": False,
              "text": "신규 패턴 후보 등록 — 데이터 축적 후 재학습 검토"},
+        ]
+    if status == "normal_reading":
+        # 판독상 정상(#69): 결함 패턴이 없어 Hold 근거가 없다 — 맵 밖 원인 조사로만 이관.
+        return [
+            {"type": "investigation", "hold": False,
+             "text": "맵 비가시 수율손실 조사 — EDS 파라메트릭/전기적 특성 리뷰"},
+            {"type": "investigation", "hold": False,
+             "text": "해당 로트 공정 이력·계측 데이터 수동 확인"},
         ]
     # unmapped: 이상 자체가 매핑 밖(지식 공백) — Hold보다는 온톨로지 확충이 조치.
     return [
@@ -182,7 +194,7 @@ def generate_response(state: GroupState, translate=None) -> dict:
         state["group_id"], pattern, lot_ids,
         status="reviewed", reason=None, hypotheses=ordered, summary=summary,
         description=_group_description(state, translate), confidence=confidence,
-        actions=_group_actions("reviewed", pattern, len(lot_ids), accepted[0] if accepted else None),
+        actions=group_actions("reviewed", pattern, len(lot_ids), accepted[0] if accepted else None),
     )
 
 
@@ -218,7 +230,7 @@ def respond_without_llm(state: GroupState, translate=None) -> dict:
                 summary=f"{pattern} 패턴은 미확인 신규 패턴(OSR) — 전문가 재판독 대상입니다.",
                 description=description,
                 confidence="low",  # R1: 채택 원인 없음 → 불확실
-                actions=_group_actions("novel", pattern, len(lot_ids), None),
+                actions=group_actions("novel", pattern, len(lot_ids), None),
             )
         return _final(
             group_id,
@@ -230,7 +242,7 @@ def respond_without_llm(state: GroupState, translate=None) -> dict:
             summary=f"{pattern} 패턴은 원인 분석 데이터가 없습니다(KG 매핑 대상 3종 밖).",
             description=description,
             confidence="low",  # R1: 채택 원인 없음 → 불확실
-            actions=_group_actions("unmapped", pattern, len(lot_ids), None),
+            actions=group_actions("unmapped", pattern, len(lot_ids), None),
         )
 
     # UC-2: 후보는 있었지만 Critic이 하나도 채택 못 한 경우 — 판단 불가(근거부족).
@@ -249,7 +261,7 @@ def respond_without_llm(state: GroupState, translate=None) -> dict:
         summary=f"{pattern} 패턴은 판단 불가 — 채택 가능한 근거 있는 가설이 없습니다.",
         description=description,
         confidence="low",  # R1: 채택 0건 → 불확실(판단 불가)
-        actions=_group_actions("insufficient", pattern, len(lot_ids), None),
+        actions=group_actions("insufficient", pattern, len(lot_ids), None),
     )
 
 
