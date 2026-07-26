@@ -113,4 +113,7 @@ def test_api_contract_invariants_hold_with_new_routing_in_place():
 
     hints = typing.get_type_hints(FinalResponse, include_extras=True)
     # v1.1: novel(미지 패턴 OSR) 추가 — 판단불가 세분류 (b).
-    assert typing.get_args(hints["status"]) == ("reviewed", "insufficient", "unmapped", "novel")
+    # #69: normal_reading(판독상 정상) 추가 — 그룹 서브그래프 밖에서 batch_runner가 합성.
+    assert typing.get_args(hints["status"]) == (
+        "reviewed", "insufficient", "unmapped", "novel", "normal_reading",
+    )

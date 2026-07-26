@@ -26,6 +26,8 @@ from .config import DATA_EPOCH, EVENT_DATE_COMPACT, fab_db_path
 from .graph import _CURRENT_GROUP, build_graph
 from .graph_client import KGClient
 from .mcp_client import MCPClient
+# ⑦ 노드를 타지 않는 normal_reading(#69)도 같은 조치 템플릿을 쓴다(문구 단일 소스).
+from .nodes.response import group_actions
 from .schemas import NODE_TO_STEP_INDEX, normalize_pattern, pattern_slug
 
 # create_task로 띄운 배치 태스크가 GC로 사라지지 않게 참조를 붙잡아 둔다.
@@ -295,4 +297,55 @@ def _persist_results(batch_id: str, seq: int, state: dict) -> list[str]:
             top_tier=top_card.get("tier"),
         )
         result_ids.append(analysis_id)
+
+    result_ids.extend(_persist_normal_reading(batch_id, seq, state, lot_yields))
     return result_ids
+
+
+def _persist_normal_reading(
+    batch_id: str, seq: int, state: dict, lot_yields: dict[str, float]
+) -> list[str]:
+    """판독상 정상 로트(#69 (b)안)를 analysis 1건으로 합성·저장한다.
+
+    ② grouper가 Normal 다수결 로트를 그룹으로 만들지 않으므로(기획 §6.1) 이 로트들은 그룹
+    서브그래프(④~⑦)를 타지 않는다 — final_response가 없어 여기서 카드를 직접 만든다.
+    "저수율인데 웨이퍼맵상 정상"은 맵에 안 보이는 수율손실(파라메트릭/EDS 계열) 의심이라
+    조사 대상이다. 조용히 버리면 이 신호가 UI에서 사라지므로 전용 status로 노출한다
+    (unmapped 재사용 금지 — v2.0에서 unmapped는 "기지 패턴 + 지식 공백"으로 재정의됨).
+    """
+    normal_lots = state.get("normal_lots") or []
+    if not normal_lots:
+        return []
+
+    analysis_id = f"grp_normal_{EVENT_DATE_COMPACT}_{seq:02d}"
+    final = {
+        "pattern": "Normal",
+        "status": "normal_reading",
+        "reason": (
+            "저수율이지만 웨이퍼맵 판독상 결함 패턴이 없습니다 — 맵에 보이지 않는 "
+            "수율손실(파라메트릭 등) 의심. 웨이퍼맵 RCA 범위 밖이므로 별도 조사가 필요합니다."
+        ),
+        "lot_ids": normal_lots,
+        "lot_count": len(normal_lots),
+        "hypotheses": [],
+        # 채택 원인이 없으므로 확신은 항상 low(R1 규약).
+        "confidence": "low",
+        # 판독은 정상이어도 저수율 로트라 수율영향은 정상적으로 음수가 나온다.
+        "yield_impact": compute_yield_impact(normal_lots, lot_yields),
+        "actions": group_actions("normal_reading", "Normal", len(normal_lots), None),
+    }
+    payload = build_analysis_payload(analysis_id, final)
+    store.save_analysis(
+        analysis_id=analysis_id,
+        batch_id=batch_id,
+        seq=seq,
+        pattern=payload["pattern"],
+        status=payload["status"],
+        lot_count=payload["lot_count"],
+        top_cause=None,
+        payload=payload,
+        confidence=payload["confidence"],
+        yield_impact=payload["yield_impact"],
+        defect_date=_defect_date(normal_lots),
+    )
+    return [analysis_id]
