@@ -1,4 +1,8 @@
-"""⑤ Critic 노드. 결정적 함수(룰베이스), LLM 미사용 — 2026-07-09 노드화 결정.
+"""⑥ Critic 노드. 결정적 함수(룰베이스), LLM 미사용 — 2026-07-09 노드화 결정.
+
+번호 주의: 현행 파이프라인(⓪~⑦) 기준 이 노드는 ⑥이다. 07-23에 ③ VLM 관측 노드가
+중간에 들어오며 한 칸 밀렸다 — 옛 주석·문서의 "⑤ Critic"은 같은 노드를 가리킨다.
+정본: docs/node_langraph_spec/node_spec_06_critic.md
 
 규칙을 순서대로 확인한다(semiconductor_proposal.md §7.2 Critic Workflow 정본). Critic은 결정론 —
 fab 재조회 없이 ④가 채운 evidence만 읽는다(faithfulness firewall). 처음 걸리는 규칙이 판정을 정하고,
@@ -11,7 +15,7 @@ fab 재조회 없이 ④가 채운 evidence만 읽는다(faithfulness firewall).
     ⑤ 반대근거     — get_normal_lot_ratio를 안 돌렸으면(normal_ratio is None) reject (P3)
     ⑥ 인과 서명    — 공통률 1.0 AND KG 예상 방향과 drift 일치가 아니면 reject (P6, S3-0726)
 
-규칙 순서 근거(0724 수정): judge_unknown 조건(②③)을 채택 게이트(④⑤)보다 먼저 확인한다. ⑤ pre-pass가
+규칙 순서 근거(0724 수정 · 0726 ⑥ 추가): judge_unknown 조건(②③)을 채택 게이트(④⑤⑥)보다 먼저 확인한다. ⑤ pre-pass가
 suspect 장비를 못 찾으면 normal_ratio가 None으로 남는데, 이때 근거없음·미조사 후보가 ⑤ 반대근거 규칙에서
 hard reject되면 "안 봤다≠기각" 원칙(S2-6)이 깨진다. 시간정합(①)은 1번 유지 — 미조사여도 수집된
 maintenance_ts로 함정을 먼저 사살해야 하므로(§5-2). 채택(investigated=True) 후보의 결과는 불변 —
