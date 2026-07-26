@@ -22,22 +22,33 @@
   등록됨, git 추적 밖). 날짜별 `MMDD work/` 폴더 아래에 그날 스터디·설계 노트를 둔다(예:
   `personalspace_rca/0718 work/0718_study.md`). Claude는 개인 작업/노트를 항상 여기에 만들 것 —
   repo 상위의 옛 `Semiconductor/personalspace/`(0714까지)는 폐기된 위치이므로 쓰지 말 것.
-- **현재 상태(2026-07-23 저녁, main 대통합 후)** — 하루 동안 PR #32·#34·#35·#36·#38·#40·#42가
-  전부 main에 머지되며 아래가 한꺼번에 실현됐다:
+- **현재 상태(2026-07-26)** — 07-23 대통합 이후 이어진 변화:
+  - **API 계약 v2.0 10종 구현 완료**(07-25, #78·#79) — 차트 2종(`/yield-daily`·`/stats/causes`) +
+    `confidence`(R1)·`yield_impact`·`actions`·`novel` 확장, 서버 "오늘"은 `EVENT_DATE`. 아래 "API" 절 참고.
+  - **프론트 v2.0 정합 1차 구현**(07-26, #80 브랜치) — 대기열 수율영향·확신 컬럼(수율영향순 정렬),
+    원인군(R2) 카드·채택 유력/보조 플래그·OCAP 권장 조치(`ActionList`), 차트 3종(`TrendChart`·`CauseCharts`).
+  - **grouper Normal 로트 분리 수집**(#69) — Normal 다수결 로트는 그룹 미생성 + `normal_lots`로
+    별도 수집까지 구현. 저장→API→프론트 노출 배선("판독상 정상 N로트" 전용 카드, status
+    `normal_reading` 신설안)은 **판독 담당 진행 예정** — 아직 코드에 없다.
+  - kg_rca 테스트 트리 복원(#75) · mapping_table 정본을 MCP 서버 원본으로 전환(#76) ·
+    루트 pytest 수집 충돌 해소 + CI에 backend·kg_rca 테스트 추가(#83·#84).
+  - 테스트 기준선: `pytest -q -m "not data" backend/tests kg_rca/tests` **228 passed·2 xfailed**,
+    secsgem-mcp는 자기 폴더에서 31건(cwd 의존 — 루트 일괄 실행하면 실패하니 CI처럼 나눠 돌 것).
+- **(이력) 2026-07-23 main 대통합**(PR #32·#34·#35·#36·#38·#40·#42):
   - **기획안 v1.5 구조 ⓪~⑦이 코드로 구현됨** — CNN 노드(`nodes/cnn.py`, ResNet-18 실연동+폴백),
     VLM 관측(`nodes/vlm_describe.py`, Grouper 뒤로 이동), LangGraph **그룹 서브그래프 + 조건부
     엣지 2종**(#32). "backend는 v1.5 미반영"이라는 옛 서술은 폐기 — 아래 "파이프라인" 절이 현행.
   - **⚠️ 노드 번호 재매핑**: 구 코드(⓪~⑥)에서 Hypothesis/Critic은 ④/⑤였지만, 현행 ⓪~⑦에서는
     **⑤ Hypothesis / ⑥ Critic**이다(④는 KG 조회). 07-23 이전 문서·주석의 "④/⑤"는 구 번호다.
-  - **API 계약 8종 구현 완료**(07-20). React 프론트엔드는 계속 수정 중.
-  - 테스트 `pytest -q -m "not data"` 기준 **114건 green**.
 - **Hypothesis·Critic 갱신(2026-07-23, 현행 번호 ⑤/⑥)**: 스켈레톤을 크게 벗어났다. ⑤는 자동 tier
   LLM 그룹 조사관(배치 telemetry)·방향 대조·cause 클러스터·**fab 재랭킹**·스텝 상한까지, ⑥은
   4규칙 + `investigated` 소비(judge_unknown 분기)까지 구현됨(슬라이스2 S2-1~6). 이어 ground truth
   E2E 평가(슬라이스3)로 **SC-CENTER-01 근본원인 top-1 달성**(정답 193위 rejected → 0위 accepted,
   함정 P2 시간역전 44건 명시 기각). 처방 4종은 BACKEND_DECISIONS D13~D16. **상세 정본은
-  `docs/hypo_critic_설계공유_v1.0.md`(팀 공유)와 `personalspace_rca`의 hypo_critic_py.md·
-  terms_of_reference.md·hypo_critic_test_result.md**(그 문서들은 구 번호 ④/⑤로 표기).
+  `docs/node_langraph_spec/node_spec_05_hypothesis.md`·`node_spec_06_critic.md`**(구
+  `hypo_critic_설계공유_v1.0.md`는 커밋 941f929에서 이 노드별 문서로 분리되며 삭제됨)와
+  `personalspace_rca`의 hypo_critic_py.md·terms_of_reference.md·hypo_critic_test_result.md
+  (개인 문서들은 구 번호 ④/⑤로 표기).
 - 정본: `docs/semiconductor_proposal.md`(기획 전체, 배경·차별점·평가방법), `docs/API_명세서_v2.0.md`(프론트↔백엔드 API 계약 — v1.0은 이력 보존용)
 
 ## 다섯 개의 하위 프로젝트
@@ -49,7 +60,7 @@
 
 | 폴더 | 역할 | 상태 |
 |---|---|---|
-| `frontend/` | React + Vite 대시보드. 3화면 + 근거 모달, dev 서버 `:5173` | 최초 구현 완료 |
+| `frontend/` | React + Vite 대시보드. 3화면 + 근거 모달 + 차트, dev 서버 `:5173` | API v2.0 정합 구현(07-26) |
 | `backend/` | FastAPI + LangGraph 오케스트레이션. 파이프라인 ⓪~⑦(v1.5 구조) 실행 + API 10종 | v1.5 구조 구현됨(07-23), 계속 갱신 중 |
 | `wafer_reading/` | 웨이퍼맵 판독 모듈(07-23 신설, #26·#39) — `classifier/`(ResNet-18 5클래스 학습·추론), `stacking`(그룹 스택맵), `quantitative`(die-matrix→KG 어휘 관측), `vlm/` | 구현됨. 학습 체크포인트는 커밋 금지(재학습으로 재생성) |
 | `kg_rca/` | 지식그래프(KG). 도메인 문헌 → Neo4j 적재 → LLM KG 추출 → 결정적 그래프 순회로 원인 후보(`hypotheses.json`) 생성 | 완성, 계속 갱신 중 |
@@ -67,7 +78,8 @@
 ① read_wafer_maps        nodes/cnn.py           CNN 5클래스 판정(Center/Edge-Ring/Scratch/Unknown/Normal)
                                                 — ResNet-18 실연동(wafer_reading.classifier), 체크포인트
                                                 없으면 "Center" 폴백. (구 vlm.py를 07-23 개명)
-② group_by_pattern       nodes/grouper.py       패턴별 그룹화 (Normal은 그룹 미생성)
+② group_by_pattern       nodes/grouper.py       패턴별 그룹화 (Normal은 그룹 미생성 — #69부터
+                                                normal_lots로 별도 수집. 노출 배선은 미완)
 ③ observe_groups         nodes/vlm_describe.py  그룹 스택맵 관측(Observation) 생산 — die-matrix 실연동
                                                 (stacking+quantitative → signature/angular 등 KG 어휘),
                                                 VLM 자연어는 TODO(미연동, 스켈레톤 폴백만)
@@ -102,12 +114,12 @@
   로그+스킵**(배치 로그 `status="error"`)하고 나머지 그룹으로 배치를 완료(`completed`)한다. 실패
   그룹은 결과 없이 빠지며 재시도하지 않는다(곱게 무너짐). `run_batch` 최상단의 배치-레벨 `except`는
   그룹 루프 밖(⓪~③·저장)만 담당하도록 남는다 — "한 패턴 실패 ≠ 배치 실패". 정본은 D18과
-  `docs/langgraph_골격_설계공유_v1.0.md` §3.
+  `docs/node_langraph_spec/langgraph_골격_설계공유_v1.0.md` §3.
 - **판정 책임 경계(S2 확정)**: 최종 채택/기각은 **전부 ⑥ Critic**이 한다 — ⑤는 tier 무관하게
   증거 수집·검증·**랭킹(soft)**만 하고 기각 판정은 안 한다. 자동 tier도 ⑤에서 즉시 채택되지
   않고 evidence(drift 등)를 채워 ⑥ 규칙으로 넘긴다. 기획안 §7.1의 "자동은 즉시 채택/기각"
   서술은 "⑤ soft / ⑥ hard"로 정리됐으니 그대로 인용하지 말 것. 상세는
-  `docs/hypo_critic_설계공유_v1.0.md`.
+  `docs/node_langraph_spec/node_spec_05_hypothesis.md`·`node_spec_06_critic.md`.
 - `state.py`: 배치 그래프는 `RCAState`(cursor → target_lot_ids → cnn_results → groups …
   — 구 `vlm_results`, 07-24 `CNNResult`와 함께 개명),
   그룹 서브그래프는 **`GroupState`**(group_id·pattern·lot_ids·observation → candidates →
@@ -115,7 +127,7 @@
   평탄화 완료** — 서브그래프 노드는 옛 `(state, group_id, mcp)` 어댑터를 걷어내고 `GroupState`를
   **직접** 받는다(`graph.py`가 노드 함수를 직접 등록하고 kg_client·mcp는 `functools.partial`로
   조립 시점 주입). 노드 함수 내부 알고리즘은 무변경(행위 보존 리팩터, rationale 제외 골든 SHA
-  일치로 실증). 상세는 `docs/langgraph_골격_설계공유_v1.0.md`.
+  일치로 실증). 상세는 `docs/node_langraph_spec/langgraph_골격_설계공유_v1.0.md`.
 - `main.py`는 **앱 조립만** 한다(CORS·라우터 등록·`store.init_db()`). 엔드포인트는 `api/`,
   저장 계층은 `store.py`, 전역 싱글턴(KGClient·MCPClient)은 `deps.py`에 있다.
 - `store.py`: `app_state.db`(SQLite) 테이블 4종 — `cursor_state`(배치 커서) · `batch` · `analysis` ·
@@ -168,7 +180,8 @@ docstring에 명시된 동작). Hypothesis 노드처럼 다회 호출하는 패�
 data/raw/ 문헌 → 표 행 단위 청킹 → Neo4j 적재 → LLM KG 추출(+검증규칙 6종) → 결정적 순회 + LLM 문장합성
 ```
 
-- 그래프 스키마(정본 `docs/KG_schema_v1.4.md`): 노드 8종
+- 그래프 스키마(repo 내 최신본 `docs/KG_schema_v1.3.md` — ⚠️ 팀에서 언급되는 "v1.4"는 repo에
+  커밋된 적이 없다. v1.3에 없는 최신 변경은 KG 담당자에게 확인할 것): 노드 8종
   (`DefectPattern`·`SpatialSignature`·`ProcessStep`·`FailureMode`·`Cause`·`Parameter`·
   `Maintenance`·`Recipe`), 관계 7종(`ARISES_IN`/`OCCURS_IN`/`CAUSED_BY`/`VERIFIED_BY`/
   `ATTRIBUTED_TO`/`HAS_SIGNATURE`/`FORMS_IN`).
@@ -186,14 +199,17 @@ data/raw/ 문헌 → 표 행 단위 청킹 → Neo4j 적재 → LLM KG 추출(+�
 - **⚠️ 기획안이 낡은 구간**: `docs/semiconductor_proposal.md` §6.2는 아직 "문헌 5편 → 청크 95개 →
   가설 **125건**(Center 62/Edge-Ring 53/Scratch 10)"으로 07-13 개편 이전 수치를 쓰고, 스키마도
   `SpatialSignature` 노드와 `HAS_SIGNATURE`/`FORMS_IN` 관계가 빠진 구버전 표기다. **가설 수·스키마의
-  정본은 `kg_rca/STATUS.md` §1과 `docs/KG_schema_v1.4.md`** — 기획안 수치를 인용하지 말 것.
+  정본은 `kg_rca/STATUS.md` §1과 `docs/KG_schema_v1.3.md`(repo 내 최신본)** — 기획안 수치를 인용하지 말 것.
   (`kg_rca/STATUS.md` 안에도 "가설이 125건인 이유" 옛 문단이 남아 있어 정리 대상.)
 - **출력 스키마(2026-07-13 개편, 정본 `kg_rca/KG_output_명세.md`)**: `route`/`score.confidence`
   필드가 빠지고 `scenario_hint`(MCP 검증 체인 라우팅: A2/A3/A5/A6/null)와
   `score.evidence_docs`/`evidence_chunks`(측정 기반 순위 성분)로 대체됐다. `backend/state.py`의
   `GraphRAGCandidate`·`backend/graph_client/kg_client.py`가 이 스키마를 따라가도록 2026-07-14에
   같이 갱신했다 — kg_rca를 다시 갱신할 때는 이 두 파일도 같이 봐야 한다.
-- 실행 스크립트는 `0_reset.py`~`6_ask_graphrag.py` 순서(번호가 실행 순서).
+- 실행 스크립트는 `0_reset.py`~`6_ask_graphrag.py` 순서(번호가 실행 순서). **mapping_table 정본은
+  `secsgem-mcp/simulator/mapping_table.yaml`**(#76에서 kg_rca 로컬 사본을 삭제하고 MCP 서버 원본을
+  직접 읽도록 전환 — `6_ask_graphrag.py`의 `MAPPING_PATH`). 회귀 테스트는 `kg_rca/tests/`
+  (recall 회귀·시나리오 recall·hypotheses 계약 — #75에서 복원, CI 포함).
 - 알려진 미해결 문제(정본 `kg_rca/STATUS.md` §4): 검증신호 Maintenance 쏠림(P1), 가설 점수체계
   1차 재설계 완료·잔여 과제 있음(P2), Maintenance 노드 중복(P3), 추출 비결정성(P4), EDS 공정 문헌
   공백(P5, CLEAN은 07-13 해소됨), ProcessStep join 의미필터 없음(P6).
@@ -243,7 +259,15 @@ CORS는 `:5173`만 허용된다(`backend/main.py`, 프록시 미사용).
 `secsgem-mcp/datasets/fab.db`가 없으면 `secsgem-mcp/README.md` "데이터 준비" 절차 선행 필요
 (WM-811K 원천 데이터 다운로드 후 `python -m simulator.generate`로 빌드 — MixedWM38 불필요).
 
-테스트: `pytest -q -m "not data"` (fab.db 빌드 없이 CI에서 도는 것과 동일).
+테스트(fab.db 빌드 불필요 — CI와 동일 스코프):
+
+```bash
+pytest -q -m "not data" backend/tests kg_rca/tests   # 228 passed·2 xfailed (07-26 기준선)
+cd secsgem-mcp && pytest -q -m "not data"            # 31건 — 상대경로(cwd) 의존이라 자기 폴더에서
+```
+
+⚠️ 루트에서 인자 없이 `pytest`를 돌리면 secsgem-mcp 테스트가 cwd 문제로 실패한다(#83에서 수집
+충돌은 해소했지만 cwd 의존은 남음) — 위처럼 나눠 돌 것.
 
 ## 알려진 단순화 / TODO (코드에 `# 결정①/②/③` 또는 `TODO(팀 결정 필요)`로 표시됨)
 
@@ -310,14 +334,14 @@ faithfulness / 경로 정합성 / **단일경로 vs 다중가설탐색 RCA 품�
 | 기획 전체(배경·차별점·기술스택·평가방법·타임라인) | `docs/semiconductor_proposal.md` |
 | 백엔드 현재 상태·구조·실행법 | `README.md` |
 | 스켈레톤 구축 로그·팀 결정사항·컴포넌트별 개선목록 (가장 자주 갱신) | `docs/skeleton_kickoff.md` |
-| ⑤ Hypothesis·⑥ Critic 설계·검증 전체(팀 공유 정본) | `docs/hypo_critic_설계공유_v1.0.md` (구 번호 ④/⑤로 표기) |
+| LangGraph 골격·노드별 설계 공유(①CNN·③VLM관측·④KG조회·⑤Hypothesis·⑥Critic·⑦Response) | `docs/node_langraph_spec/` 폴더 |
 | 백엔드 내부 정책 결정(D1~D16) | `docs/BACKEND_DECISIONS.md` |
 | 프론트↔백엔드 API 계약 10종(정본) | `docs/API_명세서_v2.0.md` |
-| KG 스키마 전체 명세(정본) | `docs/KG_schema_v1.4.md` |
+| KG 스키마 전체 명세 | `docs/KG_schema_v1.3.md` (repo 내 최신본 — "v1.4"는 미커밋) |
 | `hypotheses.json` 출력 필드별 상세 명세(정본) | `kg_rca/KG_output_명세.md` |
 | KG 진행상황·남은 문제 | `kg_rca/STATUS.md` |
 | KG↔MCP 정합성 검토(용어 불일치, X1E pad_usage_hours 등) | `kg_rca/MCP_KG_정합성검토.md` |
-| 데이터 모델 설계(v1.0/v2.0) | `kg_rca/데이터 모델 설계_v1 0.md`, `kg_rca/데이터 모델 설계_v2.0.md` |
+| 데이터 모델 설계(v2.0/v3.0 — v1.0은 삭제됨) | `kg_rca/데이터 모델 설계_v2.0.md`, `kg_rca/데이터 모델 설계_v3.0.md` |
 | MCP 9종 도구 상세 계약 | `secsgem-mcp/README.md` |
 | MCP 시나리오(A0~E4) | `docs/SECS_GEM MCP document.md` (개인 사본 `..personal/SECS GEM MCP 문서_v0.1.md`) |
 | Git 컨벤션 | `docs/git_convention_v0.2.md` |
