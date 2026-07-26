@@ -3,16 +3,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError, formatDetail } from "../api/client";
-import type { AnalysisList, YieldSummary } from "../api/types";
-import YieldChart from "../components/YieldChart";
-import { STATUS_LABELS } from "../labels";
+import type { AnalysisList, CauseStats, YieldDaily } from "../api/types";
+import CauseCharts from "../components/CauseCharts";
+import TrendChart from "../components/TrendChart";
+import { CONFIDENCE_LABELS, impactClass, QUEUE_CAUSE_FALLBACK, STATUS_LABELS } from "../labels";
 
 const PAGE_SIZE = 10;
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const [yieldData, setYieldData] = useState<YieldSummary | null>(null);
-  const [yieldError, setYieldError] = useState<string | null>(null);
+  const [trend, setTrend] = useState<YieldDaily | null>(null); // §2.8
+  const [causes, setCauses] = useState<CauseStats | null>(null); // §2.9
+  const [chartError, setChartError] = useState<string | null>(null);
   const [list, setList] = useState<AnalysisList | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -20,7 +22,9 @@ export default function DashboardPage() {
   const [runBlocked, setRunBlocked] = useState(false);
 
   useEffect(() => {
-    api.yieldSummary().then(setYieldData).catch((e) => setYieldError(formatDetail(e.detail ?? e.message)));
+    // §2.8 추이·§2.9 집계는 독립 조회 — 하나가 비어도(fab.db 미빌드) 나머지는 뜬다.
+    api.yieldDaily().then(setTrend).catch((e) => setChartError(formatDetail(e.detail ?? e.message)));
+    api.causeStats().then(setCauses).catch((e) => setChartError(formatDetail(e.detail ?? e.message)));
   }, []);
 
   const loadList = useCallback(() => {
@@ -50,6 +54,12 @@ export default function DashboardPage() {
 
   const totalPages = list ? Math.max(1, Math.ceil(list.count / PAGE_SIZE)) : 1;
 
+  // 화면 표시 정렬: 이 페이지의 행을 수율영향 큰 순(가장 음수 먼저)으로 재배열한다(v8 "↓ 수율영향순").
+  // 서버 정렬은 latest 고정이라 페이지 내에서만 재정렬 — null(구 저장분)은 맨 뒤로 민다.
+  const rows = list
+    ? [...list.items].sort((a, b) => (a.yield_impact ?? Infinity) - (b.yield_impact ?? Infinity))
+    : [];
+
   return (
     <section className="panel">
       <div className="panel-head">
@@ -57,48 +67,79 @@ export default function DashboardPage() {
         <span className="tag">일 1회 배치 (실시간 아님)</span>
       </div>
       <div className="panel-body">
-        <div className="box">
-          <div className="box-title">
-            <span>수율 현황 요약 · 최근 7일 추이</span>
+        <details className="box chart-box" open>
+          <summary>
+            <span className="arr" />
+            수율 현황 차트 — 일별 수율 추이(§2.8) · 원인 장비 구성 · 패턴 Pareto(§2.9){" "}
+            <span style={{ fontWeight: 400, color: "var(--text-dim)" }}>(클릭 = 접기/펼치기)</span>
+          </summary>
+          {chartError && <div className="notice error">{chartError}</div>}
+
+          <div className="box-title" style={{ marginTop: 12 }}>
+            <span>수율 현황 요약 · 일별 수율 추이 (데이터축 전 구간 · 이상 이벤트 오버레이)</span>
           </div>
-          {yieldError ? (
-            <div className="notice error">{yieldError}</div>
-          ) : yieldData ? (
-            <YieldChart data={yieldData} />
+          {trend ? (
+            <TrendChart data={trend} />
           ) : (
-            <div className="na-note">불러오는 중...</div>
+            !chartError && <div className="na-note">불러오는 중...</div>
           )}
-        </div>
+
+          <div style={{ borderTop: "1px dashed var(--line)", margin: "14px 0 10px" }} />
+
+          <div className="box-title">
+            <span>원인 장비 구성비 · 결함 패턴 Pareto · 패턴별 채택 원인</span>
+            <span style={{ fontWeight: 400, color: "var(--text-dim)" }}>색 = 공정 단계</span>
+          </div>
+          {causes ? (
+            <CauseCharts data={causes} />
+          ) : (
+            !chartError && <div className="na-note">불러오는 중...</div>
+          )}
+        </details>
 
         <div className="box">
           <div className="box-title">
             <span>
               ◆ 분석 결과 대기열 — 누적 {list?.count ?? 0}건 (행 클릭 시 결과 열람)
             </span>
-            <span style={{ fontWeight: 400 }}>↓ 최신순</span>
+            <span style={{ fontWeight: 400 }}>↓ 수율영향순</span>
           </div>
+          {list && list.items.length > 0 && (
+            <div className="caption" style={{ marginBottom: 6 }}>
+              위에서부터 수율영향 큰 순 · 색(고/중/저)은 −3%p·−2%p 임계의 프론트 표시 규칙이며
+              백엔드 severity 필드가 아닙니다 · 확신 수준은 R1(잠정 지지/불확실)로 "확정"은 없습니다.
+            </div>
+          )}
           {listError && <div className="notice error">{listError}</div>}
           {list && list.items.length > 0 && (
             <table>
               <thead>
                 <tr>
                   <th>결함 패턴 그룹</th>
-                  <th>소속 로트 수</th>
+                  <th>수율영향</th>
+                  <th>소속 로트</th>
                   <th>유력 원인 후보</th>
+                  <th>확신 수준</th>
                   <th>상태</th>
                 </tr>
               </thead>
               <tbody>
-                {list.items.map((item) => (
+                {rows.map((item) => (
                   <tr
                     key={item.analysis_id}
                     className="clickable"
                     onClick={() => navigate(`/analyses/${item.analysis_id}`)}
                   >
                     <td>{item.pattern}</td>
-                    <td>{item.lot_count}개 로트</td>
-                    {/* top_cause는 열린 문자열 — 받은 값 그대로 표시(§2.2) */}
-                    <td>{item.top_cause ?? "—"}</td>
+                    {/* 수율영향 %p — 색은 프론트 표시 규칙(§3), 백엔드 severity 아님. null=구 저장분 */}
+                    <td className={impactClass(item.yield_impact)}>
+                      {item.yield_impact === null ? "—" : `${item.yield_impact}%p`}
+                    </td>
+                    <td>{item.lot_count}개</td>
+                    {/* reviewed면 top_cause(열린 문자열 그대로 §2.2), 그 외는 상태별 판단불가 사유 */}
+                    <td>{item.top_cause ?? QUEUE_CAUSE_FALLBACK[item.status] ?? "판단 불가"}</td>
+                    {/* R1 확신 수준(§2.5) — "확정"은 없음 */}
+                    <td>{CONFIDENCE_LABELS[item.confidence] ?? "불확실"}</td>
                     <td>
                       <span className={item.status === "reviewed" ? "badge dark" : "badge"}>
                         {STATUS_LABELS[item.status] ?? item.status}

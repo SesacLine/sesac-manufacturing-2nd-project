@@ -4,11 +4,19 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api, ApiError, formatDetail } from "../api/client";
-import type { Analysis, Hypothesis, LotWafers } from "../api/types";
+import type { Analysis, AnalysisStatus, Hypothesis, LotWafers } from "../api/types";
+import ActionList from "../components/ActionList";
 import EvidenceModal from "../components/EvidenceModal";
 import HypothesisCard from "../components/HypothesisCard";
 import WaferStrip from "../components/WaferStrip";
 import { CONFIDENCE_LABELS, STATUS_LABELS, summaryLine } from "../labels";
+
+// 판단불가 세분류(reviewed 외) → unable-box 문구. 맵에 없는 신규 status는 아래 fallback.
+const UNABLE_BOX: Partial<Record<AnalysisStatus, { mark: string; title: string }>> = {
+  unmapped: { mark: "?", title: "판독까지만 지원 — 원인 매핑 없음" },
+  novel: { mark: "!", title: "신규 패턴(OSR) — 재판독 이관 · 격리 대상" },
+  insufficient: { mark: "△", title: "판단 불가 — 근거부족" },
+};
 
 export default function ResultPage() {
   const { analysisId } = useParams<{ analysisId: string }>();
@@ -131,25 +139,28 @@ export default function ResultPage() {
           />
         )}
 
-        {analysis.status === "unmapped" ? (
-          <div className="unable-box">
-            <div className="mark">?</div>
-            <div className="title">판독까지만 지원 — 원인 매핑 없음</div>
-            <div className="desc">{analysis.reason}</div>
-          </div>
-        ) : (
-          <>
-            {analysis.status === "insufficient" && (
+        {analysis.status !== "reviewed" ? (
+          (() => {
+            // reviewed 외 상태(unmapped/novel/insufficient/그 외)는 판단불가 카드로 노출.
+            const cfg =
+              UNABLE_BOX[analysis.status] ?? {
+                mark: "△",
+                title: STATUS_LABELS[analysis.status] ?? "판단 불가",
+              };
+            return (
               <div className="unable-box">
-                <div className="mark">△</div>
-                <div className="title">판단 불가 — 근거부족</div>
+                <div className="mark">{cfg.mark}</div>
+                <div className="title">{cfg.title}</div>
                 <div className="desc">{analysis.reason}</div>
               </div>
-            )}
+            );
+          })()
+        ) : (
+          <>
             {/* R1: 확정 원인이 아니라 "가능성 있는 후보"임을 표현 층에서 명시(불확실 표시).
                 confidence=low(다수 채택/증거 약함)일 때 특히 단정하지 않도록 경고 배너를 띄운다. */}
-            {analysis.status === "reviewed" && analysis.confidence === "low" && (
-              <div className="notice" style={{ borderStyle: "solid" }}>
+            {analysis.confidence === "low" && (
+              <div className="conf-warn">
                 ⚠ 확정된 근본 원인이 아닙니다 — 아래는 <b>가능성 있는 원인 후보</b>이며,
                 채택 후보가 많거나 검증 증거가 약해 확신 수준은 <b>불확실</b>입니다. 참고로만
                 활용하세요.
@@ -216,9 +227,28 @@ export default function ResultPage() {
             )}
           </>
         )}
+
+        {/* 권장 조치(§2.5 actions) — 모든 상태 공통. novel/insufficient도 investigation
+            조치가 올 수 있으므로 status와 무관하게 actions가 있으면 노출한다(OCAP). */}
+        {analysis.actions.length > 0 && (
+          <>
+            <div className="box-title" style={{ margin: "16px 0 6px" }}>
+              <span>
+                권장 조치{" "}
+                <span style={{ fontWeight: 400, color: "var(--text-dim)" }}>
+                  — 격리 → 시정 → 예방 · AI 제안, 실행은 엔지니어 판단 · 항목 클릭 = 완료 체크
+                </span>
+              </span>
+            </div>
+            <div className="box">
+              <ActionList actions={analysis.actions} />
+            </div>
+          </>
+        )}
       </div>
       <div className="foot-note">
-        가설 카드 · 근거 보기 = 3섹션 모달(Commonality / Telemetry / Events)
+        가설 카드 = 확신 수준(그룹 R1)·채택/보조 플래그 · 근거 보기 = 3섹션 모달 · 조치 = OCAP
+        中 격리/시정/예방
       </div>
 
       {modal && analysisId && (

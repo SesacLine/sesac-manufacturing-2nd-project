@@ -15,6 +15,13 @@ export default function HypothesisCard({
 }) {
   const h = hypothesis;
   const accepted = h.verdict === "accepted";
+  // 채택 카드는 확률/확정 대신 "채택 유력(대표)"·"보조 가설" 플래그로 표기(v8·R1).
+  // 기각·미판정은 verdict 라벨(✖ 기각 / △ 미판정)을 그대로 쓴다.
+  const flag = accepted
+    ? isTop
+      ? { cls: "adopt-flag", text: "✔ 채택 유력" }
+      : { cls: "adopt-flag rej", text: "△ 보조 가설" }
+    : { cls: "adopt-flag rej", text: VERDICT_LABELS[h.verdict] ?? h.verdict };
   return (
     <div className={isTop && accepted ? "hcard top" : "hcard"}>
       <div className="h-row1">
@@ -24,9 +31,7 @@ export default function HypothesisCard({
             공정 단계: {h.stage ?? "공정 미상"} · {TIER_LABELS[h.tier] ?? h.tier}
           </div>
         </div>
-        <span className={accepted ? "adopt-flag" : "adopt-flag rej"}>
-          {VERDICT_LABELS[h.verdict] ?? h.verdict}
-        </span>
+        <span className={flag.cls}>{flag.text}</span>
       </div>
       <div className="h-narr">{h.narrative}</div>
       {h.verdict_reason && (

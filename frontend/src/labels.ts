@@ -53,6 +53,21 @@ export const STATUS_LABELS: Record<AnalysisStatus, string> = {
   novel: "신규 패턴", // v1.1 — 미확인 신규 패턴(OSR), 격리·재판독 대상
 };
 
+/** 대기열 "유력 원인 후보" 셀 — reviewed 외 상태는 top_cause가 null이라 판단불가 사유로 대체.
+ *  열린 lookup(Partial) — 신규 status가 타입에 추가돼도 빌드는 유지, 기본 "판단 불가"로 폴백. */
+export const QUEUE_CAUSE_FALLBACK: Partial<Record<AnalysisStatus, string>> = {
+  unmapped: "(a) 매핑 없음",
+  novel: "(b) 신규 패턴·OSR",
+  insufficient: "(c) 근거 부족·NFF",
+};
+
+/** 수율영향 색 등급 — −3%p 이하=고, −2%p 이하=중, 그 외=저. 프론트 표시 규칙(§3 파생,
+ *  백엔드 severity 필드 아님). null(구 저장분)은 저로 표시. */
+export function impactClass(v: number | null | undefined): string {
+  if (v === null || v === undefined) return "imp-lo";
+  return v <= -3 ? "imp-hi" : v <= -2 ? "imp-md" : "imp-lo";
+}
+
 export const BATCH_STATUS_LABELS: Record<BatchStatus, string> = {
   running: "진행 중",
   completed: "완료",
@@ -99,6 +114,21 @@ const PATTERN_GLOSS: Record<Pattern, string> = {
   Unknown: "미지/새로운 결함 패턴",
   Normal: "결함 없음(정상)",
 };
+
+/** 차트 공정 단계 색 (도넛/Pareto/원인칩 공통) — 시각 규약(§2.9): 색 = 공정 단계.
+ *  매핑에 없는 stage/null은 회색 fallback(CHART_NEUTRAL). */
+export const STAGE_COLOR: Record<Stage, string> = {
+  LITHO: "#8a56c2",
+  ETCH: "#2a78d6",
+  DEPO: "#1baf7a",
+  CMP: "#eda100",
+  CLEAN: "#4a3aa7",
+  EDS: "#c2568a",
+};
+export const CHART_NEUTRAL = "#9aa0a7";
+export function stageColor(stage: Stage | null | undefined): string {
+  return stage ? (STAGE_COLOR[stage] ?? CHART_NEUTRAL) : CHART_NEUTRAL;
+}
 
 /** §3.2 공정 gloss */
 const STAGE_GLOSS: Record<Stage, string> = {

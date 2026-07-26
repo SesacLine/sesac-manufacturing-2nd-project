@@ -73,6 +73,8 @@ sdoubleoj/
 # frontend
 frontend/node_modules/
 frontend/dist/
+# Vite dev 서버 사전번들 캐시 — 실행마다 재생성됨, 커밋 금지
+frontend/.vite/
 
 # kg_rca 생성 캐시(18MB급) — 커밋 금지
 kg_rca/outputs/embedding_cache.json

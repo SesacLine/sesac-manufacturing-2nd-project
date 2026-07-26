@@ -4,6 +4,9 @@
   --text: #1f2328; --text-dim: #6b7178; --header-bg: #202428; --header-text: #f4f5f6;
   --accent-dark: #2b2f33; --good: #2f7d3f; --good-bg: #eaf4ec; --good-line: #3f9a52;
   --bad: #b3392f;
+  /* 수율영향 severity 색 — 프론트 표시 규칙(§3 파생), 백엔드 severity 아님 */
+  --sev-hi: #b3261e; --sev-hi-bg: #fbe9e7; --sev-md: #b7791f; --sev-md-bg: #fbf1e0;
+  --sev-lo: #6b7178; --sev-lo-bg: #eef1f4;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font-family: "Segoe UI", "Malgun Gothic", -apple-system, sans-serif; font-size: 13px; line-height: 1.5; }
@@ -107,3 +110,42 @@ tr.clickable:hover { background: #f2f3f4; cursor: pointer; }
 .spark-wrap { border: 1px solid var(--line); padding: 8px 10px; }
 
 .pager { display: flex; gap: 8px; align-items: center; margin-top: 8px; font-size: 11.5px; color: var(--text-dim); }
+
+/* 대기열 수율영향 색 (고/중/저 — −3%p·−2%p 임계, 프론트 표시 규칙) */
+.imp-hi { color: var(--sev-hi); font-weight: 700; }
+.imp-md { color: var(--sev-md); font-weight: 700; }
+.imp-lo { color: var(--sev-lo); font-weight: 700; }
+
+/* R1 확신=불확실 경고 배너 (확정 아님) */
+.conf-warn { border: 1.5px solid var(--sev-hi); background: var(--sev-hi-bg); padding: 9px 13px; font-size: 12px; line-height: 1.6; margin-bottom: 10px; }
+
+/* 권장 조치 (OCAP: 격리/시정/예방/추가조사) */
+.act-group { margin-bottom: 4px; }
+.act-ghead { font-size: 10.5px; font-weight: 700; color: var(--text-dim); padding: 8px 0 3px; border-top: 1px solid #e2e5e9; }
+.act-group:first-child .act-ghead { border-top: none; }
+.act-ghead.hold { color: var(--sev-hi); }
+.action-item { display: flex; gap: 9px; align-items: flex-start; padding: 7px 0; font-size: 12px; cursor: pointer; }
+.action-item .chk { width: 16px; height: 16px; border: 1.5px solid var(--line-strong); flex-shrink: 0; margin-top: 1px; border-radius: 2px; position: relative; }
+.action-item.checked .chk { background: var(--accent-dark); border-color: var(--accent-dark); }
+.action-item.checked .chk::after { content: "✓"; color: #fff; font-size: 12px; position: absolute; top: -3px; left: 1.5px; }
+.action-item.checked .txt { text-decoration: line-through; color: var(--text-dim); }
+.action-item .hold-tag { font-size: 9.5px; font-weight: 700; color: var(--sev-hi); border: 1px solid var(--sev-hi); border-radius: 2px; padding: 0 4px; margin-left: 4px; flex-shrink: 0; }
+
+/* 대시보드 차트 (§2.8 추이 · §2.9 도넛/Pareto/원인칩) */
+.chart-box > summary { cursor: pointer; font-weight: 700; font-size: 11.5px; padding: 4px 0; list-style: none; }
+.chart-box > summary::-webkit-details-marker { display: none; }
+.chart-box > summary .arr { display: inline-block; width: 0; height: 0; border-left: 5px solid var(--text); border-top: 4px solid transparent; border-bottom: 4px solid transparent; margin-right: 7px; transition: transform .15s; vertical-align: 1px; }
+.chart-box[open] > summary .arr { transform: rotate(90deg); }
+.chart-grid { display: grid; grid-template-columns: 3fr 4fr 5fr; gap: 16px; align-items: start; margin-top: 10px; }
+@media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+.chart-svg { width: 100%; height: auto; display: block; }
+.chart-sub { font-size: 10.5px; color: var(--text-dim); margin-bottom: 6px; }
+.chart-lg { display: inline-block; width: 8px; height: 8px; margin: 0 4px 0 8px; vertical-align: -1px; }
+.chart-ax { fill: var(--text-dim); font-size: 10.5px; }
+.chart-lb { fill: #3a3f45; font-size: 11px; }
+.chart-vl { fill: var(--text); font-size: 11px; font-weight: 600; }
+.cause-row { display: grid; grid-template-columns: 64px 1fr; gap: 6px; margin-bottom: 6px; align-items: start; }
+.cause-row > .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.cause-pat { text-align: right; font-size: 11px; padding-top: 3px; }
+.cause-chip { display: inline-block; color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 2px; }
+.cause-chip small { opacity: .85; font-size: 9.5px; margin-left: 5px; }
