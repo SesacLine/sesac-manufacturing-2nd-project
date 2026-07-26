@@ -15,6 +15,7 @@ run_batch는:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import datetime
 import inspect
 import logging
@@ -195,17 +196,7 @@ async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -
     # 자동 캡처(모델명·토큰·비용·input/output)하고 비-LLM 노드도 span으로 잡는다.
     # config=None은 LangGraph에서 무해(no-op)라 트레이싱 꺼진 경로는 기존과 동일하다.
     handler = deps.langfuse_handler()
-    run_config = None
-    if handler is not None:
-        run_config = {
-            "callbacks": [handler],
-            "metadata": {
-                "langfuse_session_id": batch_id,        # 배치 1회 = 세션 1개(그룹 묶기)
-                "langfuse_tags": ["rca-batch"],
-                "cursor_date": cursor_date,
-                "cursor_end": cursor_end,
-            },
-        }
+    run_config = {"callbacks": [handler]} if handler is not None else None
 
     state: dict = {
         "cursor_date": cursor_date,
@@ -223,16 +214,45 @@ async def _run_batch_inner(batch_id: str, kg_client: KGClient, mcp: MCPClient) -
     # (namespace, update)로 받는다(§8.2). 안쪽 신호는 진행 표시 전용(process_stream_item이
     # delta=None), 바깥 신호만 결과 누적. current_step은 완료 노드의 인덱스로 단조 증가한다.
     # (observe_groups=인덱스3 매핑은 #33/step7 몫 — 지금은 그 자리가 비어 3을 건너뛴다.)
+    #
+    # 트레이스 속성(name·session·tags)은 config metadata의 langfuse_* 키로는 LangGraph
+    # subgraphs 구조에서 트레이스 레벨에 안 붙었다(Step 7 실측 — 일반 metadata는 관측치에
+    # 전파되나 langfuse_session_id/tags는 소비만 되고 트레이스에 미적용). 그래서 v4 권장대로
+    # 루트 span + propagate_attributes로 감싼다:
+    #   - start_as_current_observation(name="rca-batch"): 이 활성 span 컨텍스트에 astream이
+    #     만드는 LangGraph 체인·generation·agent span이 attach돼 한 트레이스로 묶인다(Step 7
+    #     실측 — 이 래퍼를 빼면 콜백 span들이 트레이스에서 유실됨). 래퍼 span 자체는 트레이스에
+    #     관측치로 안 남지만 그룹핑 앵커 역할을 한다.
+    #   - propagate_attributes: baggage로 트레이스 레벨에 trace_name(빈 이름 해소)·
+    #     session=batch_id(배치 1회=세션 1개)·tags=["rca-batch"]를 실제 부착(Step 7 실측).
+    # 트레이싱 off/실패해도 배치에 영향 없도록 try/except + ExitStack로 격리(원칙 #2).
     current_step = 0
-    async for namespace, update in graph.astream(
-        state, stream_mode="updates", subgraphs=True, config=run_config
-    ):
-        new_step, delta = process_stream_item(namespace, update, current_step)
-        if delta:
-            state.update(delta)
-        if new_step > current_step:
-            current_step = new_step
-            store.update_batch_step(batch_id, current_step)
+    with contextlib.ExitStack() as stack:
+        if handler is not None:
+            try:
+                from langfuse import get_client, propagate_attributes
+                stack.enter_context(
+                    get_client().start_as_current_observation(as_type="span", name="rca-batch")
+                )
+                stack.enter_context(
+                    propagate_attributes(
+                        trace_name="rca-batch",
+                        session_id=batch_id,
+                        tags=["rca-batch"],
+                        metadata={"cursor_date": cursor_date, "cursor_end": cursor_end},
+                    )
+                )
+            except Exception:  # noqa: BLE001 — 옵저버빌리티 실패가 배치를 죽이면 안 됨
+                logger.warning("Langfuse 트레이스 속성 설정 실패(무시)")
+        async for namespace, update in graph.astream(
+            state, stream_mode="updates", subgraphs=True, config=run_config
+        ):
+            new_step, delta = process_stream_item(namespace, update, current_step)
+            if delta:
+                state.update(delta)
+            if new_step > current_step:
+                current_step = new_step
+                store.update_batch_step(batch_id, current_step)
 
     seq = int(batch_id.rsplit("_", 1)[1])
     result_ids = _persist_results(batch_id, seq, state)
