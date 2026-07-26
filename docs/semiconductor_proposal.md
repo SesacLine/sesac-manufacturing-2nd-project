@@ -268,8 +268,8 @@ CNN 기반 웨이퍼맵 결함 패턴 분류와 VLM 기반 자연어 서술을 �
 
 - 반도체 제조 교재, 공정 매뉴얼, 결함 분석 논문 등 신뢰성 있는 도메인 문헌을 활용한다. 엔지니어의 경험/암묵지 중 트러블슈팅 표 등으로 이미 문서화된 부분을 대상으로 하며, GraphRAG류의 동적 커뮤니티 요약·검색 기법은 사용하지 않는다.
 - RCA에 필요한 공정, 장비, 결함 패턴, 공정 파라미터, 원인 및 영향 관계를 중심으로 온톨로지를 정의하고, LLM으로 엔티티·관계를 1차 자동 추출해 스키마에 맞게 정적으로 구조화한다. 이렇게 구축된 KG는 빌드타임에 결정적으로 순회를 마치고, 런타임에는 조회만 한다.
-- 그래프 스키마: `DefectPattern(고정 3종: Center/Scratch/Edge-Ring) → ProcessStep(고정 6종) → FailureMode → Cause → Evidence(:Parameter|:Maintenance|:Recipe)`. `DefectPattern`/`ProcessStep`/`Parameter`만 고정 vocabulary로 매핑하고 `FailureMode`/`Cause`/`Maintenance`/`Recipe`는 문헌에서 LLM이 자유 추출한다. `DefectPattern` 검색 키는 CNN 분류 라벨과 VLM이 생성한 자연어 description을 함께 사용한다.
-- 구현·실행 완료: 문헌 5편 → 청크 95개 → 가설 **125건**(Center 62 / Edge-Ring 53 / Scratch 10). 가설마다 검증등급 `[자동]`/`[반자동]`/`[근거없음]`을 부여하며, 기준은 "fab.db에 데이터가 있느냐"가 아니라 "결정적 조인 키 + 판정 규칙으로 자동 채택/기각까지 갈 수 있느냐"다.
+- 그래프 스키마(노드 8종·관계 7종, 정본 `docs/KG_schema_v1.3.md`): 공정 경로 `DefectPattern(고정 3종: Center/Scratch/Edge-Ring) → ProcessStep(고정 6종) → FailureMode → Cause → (:Parameter|:Maintenance|:Recipe)`에 더해, 형상 경로 `SpatialSignature({shape}@{zone}) → ProcessStep`(관계 `HAS_SIGNATURE`/`FORMS_IN`)이 있다. `DefectPattern`/`ProcessStep`/`Parameter`만 고정 vocabulary로 매핑하고 `FailureMode`/`Cause`/`Maintenance`/`Recipe`는 문헌에서 LLM이 자유 추출한다(`SpatialSignature` id는 enum 조합). KG 진입 키는 **①CNN 라벨**(기지 패턴)과 **②관측(observation) — 형상 signature·자연어 description**을 함께 쓰며, 특히 `Unknown` 패턴은 형상 진입(`SpatialSignature`)이 **유일한** 경로다.
+- 구현·실행 완료: 도메인 문헌 → 표 행 단위 청킹 → 결정적 순회로 패턴별 가설 생성(재빌드 기준 총 **772건** — Center 375 / Edge-Ring 290 / Scratch 107. 가설 수는 재생성마다 변동하므로 하드코딩하지 말 것, 정본은 `kg_rca/STATUS.md §1`). 가설마다 검증등급 `[자동]`/`[반자동]`/`[근거없음]`을 부여하며, 기준은 "fab.db에 데이터가 있느냐"가 아니라 "결정적 조인 키 + 판정 규칙으로 자동 채택/기각까지 갈 수 있느냐"다.
 - WM-811K 9개 패턴 중 이 그래프까지 연결되는 건 **Center/Edge-Ring/Scratch 3개**뿐이며, 나머지 5개 결함 패턴(`Unknown`)과 `None`(`Normal`)은 원인 매핑 대상이 아니다.
 - 원문 대비 추출 정확성과 관계의 논리적 일관성은 저장 전에 검증 규칙(신뢰도 필터, 앵커 정규화, grounding 가드, 국소성, 공정-변수 정합성, 고아 제거 6종)으로 걸러낸다.
 
@@ -279,7 +279,7 @@ CNN 기반 웨이퍼맵 결함 패턴 분류와 VLM 기반 자연어 서술을 �
 | 논문 | Wafer defect semantic reasoning via a three-stage retrieval-augmented system in semiconductor manufacturing. | 웨이퍼맵과 자연어 질의를 함께 입력받아 결함 유형뿐 아니라 공정 원인과 역할별(품질·공정·AI 엔지니어) 설명까지 생성하는 GraphRAG 계열 선행 연구. KG 추출 프롬프트 설계와 사례조사(§5)에 참조. | Liao, X., Zhang, J., Lyu, Y., & Wang, J. (2026). Wafer defect semantic reasoning via a three-stage retrieval-augmented system in semiconductor manufacturing. *Journal of Manufacturing Systems*, *85*, 269-286 |
 | 현업 암묵지 | 인터뷰 내용 |  |  |
 
-실제 KG에 적재된 문헌은 위 교재 1종 외에 패턴→공정 산문 문서 3종, 원인 직결형 논문 표 1종을 포함해 총 5편이다.
+실제 KG에 적재된 문헌은 위 표의 교재·논문을 포함해 총 **15편**이다 — `kg_rca/data/raw/` 7편(패턴→공정 산문 3종, 논문 2종, 원인 직결형 표 2종)과 `kg_rca/data/docs/` 8편(`doc_A`~`doc_H` — 공정별 트러블슈팅 표와 형상·모폴로지 휴리스틱, 07-22 편입). 문헌 목록의 정본은 `docs/KG_schema_v1.3.md`의 문서 인덱스다.
 
 **6.3 Fab 운영 데이터(fab.db)**
 
@@ -483,19 +483,21 @@ erDiagram
 **반환: accept / reject(사유) / insufficient_evidence**
 ```
 
-> **구현 갱신 (2026-07-23, 슬라이스2·3 — 위 §7.1·§7.2 워크플로의 정련).** 정본은
-> `personalspace_rca`의 hypo_critic_py.md·terms_of_reference.md·hypo_critic_test_result.md.
-> - **판정 책임 경계**: 자동 tier도 ④에서 "즉시 채택/기각"하지 않는다. ④는 tier 무관하게 증거
->   수집·검증·**랭킹(soft)**만 하고, **채택/기각은 전부 ⑤ Critic**이 한다(위 §7.2 [3]·반환 줄의
+> **구현 갱신 (2026-07-23, 슬라이스2·3 — 위 §7.1·§7.2 워크플로의 정련).** 정본은 팀 공유
+> 문서 `docs/node_langraph_spec/node_spec_05_hypothesis.md`·`node_spec_06_critic.md`. 상세 실험
+> 기록은 `personalspace_rca`의 hypo_critic_py.md·terms_of_reference.md·hypo_critic_test_result.md
+> (git 추적 밖·구 번호 ④/⑤ 표기). *아래는 현행 번호 ⑤ Hypothesis / ⑥ Critic 기준.*
+> - **판정 책임 경계**: 자동 tier도 ⑤에서 "즉시 채택/기각"하지 않는다. ⑤는 tier 무관하게 증거
+>   수집·검증·**랭킹(soft)**만 하고, **채택/기각은 전부 ⑥ Critic**이 한다(위 §7.2 [3]·반환 줄의
 >   "[자동] 즉시 판정"은 이 경계로 정리됨).
-> - **④ 자동 tier = LLM 그룹 조사관**(`create_react_agent`): 후보 1개씩이 아니라 같은 step의 param을
+> - **⑤ 자동 tier = LLM 그룹 조사관**(`create_react_agent`): 후보 1개씩이 아니라 같은 step의 param을
 >   **배치 telemetry 1콜**로 조사(호출수↓). drift **방향 대조**(KG 예상↔실측)로 경쟁 가설 판별,
 >   fab으로 구분 불가한 후보는 **cause 클러스터**로 묶고, fab 증거로 **재랭킹**(대표원인=최상위).
 >   에이전트 폭주 방지 스텝 상한. 숫자는 도구 반환에서 코드가 재구성, LLM은 rationale만(옵션 A).
-> - **⑤ Critic**: 위 4규칙에 더해 **미조사(investigated=False) 분기**를 둔다 — 반자동·자동 폴백은
+> - **⑥ Critic**: 위 4규칙에 더해 **미조사(investigated=False) 분기**를 둔다 — 반자동·자동 폴백은
 >   기각이 아니라 `judge_unknown` 보류(안 봤으면 판정 안 함). verdict는 accepted/rejected/judge_unknown
 >   3버킷. Critic이 규칙 기반·결정론·fab 재조회 0(firewall)인 점은 유지.
-> - **검증(슬라이스3)**: ground truth 시나리오로 ③~⑥ E2E 관통 — **SC-CENTER-01 근본원인 top-1
+> - **검증(슬라이스3)**: ground truth 시나리오로 ④~⑦ E2E 관통 — **SC-CENTER-01 근본원인 top-1
 >   달성**(정답 193위 rejected→top-1 accepted, 함정 P2 시간역전 명시 기각). 평가로 발견한 결함 4개의
 >   처방은 BACKEND_DECISIONS.md D13~D16(maintenance 비대칭 창·step 폴백·합집합 시간창·commonality 랭킹).
 

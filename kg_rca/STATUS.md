@@ -1,7 +1,8 @@
 # RCA GraphRAG 파이프라인 — 진행 상황 & 남은 문제
 
-> 마지막 업데이트: 2026-07-22
-> 웨이퍼맵 불량 원인분석(RCA) 지식그래프 파이프라인. **스키마 정본은 `../docs/KG_schema_v1.4.md`.**
+> 마지막 업데이트: 2026-07-26
+> 웨이퍼맵 불량 원인분석(RCA) 지식그래프 파이프라인. **스키마 정본은 `../docs/KG_schema_v1.3.md`**
+> (repo 최신본 — 팀에서 언급되는 "v1.4"는 커밋된 적 없음).
 > 데이터 모델 정본은 `데이터 모델 설계_v3.0.md`(07-22, 형상 진입점 + 모폴로지).
 > `backup/schema.md`는 v1 기록용. 옛 Text2Cypher 질의 코드는 `backup/6_ask_graphrag_backup.py`.
 
@@ -13,14 +14,26 @@
 data/raw/ 문헌 → 표 행 단위 청킹 → Neo4j 적재 → LLM KG 추출(+검증 규칙) → 결정적 순회 + LLM 문장 합성
 ```
 
-**전 단계 실행 검증 완료.** 최신 실행 수치 (v2.4 + CLEAN 문서, 2026-07-13 / 문헌 6편 → 청크 111개):
+**전 단계 실행 검증 완료.**
+
+**현행 산출물** (`outputs/hypotheses.json`, 07-22 재빌드로 doc_A~H 편입 후 07-26 재생성):
+
+| | |
+|---|---|
+| 문헌 | 총 **15편** — `data/raw/` 7 + `data/docs/` 8(doc_A~H) |
+| 가설 | **총 772건** — Center 375 · Edge-Ring 290 · Scratch 107 (재생성마다 변동 — 하드코딩 금지) |
+| 매핑표 대응 | MCP 매핑표(취소선 제외 8항목) 패턴→공정 **누락 0** — X2 완전 해소 |
+
+<details><summary>노드별 추출 스냅샷 (v2.4 + CLEAN, 2026-07-13 / 문헌 6편 → 청크 111개 — 참고용, 재빌드마다 변동)</summary>
 
 | | |
 |---|---|
 | 노드 | FailureMode 120 · Cause 272 · Maintenance 134 · Recipe 18 · SpatialSignature(추출) 4 (+시드: DefectPattern 3 · ProcessStep 6 · Parameter 21) |
 | 앵커 엣지 | ARISES_IN: Center→{CMP,DEPO,LITHO} · Edge-Ring→{CLEAN,DEPO,ETCH} · Scratch→{CLEAN,CMP} / FORMS_IN: blob@center→{CMP,DEPO} |
-| 가설 | **총 642건** — Center 297 · Edge-Ring 249 (CMP 경유 51 포함) · Scratch 96 |
-| 매핑표 대응 | MCP 매핑표(취소선 제외 8항목) 패턴→공정 **누락 0** — X2 완전 해소 |
+| 당시 가설 | 총 642건 — Center 297 · Edge-Ring 249 · Scratch 96 (doc_A~H 편입 전) |
+
+노드별 최신 수치가 필요하면 그래프/산출물에서 직접 확인할 것(위 스냅샷은 07-13 빌드 기준).
+</details>
 
 `[근거없음]`이 큰 비중인 것은 의도된 노출(evidence 없는 원인도 가설로 냄).
 CLEAN 경유 가설 72건(Scratch 36 + Edge-Ring 36), CLEAN 최초의 `[자동]` 경로
@@ -31,7 +44,7 @@ FORMS_IN이 닿는 공정을 ARISES_IN도 덮어서 dedup이 step 경로를 대�
 질문은 `"{패턴} 결함 패턴이 나타나는 근본 원인은 무엇인가요?"` 하나로 고정.
 그래프 순회는 고정 Cypher(결정적), LLM은 경로를 한국어 가설 문장으로 옮기는 역할만.
 
-**가설이 125건인 이유 (설계 의도):** 경로 수 = 각 홉 팬아웃의 곱
+**가설 수가 큰 이유 (설계 의도):** 경로 수 = 각 홉 팬아웃의 곱
 (`패턴 → 공정 1~2 × 공정당 FailureMode 8~37 × FM당 Cause ~2 × Cause당 Evidence ~1.4`).
 `ProcessStep` join에는 의미 필터가 없어서, 의심 공정의 **모든** 고장 모드가 후보가 된다
 (막 균열이 Center 후보로 올라오는 이유). recall을 취하고 precision은 fab 검증에 미루는 설계.
@@ -41,7 +54,7 @@ FORMS_IN이 닿는 공정을 ARISES_IN도 덮어서 dedup이 step 경로를 대�
 ## 2. 파일 구조
 
 ### 데이터 (`data/`)
-- `raw/` — 실문헌 5편 (파이프라인 입력)
+- `raw/` — 실문헌 7편 (파이프라인 입력)
   - `cause_center.txt`, `cause_edgering.txt`, `cause_scratch.txt` — 문서 A (패턴→공정 산문)
   - `table_sze_troubleshooting.md` — 문서 B (교과서 트러블슈팅 표 82행, DEPO/LITHO/ETCH/CMP)
   - `table_ref56_patterns.md` — 문서 C (ref56 논문 Table 1, 패턴→원인 직결)
@@ -63,7 +76,7 @@ FORMS_IN이 닿는 공정을 ARISES_IN도 덮어서 dedup이 step 경로를 대�
 - `2_load_txt.py` — **[v3.0] `data/raw/` + `data/docs/` 로드** (.txt/.md, 빈 파일·하위 디렉토리 제외)
 - `3_split.py` — 표 행 단위 청킹 (표 유형 3종 판별: troubleshooting/quality/pattern_cause) + 산문 재귀 분할
 - `4_ingest_chunks_to_neo4j.py` — 제약 + 시드 앵커(:Evidence 슈퍼라벨 포함) + Document/Chunk
-- `5_build_kg_from_chunks.py` — LLM 추출 + 검증 규칙 6종(`../docs/KG_schema_v1.4.md` 참조) + 저장
+- `5_build_kg_from_chunks.py` — LLM 추출 + 검증 규칙 6종(`../docs/KG_schema_v1.3.md` 참조) + 저장
 - `6_ask_graphrag.py` — 패턴별 가설 전건 출력 (`TOP_K` 환경변수로 상한 조절 가능)
 - `7_build_signature_index.py` — (선택) 의미 진입용 시그니처 임베딩 인덱스. backend 라이브 조회
   (`KG_LIVE`+`KG_SEMANTIC`)가 소비. **그래프 재빌드 시 반드시 재실행**(그래프의 파생 스냅샷).
