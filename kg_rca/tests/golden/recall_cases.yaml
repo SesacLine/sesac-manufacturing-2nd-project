@@ -24,19 +24,25 @@
 meta:
   source: secsgem-mcp/simulator/mapping_table.yaml
   match_key: matched_cause          # candidate.matched_cause 로 대조
-  build_ref: "hypotheses.json 2026-07-23 빌드(schema v2.5, 772건)"
+  build_ref: "hypotheses.json 2026-07-26 빌드(772건 — Center 375·Edge-Ring 290·Scratch 107)"
   total_cases: 9
 
 # --- 임계값(회귀 가드) ---
 # coverage: 정답 cause가 그 pattern의 KG 후보 어딘가에 matched_cause로 존재하는가.
-#   현재 8/9(cmp_edge_overpolish만 미스). 이 밑으로 떨어지면 = 재빌드가 정답 원인을
-#   후보에서 잃었다는 신호 → fail. known_miss 케이스는 분모에서 제외하지 않고 기대 실패로 표시.
+#   현재 9/9(07-26 빌드에서 cmp_edge_overpolish 해소 — 아래 케이스 주석 참고). 이 밑으로
+#   떨어지면 = 재빌드가 정답 원인을 후보에서 잃었다는 신호 → fail.
+#   known_miss 케이스가 생기면 분모에서 제외하지 않고 기대 실패(strict xfail)로 표시한다.
 # recall@k(top-k 순위 안에 드는가)는 관측(observation) 없이는 무의미하다:
 #   raw hypotheses.json은 문헌 빈도순이라 정답이 rank 35~367에 있어 recall@20=0.
 #   실제 파이프라인은 ③ 관측으로 morphology 재랭킹을 걸어야 정답이 위로 온다.
 #   → recall@k 게이트는 관측을 주입하는 별도 테스트(-m data, 아래 note 참고)에서 잰다.
 thresholds:
-  coverage_min: 8                   # 9 중 최소 8이 KG 후보에 존재해야 통과
+  # 9 중 최소 9 — 07-26 빌드에서 전건 커버되어 하한을 올렸다(래칫).
+  # ⚠ 이 선이 깨지면 매핑 매칭 2단 중 어디가 끊겼는지부터 본다:
+  #   (1) 6_ask_graphrag.py의 MAPPING_MATCH_KEYWORDS에 별칭이 있는가 — 결정적, 코드에 박힘
+  #   (2) 그 별칭을 담은 cause 행이 LLM 추출에서 살아남았는가 — 비결정적(STATUS.md P4)
+  # (2)로 흔들릴 여지가 있지만 그때 빨개지는 게 옳다 — 정답 원인을 후보에서 잃은 것이므로.
+  coverage_min: 9
 
 cases:
   # ---- Edge-Ring ----
@@ -45,15 +51,19 @@ cases:
     current_first_rank: 48          # 참고값(문헌순 raw rank) — 관측 재랭킹 전
   - pattern: Edge-Ring
     gold_cause: cmp_edge_overpolish
-    known_miss: true                # ⚠ 07-23 빌드 기준 matched_cause 미할당
+    current_first_rank: 73          # 07-26 빌드에서 커버 시작 (07-23까지 known_miss)
     note: >
-      KG 지식 부재가 아니라 **매핑 매칭 실패**다. Edge-Ring CMP에
-      localized_over_polish / asymmetric_edge_handling / localized_pressure_on_wafer_edge
-      같은 의미상 동일 원인이 후보로 존재하지만, mapping_table의 cmp_edge_overpolish로
-      번역되지 않았다. 개선 대상: mapping 매칭 키워드 또는 match_mapping 임계.
+      해소 이력(#71 → 07-26 재빌드). 원인은 KG 지식 부재가 아니라 **매핑 매칭 실패**였고,
+      두 겹이었다. (1) apply_mapping_fill이 루프 맨 위에서 [근거없음]이 아닌 행을 걸러
+      matched_cause 라벨조차 붙이지 않았다 — excessive_down_force는 이미 [자동]이라
+      통째로 빠졌다(라벨은 tier와 무관하게 필요한데 '검증신호 채움'과 한 함수에 묶여 있던 문제).
+      (2) 게이트를 열어도 "excessive_down_force"↔"cmp_edge_overpolish"는 문자열 유사도
+      0.20으로 임계 0.55 미달이라 안 닿았다 — MAPPING_MATCH_KEYWORDS에 의미 별칭
+      ("excessive down force" 등)을 넣어 부분일치 1.0으로 연결했다.
+      지금은 rank 73(tier 자동, step CMP, score 1.0)으로 커버된다.
   - pattern: Edge-Ring
     gold_cause: clean_residue
-    current_first_rank: 274
+    current_first_rank: 253
 
   # ---- Center ----
   - pattern: Center
