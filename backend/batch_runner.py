@@ -180,7 +180,11 @@ async def run_batch(batch_id: str, kg_client: KGClient, mcp: MCPClient) -> None:
         if deps.langfuse_handler() is not None:   # 트레이싱 off면 get_client() 초기화도 건드리지 않는다
             try:
                 from langfuse import get_client
-                get_client().flush()
+                # flush()는 동기 blocking(큐가 빌 때까지 호출 스레드를 막음)이다. run_batch는
+                # 이벤트 루프 위 코루틴이라 직접 부르면 flush 동안 루프 전체가 멈춘다 —
+                # export timeout을 60초로 올린 뒤(U9)엔 엔드포인트가 죽었을 때 최악 60초까지
+                # 다른 요청(배치 상태 폴링·/health 등)을 얼린다. 워커 스레드로 옮겨 루프를 살린다.
+                await asyncio.to_thread(get_client().flush)
             except Exception:   # noqa: BLE001 — flush 실패가 배치 결과를 삼키면 안 됨
                 logger.warning("Langfuse flush 실패(무시)")
 
