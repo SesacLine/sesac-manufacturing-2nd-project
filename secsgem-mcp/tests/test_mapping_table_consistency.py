@@ -1,11 +1,13 @@
 # 공통 원천 정합 + 순환성 + 플레이스홀더 차단
 import yaml, pathlib
 
+_ROOT = pathlib.Path(__file__).resolve().parents[1]  # secsgem-mcp/ — cwd 무관하게 고정 (#86)
+
 def _mapping():
-    return yaml.safe_load(pathlib.Path("simulator/mapping_table.yaml").read_text(encoding="utf-8"))
+    return yaml.safe_load((_ROOT / "simulator/mapping_table.yaml").read_text(encoding="utf-8"))
 
 def test_md_matches_yaml():
-    md = pathlib.Path("simulator/mapping_table.md").read_text(encoding="utf-8")
+    md = (_ROOT / "simulator/mapping_table.md").read_text(encoding="utf-8")
     for pattern, causes in _mapping().items():
         for c in causes:
             assert c["cause"] in md, (

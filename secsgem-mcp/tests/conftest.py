@@ -32,7 +32,8 @@ def wm811k_df():
     """WM-811K 로드 결과"""
     import pathlib
     from preprocess.wm811k_loader import load_wm811k
-    p = pathlib.Path("datasets/raw/WM811K.pkl")
+    # cwd 무관하게 secsgem-mcp/ 기준으로 고정 (#86) — 루트 실행 시 오스킵 방지
+    p = pathlib.Path(__file__).resolve().parents[1] / "datasets/raw/WM811K.pkl"
     if not p.exists():
         pytest.skip("datasets/raw/WM811K.pkl 없음")
     return load_wm811k(str(p))
