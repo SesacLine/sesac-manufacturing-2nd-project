@@ -133,7 +133,12 @@ class VLMReader:
             try:
                 text = self._backend.generate(messages)
                 return _parse_response(text)
-            except (VLMParseError, TimeoutError, ConnectionError, OSError) as e:
+            except Exception as e:  # noqa: BLE001 — 백엔드가 뭘 던지든(인증 실패·RateLimitError·
+                # 5xx 등 OpenAI/로컬 백엔드 고유 예외 포함) 재시도 소진 후 VLMCallError로 단일화한다.
+                # 좁은 예외 목록(VLMParseError/TimeoutError/ConnectionError/OSError)만 잡던 옛
+                # 구현은 인증·요금제 오류가 그대로 새나가게 뒀다 — observe_groups(③)는 배치
+                # 그래프 노드라 그룹별 격리(④~⑦ 서브그래프 전용) 밖이라, 그룹 하나의 API 실패가
+                # 배치 전체를 status=failed로 끌고 내려가는 사고로 이어졌다(2026-07-27 발견).
                 last_err = e
         raise VLMCallError(f"VLM call failed({pattern}, track={self.track}): {last_err}") from last_err
 

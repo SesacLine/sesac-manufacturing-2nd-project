@@ -5,9 +5,11 @@ from __future__ import annotations
 import numpy as np
 
 from backend.nodes import graphrag
+from backend.nodes import vlm_describe as vlm_describe_module
 from backend.nodes.vlm_describe import (
     _build_observation,
     _observation_from_die_maps,
+    _observe_group_live,
     observe_groups,
 )
 
@@ -122,3 +124,31 @@ def test_build_observation_fallback_without_fab_db(monkeypatch):
     obs = _build_observation("Edge-Ring", ["LOT1"])
     assert "signature" not in obs
     assert obs["location_text"]                      # 스켈레톤 자연어 존재
+
+
+# --- VLM_LIVE 경로(_observe_group_live) 실패 격리 ---
+
+class _RaisingVLMReader:
+    """VLMCallError가 아닌 예외(인증 실패·RateLimitError 등)를 흉내낸다."""
+
+    def describe_group(self, pattern, die_maps):
+        raise RuntimeError("401 Unauthorized")
+
+
+def test_vlm_live_backend_failure_degrades_to_deterministic_observation(monkeypatch):
+    """2026-07-27 회귀 — VLM 백엔드가 VLMCallError가 아닌 예외를 던져도 관측은 결정적
+    값으로 폴백해야 한다. observe_groups(③)는 배치 그래프 노드라 그룹별 격리(④~⑦ 전용)
+    밖이라, 여기서 예외가 새면 그룹 하나의 API 실패가 배치 전체를 status=failed로
+    끌고 내려간다 — 좁은 except 시절 실제로 가능했던 경로."""
+    monkeypatch.setattr(vlm_describe_module, "_member_keys", lambda *a, **k: [("LOT1", "1")])
+    monkeypatch.setattr(
+        vlm_describe_module, "_fetch_die_maps_by_keys",
+        lambda keys: [np.ones((8, 8), dtype=np.uint8)],
+    )
+    monkeypatch.setattr(vlm_describe_module, "_get_vlm_reader", lambda: _RaisingVLMReader())
+
+    group = {"group_id": "g1", "pattern": "Center", "lot_ids": ["LOT1"], "status": "ok"}
+    result = _observe_group_live(group, {"cnn_results": []})
+
+    assert "vlm_track" not in result["observation"]   # VLM 실생성 흔적 없음 — 결정적 관측만
+    assert result["lot_ids"] == ["LOT1"]               # 기존 필드는 보존(예외 삼키다 상태 훼손 없음)
