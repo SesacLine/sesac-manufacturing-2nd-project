@@ -83,6 +83,19 @@ def test_exhausted_retries_raise():
     assert backend.calls == 3  # 1 + 재시도 2
 
 
+def test_non_parse_backend_error_still_raises_vlm_call_error():
+    """2026-07-27 회귀 — 인증 실패·RateLimitError 등 백엔드 고유 예외(VLMParseError/
+    TimeoutError/ConnectionError/OSError가 아닌 것)도 재시도 소진 후 VLMCallError로
+    단일화돼야 한다. 좁은 except 목록 시절엔 이런 예외가 그대로 새서, 배치 그래프 노드
+    (observe_groups)가 그룹별 격리 없이 배치 전체를 죽이는 사고로 이어졌다."""
+    backend = FakeBackend([RuntimeError("401 Unauthorized"), RuntimeError("401 Unauthorized"),
+                           RuntimeError("401 Unauthorized")])
+    reader = VLMReader(track="pty", backend=backend)
+    with pytest.raises(VLMCallError):
+        reader.describe_group("Center", [_ring_map()])
+    assert backend.calls == 3  # 좁은 except였다면 1회 만에 RuntimeError가 그대로 새나갔을 것
+
+
 def test_parse_rejects_missing_field():
     partial = {k: v for k, v in VALID.items() if k != "total_description"}
     with pytest.raises(VLMParseError):

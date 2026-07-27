@@ -212,9 +212,7 @@ def _observe_group_live(group: dict, state: RCAState) -> dict:
     스태킹 멤버 규칙은 기본 경로와 공통(_member_keys) — 신호 희석 방지.
     VLM 이미지 분기(Scratch 단일)는 어댑터가 처리.
     """
-    from wafer_reading.vlm.adapter import VLMCallError
-
-    keys = _member_keys(group["pattern"], group["lot_ids"], state["cnn_results"])
+    keys = _member_keys(group["pattern"], group["lot_ids"], state.get("cnn_results") or [])
     die_maps = _fetch_die_maps_by_keys(keys)
     if not die_maps:
         return {**group, "observation": _build_observation(group["pattern"], group["lot_ids"])}
@@ -226,7 +224,10 @@ def _observe_group_live(group: dict, state: RCAState) -> dict:
 
     try:
         vlm = _get_vlm_reader().describe_group(group["pattern"], die_maps)
-    except VLMCallError:
+    except Exception:  # noqa: BLE001 — VLMCallError(재시도 소진)뿐 아니라 리더 생성 실패(모델
+        # 로드·VLM_TRACK 오류 등)까지 전부 여기서 흡수한다. observe_groups(③)는 배치 그래프
+        # 노드라 그룹별 격리(④~⑦ 전용) 밖이므로, 좁게 잡으면 그룹 하나의 VLM 실패가 배치
+        # 전체를 죽인다(2026-07-27 발견) — 위 die-matrix 폴백과 동일한 원칙으로 통일한다.
         return {**group, "observation": observation}  # 자연어 없이 결정적 관측만
 
     observation = {
