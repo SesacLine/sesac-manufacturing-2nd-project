@@ -20,7 +20,7 @@ __pycache__/
 htmlcov/
 
 # 서비스 런타임 상태 — 배치 실행마다 로컬에 새로 생성됨, 커밋 대상 아님
-app_state.db
+app_state.db*
 *.db-journal
 
 # 데이터/모델 산출물

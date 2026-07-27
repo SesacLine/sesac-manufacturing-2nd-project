@@ -5,6 +5,7 @@ import type {
   AnalysisList,
   Batch,
   BatchAccepted,
+  BatchToday,
   CauseStats,
   ErrorDetail,
   Evidence,
@@ -77,6 +78,14 @@ export const api = {
       body: "{}",
     }),
   batch: (batchId: string) => request<Batch>(`/batches/${encodeURIComponent(batchId)}`),
+  /** 서버 '오늘' + 이번 클릭의 대상 구간 — 화면1 배지가 배치 날짜를 그대로 찍는 데 쓴다. */
+  batchToday: () => request<BatchToday>("/batches/today"),
+  /** 시연용 — 마지막 배치를 되돌린다(분석 삭제 + 커서 복원). 같은 날짜를 다시 돌릴 수 있게. */
+  resetLastBatch: () =>
+    request<{ batch_id: string; removed_analyses: number; cursor_restored_to: string | null }>(
+      "/batches/reset",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
+    ),
   lotWafers: (lotId: string) =>
     request<LotWafers>(`/lots/${encodeURIComponent(lotId)}/wafers`),
   /** §2.6 die_map_url(Base URL 없는 경로) → 절대 URL. 값에 /api/v1이 없으므로 여기서만 결합. */

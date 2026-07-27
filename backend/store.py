@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import datetime
 import json
 import sqlite3
 import threading
@@ -43,7 +44,8 @@ def init_db() -> None:
                 logs_json TEXT NOT NULL DEFAULT '[]',
                 result_ids_json TEXT,
                 error TEXT,
-                started_at TEXT NOT NULL
+                started_at TEXT NOT NULL,
+                cursor_start TEXT
             );
             CREATE TABLE IF NOT EXISTS analysis (
                 analysis_id TEXT PRIMARY KEY,
@@ -79,6 +81,11 @@ def init_db() -> None:
                 con.execute(f"ALTER TABLE analysis ADD COLUMN {col} {decl}")
             except sqlite3.OperationalError:  # duplicate column — 이미 신 스키마
                 pass
+        # 배치 시작 시점의 커서 — 시연용 초기화(rollback_last_batch)의 복원 지점.
+        try:
+            con.execute("ALTER TABLE batch ADD COLUMN cursor_start TEXT")
+        except sqlite3.OperationalError:
+            pass
 
 
 # ---------------------------------------------------------------- cursor
@@ -110,18 +117,78 @@ def find_batch_by_status(statuses: list[str]) -> dict | None:
         return _batch_row_to_dict(row) if row else None
 
 
+def find_completed_batch_on(date_compact: str) -> dict | None:
+    """그 날짜(YYYYMMDD)에 완료된 배치 1건. 하루 1회 정책(§2.3)을 **날짜 단위로** 판정한다.
+
+    batch_id가 "batch_{YYYYMMDD}_{seq}"라 접두로 찾는다 — 커서가 전진하면 서버 '오늘'도
+    바뀌므로 다음 날 배치는 자연히 통과한다.
+    """
+    with _lock, _connect() as con:
+        row = con.execute(
+            "SELECT * FROM batch WHERE status = 'completed' AND batch_id LIKE ? "
+            "ORDER BY seq DESC LIMIT 1",
+            (f"batch_{date_compact}_%",),
+        ).fetchone()
+        return _batch_row_to_dict(row) if row else None
+
+
+def rollback_last_batch() -> dict | None:
+    """가장 최근 배치와 그 분석 결과를 지우고 커서를 되돌린다(시연용 "초기화").
+
+    되돌리는 것: 그 배치의 analysis row 전부 · batch row · 배치 커서.
+    커서는 그 배치가 시작한 지점(cursor_start)으로 복원한다 — 저장돼 있지 않은 구 배치는
+    "하루 전진" 규칙을 역산해 하루 되돌린다(현재 운영 방식이 하루 단위라 맞아떨어진다).
+
+    wafer_reading(판독 결과)은 지우지 않는다 — batch_id를 안 들고 있어 어느 배치 것인지
+    가릴 수 없고, 같은 로트를 다시 판독하면 어차피 덮어쓰기 때문이다.
+
+    반환: 되돌린 배치 정보(없으면 None).
+    """
+    with _lock, _connect() as con:
+        row = con.execute("SELECT * FROM batch ORDER BY seq DESC LIMIT 1").fetchone()
+        if row is None:
+            return None
+        batch_id = row["batch_id"]
+        removed = con.execute(
+            "SELECT COUNT(*) AS c FROM analysis WHERE batch_id = ?", (batch_id,)
+        ).fetchone()["c"]
+
+        restored = row["cursor_start"] if "cursor_start" in row.keys() else None
+        if restored is None:
+            cur = con.execute("SELECT cursor_date FROM cursor_state WHERE id = 1").fetchone()
+            if cur:
+                restored = (
+                    datetime.date.fromisoformat(cur["cursor_date"]) - datetime.timedelta(days=1)
+                ).isoformat()
+
+        con.execute("DELETE FROM analysis WHERE batch_id = ?", (batch_id,))
+        con.execute("DELETE FROM batch WHERE batch_id = ?", (batch_id,))
+        if restored is None:
+            con.execute("DELETE FROM cursor_state")   # 첫 배치까지 되돌림 = 커서 없음
+        else:
+            con.execute(
+                "INSERT INTO cursor_state (id, cursor_date) VALUES (1, ?) "
+                "ON CONFLICT(id) DO UPDATE SET cursor_date = excluded.cursor_date",
+                (restored,),
+            )
+        return {"batch_id": batch_id, "removed_analyses": removed, "cursor_restored_to": restored}
+
+
 def next_batch_seq() -> int:
     with _lock, _connect() as con:
         row = con.execute("SELECT MAX(seq) AS m FROM batch").fetchone()
         return (row["m"] or 0) + 1
 
 
-def create_batch(batch_id: str, seq: int, started_at: str) -> None:
+def create_batch(batch_id: str, seq: int, started_at: str, cursor_start: str | None = None) -> None:
+    """배치 row 생성. cursor_start는 이 배치를 돌리기 직전의 커서 —
+    시연용 "초기화"(rollback_last_batch)가 커서를 정확히 되돌리는 데 쓴다."""
     with _lock, _connect() as con:
         con.execute(
-            "INSERT INTO batch (batch_id, seq, status, current_step, logs_json, started_at) "
-            "VALUES (?, ?, 'running', 0, '[]', ?)",
-            (batch_id, seq, started_at),
+            "INSERT INTO batch (batch_id, seq, status, current_step, logs_json, started_at, "
+            "                   cursor_start) "
+            "VALUES (?, ?, 'running', 0, '[]', ?, ?)",
+            (batch_id, seq, started_at, cursor_start),
         )
 
 
@@ -234,15 +301,21 @@ def list_analyses(sort: str, limit: int, offset: int) -> tuple[int, list[dict]]:
 
     v1.1: items에 confidence(구 저장분은 "low" 폴백)·yield_impact(Nullable)를 함께 내려
     프론트 대기열이 확신 수준·수율영향 컬럼을 그리게 한다.
+
+    analyzed_date는 **분석 실행일**(그 분석을 만든 배치의 시작일)이다 — 결함 발생일
+    (defect_date)이 아니다. 대기열은 "언제 돌린 분석인가" 순으로 쌓이므로 실행일을 보여
+    누적 이력을 읽게 한다. batch.started_at은 "{EVENT_DATE}T{HH:MM:SS}Z"라 앞 10자가 날짜다
+    (서버 '오늘' 기준 — 벽시계 아님, §1). 배치 row가 지워진 구 저장분은 NULL.
     """
     order = "DESC" if sort == "latest" else "ASC"
     with _lock, _connect() as con:
         count = con.execute("SELECT COUNT(*) AS c FROM analysis").fetchone()["c"]
         rows = con.execute(
-            f"SELECT analysis_id, pattern, lot_count, top_cause, status, "
-            f"       COALESCE(confidence, 'low') AS confidence, yield_impact "
-            f"FROM analysis "
-            f"ORDER BY seq {order}, analysis_id {order} LIMIT ? OFFSET ?",
+            f"SELECT a.analysis_id, a.batch_id, a.pattern, a.lot_count, a.top_cause, a.status, "
+            f"       COALESCE(a.confidence, 'low') AS confidence, a.yield_impact, "
+            f"       substr(b.started_at, 1, 10) AS analyzed_date "
+            f"FROM analysis a LEFT JOIN batch b ON b.batch_id = a.batch_id "
+            f"ORDER BY a.seq {order}, a.analysis_id {order} LIMIT ? OFFSET ?",
             (limit, offset),
         ).fetchall()
         return count, [dict(r) for r in rows]

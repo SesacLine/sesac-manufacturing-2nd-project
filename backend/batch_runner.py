@@ -25,7 +25,7 @@ from typing import Any
 
 from . import deps, store
 from .assembler import build_analysis_payload, compute_yield_impact
-from .config import DATA_EPOCH, EVENT_DATE, EVENT_DATE_COMPACT, fab_db_path
+from .config import DATA_EPOCH, compact, event_date_for, fab_db_path
 from .graph import _CURRENT_GROUP, build_graph
 from .graph_client import KGClient
 from .mcp_client import MCPClient
@@ -140,22 +140,40 @@ def _describe_call(args: tuple, kwargs: dict) -> str:
     return ", ".join(parts) if parts else "(인자 없음)"
 
 
+def _batch_date(batch_id: str) -> str:
+    """analysis_id 채번용 날짜 — batch_id("batch_20260206_01")에 이미 박힌 값을 그대로 쓴다.
+
+    서버 '오늘'이 커서를 따라 움직이므로(config.event_date_for) 모듈 상수를 쓰면 배치마다
+    같은 날짜가 붙어 analysis_id가 충돌한다. 배치가 접수될 때 확정된 날짜를 재사용하는 것이
+    안전하다 — 배치 실행 중 커서가 전진해도 그 배치의 결과 id는 흔들리지 않는다.
+    """
+    parts = batch_id.split("_")
+    # 8자리 숫자(YYYYMMDD)일 때만 날짜로 인정한다 — 형식이 다른 batch_id(테스트 픽스처 등)에서
+    # 엉뚱한 조각을 날짜로 집어 "grp_normal_normal_01" 같은 id가 나오지 않게.
+    if len(parts) >= 3 and len(parts[1]) == 8 and parts[1].isdigit():
+        return parts[1]
+    return compact(event_date_for(store.get_cursor()))
+
+
 def _cursor_range() -> tuple[str, str]:
     """(cursor_date exclusive, cursor_end inclusive) — §2.3 누적 스코프.
 
     첫 배치는 데이터축 처음(EPOCH)부터 전부 본다(직전 배치 없음 = 전체 누적,
     BACKEND_DECISIONS.md D2).
 
-    cursor_end는 **서버 '오늘'(EVENT_DATE)의 전날**과 데이터축 최신일 중 이른 쪽이다
-    — 둘 다 데이터축 값이라 벽시계는 여전히 안 쓴다(§1). "아침에 한 번 눌러 전날 쌓인
-    것을 본다"가 이 서비스의 운영 시나리오이므로, 아직 오지 않은 날(EVENT_DATE 당일
-    이후)의 데이터를 미리 당겨오지 않는다. EVENT_DATE를 옮기면 그 전날까지만 대상이
-    되므로 특정 일자 재현(데모·회귀)도 가능하다.
+    cursor_end는 **서버 '오늘'의 전날**과 데이터축 최신일 중 이른 쪽이다 — 둘 다 데이터축
+    값이라 벽시계는 여전히 안 쓴다(§1). 그 '오늘'은 커서에서 파생되므로(config.event_date_for)
+    배치를 돌릴 때마다 대상이 하루씩 앞으로 간다: 커서 2/4 → 2/5 분석 → 커서 2/5 → 다음
+    클릭은 2/6 분석. 버튼을 반복해서 눌러도 매번 다음 날 하루치만 처리된다.
+
+    첫 배치(커서 없음)만 예외로 EPOCH부터 env EVENT_DATE의 전날까지를 한 번에 따라잡는다
+    (BACKEND_DECISIONS.md D2 누적 스코프).
     """
     cursor = store.get_cursor()
-    if cursor is None:
+    start = cursor
+    if start is None:
         epoch = datetime.date.fromisoformat(DATA_EPOCH)
-        cursor = (epoch - datetime.timedelta(days=1)).isoformat()
+        start = (epoch - datetime.timedelta(days=1)).isoformat()
 
     con = sqlite3.connect(fab_db_path())
     try:
@@ -164,9 +182,17 @@ def _cursor_range() -> tuple[str, str]:
         con.close()
     data_max = row[0] or DATA_EPOCH
     yesterday = (
-        datetime.date.fromisoformat(EVENT_DATE) - datetime.timedelta(days=1)
+        datetime.date.fromisoformat(event_date_for(cursor)) - datetime.timedelta(days=1)
     ).isoformat()
-    return cursor, min(data_max, yesterday)   # ISO 날짜라 문자열 비교로 충분
+    return start, min(data_max, yesterday)   # ISO 날짜라 문자열 비교로 충분
+
+
+def pending_range() -> tuple[str, str]:
+    """다음 클릭이 처리할 구간 — GET /batches/today가 실행 전에 미리 보여주는 데 쓴다.
+
+    배치를 돌리지 않고 계산만 하므로 부작용이 없다(커서도 건드리지 않는다).
+    """
+    return _cursor_range()
 
 
 def launch_batch(batch_id: str, kg_client: KGClient, mcp: MCPClient) -> None:
@@ -345,7 +371,7 @@ def _persist_results(batch_id: str, seq: int, state: dict) -> list[str]:
         seen_pattern[pattern] += 1
         nth = seen_pattern[pattern]
         dup = "" if nth == 1 else f"_{nth}"
-        analysis_id = f"grp_{pattern_slug(pattern)}_{EVENT_DATE_COMPACT}_{seq:02d}{dup}"
+        analysis_id = f"grp_{pattern_slug(pattern)}_{_batch_date(batch_id)}_{seq:02d}{dup}"
         # 수율영향은 병합(unmapped/novel) 확정 뒤의 최종 lot_ids로 계산해 payload에 주입한다.
         final["yield_impact"] = compute_yield_impact(final["lot_ids"], lot_yields)
         payload = build_analysis_payload(analysis_id, final)
@@ -404,7 +430,7 @@ def _persist_normal_reading(
         sorted(_group_lots_by_defect_day(state, normal_lots).items()), start=1
     ):
         dup = "" if nth == 1 else f"_{nth}"
-        analysis_id = f"grp_normal_{EVENT_DATE_COMPACT}_{seq:02d}{dup}"
+        analysis_id = f"grp_normal_{_batch_date(batch_id)}_{seq:02d}{dup}"
         final = {
             "pattern": "Normal",
             "status": "normal_reading",

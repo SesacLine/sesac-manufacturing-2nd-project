@@ -60,6 +60,21 @@ def test_batch_not_found_is_404(client):
     assert r.status_code == 404
 
 
+def test_batches_today_shape_and_route_order(client, monkeypatch):
+    """§2.3 부속 — 'today'가 batch_id로 잡히지 않고(라우트 순서) 5키를 준다.
+
+    fab.db가 없는 환경이라 대상 구간은 null로 떨어지지만 today는 커서에서 계산되므로
+    항상 나온다. 배치 이력이 없으니 done=False.
+    """
+    monkeypatch.delenv("FAB_DB", raising=False)
+    r = client.get("/api/v1/batches/today")
+    assert r.status_code == 200  # 404면 /batches/{batch_id}가 먼저 잡은 것
+    body = r.json()
+    assert set(body) == {"today", "target_from", "target_to", "done", "batch_id"}
+    assert body["done"] is False and body["batch_id"] is None
+    assert body["today"].count("-") == 2  # YYYY-MM-DD
+
+
 def test_lot_not_found_is_404(client):
     r = client.get("/api/v1/lots/lot00000/wafers")
     assert r.status_code == 404
