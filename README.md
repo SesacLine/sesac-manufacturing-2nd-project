@@ -101,12 +101,52 @@
 
 ## 설치 · 실행
 
+6가지 준비물 중 실제로 **필수인 건 4개뿐**이다 — Neo4j·CNN 학습은 "완성된 걸 그냥 돌려보는" 데는
+필요 없다. 이 구분이 안 되어 있으면 전부 필수처럼 보여서 헤매기 쉽다.
+
+| 준비물 | 필수 여부 | 이유 |
+|---|---|---|
+| 파이썬 환경(`uv sync`) | **필수** | 없으면 백엔드·스크립트 자체가 안 돌아감 |
+| `.env` 설정 | **필수** | 최소 `OPENAI_API_KEY` 하나만 있으면 됨 |
+| `fab.db` 생성(WM-811K + 시뮬레이터) | **필수** | 없으면 배치·MCP 도구가 읽을 데이터가 없음 |
+| Neo4j + KG 재빌드(`kg_rca` 0~7번) | 선택 | `hypotheses.json`이 이미 커밋돼 있어 기본값은 이 파일만 읽음(Neo4j 미접속) — KG를 새로 만들 때만 |
+| CNN 체크포인트 학습 | 선택 | 없으면 전부 "Center"로 판정하는 폴백 — 서비스는 그래도 돌아감 |
+| `frontend`의 `npm install` | **필수** | |
+
+> Neo4j는 서비스를 **실행**하는 데 필수가 아니다. 문헌·KG 스키마를 고쳐 `hypotheses.json`을
+> 다시 만들 때만 필요하다 — `backend/deps.py`의 `KG_LIVE` 게이트가 기본 미설정이면 이 파일만
+> 조회하고 Neo4j는 아예 안 건드린다.
+
+### A. 최소 실행 — 서비스만 띄우기
+
 ```bash
-# 설치
+# 1. 파이썬 환경
 pip install uv
 uv venv && uv sync            # 루트 pyproject.toml 하나로 파이썬 의존성 전부
 .venv\Scripts\activate         # Windows. macOS/Linux: source .venv/bin/activate
-cp .env_example .env           # 상대경로는 이미 맞춰져 있음. OPENAI_API_KEY만 채우면 됨
+
+# 2. 환경변수 — OPENAI_API_KEY만 채우면 됨(상대경로는 이미 맞춰져 있음)
+cp .env_example .env
+```
+
+```powershell
+# 3. fab.db 생성 (WM-811K 다운로드 → 시뮬레이터 빌드, Windows PowerShell)
+curl.exe -L -o ..\MIR-WM811K.zip http://mirlab.org/dataSet/public/MIR-WM811K.zip
+Expand-Archive -Path ..\MIR-WM811K.zip -DestinationPath ..\ -Force
+New-Item -ItemType Directory -Force secsgem-mcp\datasets\raw
+Copy-Item ..\MIR-WM811K\Python\WM811K.pkl secsgem-mcp\datasets\raw\
+cd secsgem-mcp
+..\.venv\Scripts\python -m simulator.generate --wm811k datasets\raw\WM811K.pkl --out datasets --seed 20260101
+cd ..
+```
+
+> ⚠️ `secsgem-mcp/README.md`의 `wget -P ..` 예시는 PowerShell에서 안 먹힌다(`wget`이
+> `Invoke-WebRequest` 별칭이라 `-P` 플래그가 안 맞음) — 위처럼 `curl.exe`(`.exe`를 꼭 붙여야
+> 별칭과 안 겹침) + `Expand-Archive`로 대체할 것. 원천 데이터는 **WM-811K 하나**(MixedWM38은
+> 팀 결정으로 제외), 압축 파일이 2GB라 브라우저로 직접 받아도 된다.
+
+```bash
+# 4. 프론트 의존성
 cd frontend && npm install && cd ..
 ```
 
@@ -117,22 +157,57 @@ uvicorn backend.main:app --reload     # 터미널 1 → :8000
 cd frontend && npm run dev            # 터미널 2 → :5173
 ```
 
-브라우저는 **`http://localhost:5173`**으로 연다(백엔드 단독 확인은 `http://localhost:8000/docs`).
+브라우저는 **`http://localhost:5173`**으로 연다(백엔드 단독 확인은 `http://localhost:8000/docs`)
+→ **"오늘 판독 배치 확인"** 클릭. fab.db 없이 띄우면 수율 차트는 빈 상태, 대기열은 빈 목록,
+배치는 접수 후 실패로 표시된다 — 전부 의도된 방어 동작이다.
 
-`secsgem-mcp/datasets/fab.db`가 없으면 `secsgem-mcp/README.md`의 "데이터 준비" 절차를 먼저 돌린다
-(원천 데이터는 **WM-811K 하나** — MixedWM38은 팀 결정으로 제외). fab.db 없이 띄우면 수율 차트는
-빈 상태, 대기열은 빈 목록, 배치는 접수 후 실패로 표시된다 — 전부 의도된 방어 동작이다.
+### B. KG를 새로 만들 때만 (선택 — Neo4j 필요)
 
-테스트:
+`kg_rca` 문헌을 고치거나 스키마를 바꿔 `hypotheses.json`을 재생성할 때만 필요하다. 서비스
+실행만 확인하려면 건너뛴다. 상세 절차는 `kg_rca/README.md` "준비"·"실행" 절이 정본이다 —
+요약하면:
+
+```powershell
+# Neo4j 준비 — Desktop(https://neo4j.com/download/)에서 DBMS 하나 만들고 Start,
+# 또는 Docker:
+docker run -d -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/password neo4j:5
+```
+
+`.env`에 접속정보 추가 후(`NEO4J_URI`/`NEO4J_USERNAME`/`NEO4J_PASSWORD`/`NEO4J_DATABASE`),
+`kg_rca/` 안에서 `1_test_connection.py`부터 `6_ask_graphrag.py`(여기서 `hypotheses.json`
+재생성)까지 번호 순서로 실행한다. `7_build_signature_index.py`는 의미 진입용 선택 단계.
+
+### C. CNN 학습할 때만 (선택)
+
+체크포인트 없이도 서비스는 돌지만 전부 "Center"로 판정된다. Edge-Ring/Scratch를 실제로
+갈리게 하려면(A의 `fab.db`·`WM811K.pkl`이 먼저 있어야 함):
 
 ```bash
-pytest -q -m "not data" backend/tests kg_rca/tests   # 228 passed·2 xfailed — fab.db 없이 도는 스코프
-cd secsgem-mcp && pytest -q -m "not data"            # 31건 — 상대경로(cwd) 의존이라 자기 폴더에서 실행
+python -m wafer_reading.classifier.train --pkl secsgem-mcp/datasets/raw/WM811K.pkl --fab-db secsgem-mcp/datasets/fab.db --out wafer_reading/classifier/checkpoints/resnet18_5cls.pt
+```
+
+### 목적별 가이드
+
+| 목적 | 필요한 경로 |
+|---|---|
+| 서비스가 도는지만 확인 | A |
+| 기존 KG로 백엔드·프론트 확인 | A |
+| 문헌·KG 스키마 수정 후 가설 재생성 | A + B |
+| 웨이퍼 패턴 분류 정확도까지 확인 | A + C |
+| KG·CNN 둘 다 새로 구축 | A + B + C |
+
+### 테스트
+
+```bash
+pytest -q -m "not data" backend/tests kg_rca/tests   # fab.db 없이 도는 스코프
+cd secsgem-mcp && pytest -q -m "not data"            # 상대경로(cwd) 의존이라 자기 폴더에서 실행
 cd frontend && npm run build                          # 타입체크 + 빌드
 ```
 
 ⚠️ 루트에서 `pytest` 한 방에 전부 돌리면 secsgem-mcp 테스트가 cwd 문제로 실패한다 — CI도 위처럼
-스코프를 나눠 돈다(`.github/workflows`).
+스코프를 나눠 돈다(`.github/workflows`). `backend/tests`는 `e2e/`·`server/`·`unit/` 3분류로
+나뉘어 있다(상세는 `backend/README.md`) — 그중 `e2e/`는 실LLM·실배치 비용이 들어 opt-in
+환경변수(`HYPO_CRITIC_EVAL=1`, `BATCH_E2E=1`, `VLM_E2E=1`)를 줘야만 돈다.
 
 ## API 10종
 
