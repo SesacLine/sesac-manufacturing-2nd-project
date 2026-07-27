@@ -20,7 +20,7 @@ export default function ActionList({ actions }: { actions: RecommendedAction[] }
     });
 
   if (actions.length === 0) {
-    return <div style={{ fontSize: 11, color: "var(--text-dim)" }}>권장 조치 없음</div>;
+    return <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>권장 조치 없음</div>;
   }
 
   // 원본 인덱스를 유지한 채 type별로 묶는다(체크 상태 식별 안정성).

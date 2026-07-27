@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><title>RCA 와이어프레임 v8 — 백엔드 정합판</title><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><title>RCA 와이어프레임 v9 — UX 라이팅 정리판</title><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
 <style>
   :root {
     --bg: #eceef1; --panel: #ffffff; --line: #b9bec6; --line-strong: #6b7178;
@@ -41,6 +41,10 @@
   .badge { display: inline-block; padding: 2px 9px; border: 1px solid var(--line-strong); font-size: 10.5px; border-radius: 2px; }
   .badge.dark { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); }
   .badge.warn { border-color: var(--sev-hi); color: var(--sev-hi); background: #fff; }
+  /* 상태 배지 — 완료는 무채색으로 조용히, 조치 필요(판단 불가)만 색으로 강조 */
+  .status-pill { display: inline-block; padding: 1px 10px; font-size: 10.5px; font-weight: 700; border-radius: 20px; }
+  .status-pill.ok { background: var(--sev-lo-bg); color: var(--text-dim); border: 1px solid var(--line); }
+  .status-pill.na { background: var(--sev-md-bg); color: var(--sev-md); border: 1px solid var(--sev-md); }
   .conf-warn { border: 1.5px solid var(--sev-hi); background: var(--sev-hi-bg); padding: 9px 13px; font-size: 12px; margin-bottom: 10px; }
 
   .imp-hi { color: var(--sev-hi); } .imp-md { color: var(--sev-md); } .imp-lo { color: var(--sev-lo); }
@@ -71,10 +75,12 @@
   .steps { display: flex; justify-content: space-between; margin: 8px 0 18px; }
   .step { flex: 1; text-align: center; font-size: 10.5px; color: var(--text-dim); }
   .step .circle { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--line-strong); display: flex; align-items: center; justify-content: center; margin: 0 auto 5px; background: #fff; font-weight: 700; font-size: 12px; transition: all .25s; }
-  .step.done .circle { background: var(--text); color: #fff; border-color: var(--text); }
+  /* 완료 = 무채색 ✓(조용히) · 진행 중 = 검정 펄스 — 색은 조치가 필요한 곳에만 아낀다 */
+  .step.done .circle { background: var(--text); color: #fff; border-color: var(--text); font-size: 0; }
+  .step.done .circle::after { content: "✓"; font-size: 14px; font-weight: 700; }
   .step.current .circle { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); animation: pulse 1s infinite; }
-  .step .label { color: var(--text); font-weight: 600; }
-  .step .sub { font-weight: 400; color: var(--text-dim); }
+  .step .label { color: var(--text); font-weight: 700; font-size: 12px; }
+  .step .sub { font-weight: 400; color: var(--text-dim); font-size: 9.5px; margin-top: 1px; }
   @keyframes pulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(43,47,51,.35);} 50%{ box-shadow: 0 0 0 5px rgba(43,47,51,0);} }
   .log-console { background: var(--accent-dark); color: #d7dae0; font-family: Consolas, "Malgun Gothic", "Segoe UI", monospace; font-size: 12px; padding: 12px 14px; line-height: 1.9; min-height: 160px; }
   .log-console .ok { color: #9adf9a; }
@@ -133,18 +139,39 @@
   .minilog { background: var(--accent-dark); color: #d7dae0; font-family: Consolas, "Malgun Gothic", "Segoe UI", monospace;
     font-size: 11.5px; padding: 8px 10px; line-height: 1.8; max-height: 190px; overflow-y: auto; }
   .minilog .grp { color: #e2c66b; } .minilog .ok { color: #9adf9a; }
-  details.acc { border: 1px solid var(--line); background: #fff; margin-bottom: 8px; }
+  details.acc { border: 1px solid var(--line); background: #fff; margin-bottom: 5px; }
   details.acc > summary { cursor: pointer; list-style: none; padding: 9px 12px; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   details.acc > summary::-webkit-details-marker { display: none; }
   details.acc > summary .tw { margin-left: auto; font-weight: 400; font-size: 10.5px; color: var(--text-dim); }
   details.acc .acc-body { border-top: 1px dashed var(--line); padding: 10px 12px; }
-  #pipeModal .step .circle { width: 46px; height: 46px; font-size: 18px; }
+  #pipeModal .step .circle { width: 38px; height: 38px; font-size: 16px; }
+  #pipeModal .step.done .circle { font-size: 0; }
+  #pipeModal .step.done .circle::after { font-size: 18px; }
   #pipeModal .step { font-size: 12px; }
-  #pipeModal .steps { margin: 16px 0 18px; }
-  .donebar { border: 1.5px solid var(--good-line); background: var(--good-bg); padding: 9px 13px;
-    font-size: 12.5px; margin-bottom: 10px; display: none; }
+  #pipeModal .steps { margin: 18px 0 12px; }
+  #pipeModal .modal-body { padding: 12px 16px; }
+  /* 완료 배너 — 한 줄 압축: 제목 · KPI 숫자 · 우측 행동 버튼 (빈 여백 없이) */
+  .donebar { border: 1.5px solid var(--good-line); background: var(--good-bg); padding: 12px 14px;
+    font-size: 12.5px; margin-bottom: 8px; display: none; }
+  .donebar .done-title { font-size: 15.5px; font-weight: 700; color: var(--text); }
+  .kpi-row { display: flex; gap: 26px; flex-wrap: wrap; align-items: center; }
+  .kpi .kpi-num { font-size: 21px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .kpi .kpi-label { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+  /* 패턴별 로그 토글 — 접기 전에도 라벨:값으로 핵심 노출, 여백 최소(제조 대시보드 밀도) */
+  summary.pat-sum { display: block !important; padding: 6px 12px 7px !important; }
+  .pat-head { display: flex; align-items: center; gap: 8px; }
+  .pat-head .pat-arr::before { content: "▸"; color: var(--text-dim); font-size: 11px; }
+  details[open] > summary .pat-head .pat-arr::before { content: "▾"; }
+  .pat-head .pat-name { font-size: 13.5px; font-weight: 700; }
+  .pat-head .status-pill { margin-left: auto; }
+  /* 라벨:값을 가로 배치 — 카드는 2행 유지(목록이 길어지지 않게), 구분은 · 대신 넓은 간격 */
+  .pat-info { display: flex; flex-wrap: wrap; gap: 3px 22px; margin: 3px 0 0 19px; font-weight: 400; font-size: 12px; }
+  .pat-info .pi-pair { display: inline-flex; align-items: baseline; gap: 7px; }
+  .pat-info .pi-l { color: var(--text-dim); font-size: 11px; }
+  .pat-info .pi-v { color: var(--text); }
+  .pat-info .pi-v.mono { font-family: Consolas, monospace; font-weight: 600; font-size: 12.5px; }
   .ctlrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid var(--line);
-    padding: 8px 12px; margin-bottom: 10px; }
+    padding: 5px 12px; margin-bottom: 6px; }
   #chartBox > summary { cursor: pointer; list-style: none; user-select: none; font-weight: 700; font-size: 11.5px; border: 1px solid var(--line); background: #f7f8f9; padding: 8px 12px; margin-bottom: 12px; }
   #chartBox > summary::-webkit-details-marker { display: none; }
   #chartBox > summary .arr::before { content: "▸"; margin-right: 7px; }
@@ -155,7 +182,7 @@
 </style>
 
 <div class="topbar">
-  <div><span class="brand">RCA Multi-Agent 프로토타입 v8<span class="dim">더미 데이터 · 백엔드 정합판(확률→확신 수준 R1) · 결과 누적</span></span></div>
+  <div><span class="brand">RCA Multi-Agent 프로토타입 v9<span class="dim">더미 데이터 · UX 라이팅 정리판 (v8 백엔드 정합 기반)</span></span></div>
   <div class="crumb" id="crumb">화면 1 · 대시보드</div>
   <span><button class="back-btn" id="backBtn" onclick="goDashboard()" disabled>◀ 대시보드로</button></span>
 </div>
@@ -178,18 +205,18 @@
           <div class="caption">점선 = 라인 평균 94.2% · 급락 지점에 마우스를 올리면 그날의 근본원인·장비·센서 증거가 표시됩니다</div>
 
           <div class="rc5-div"></div>
-          <div class="box-title"><span>원인 장비 구성비 · 결함 패턴 Pareto · 패턴별 채택 원인</span><span style="font-weight:400;">조각/막대 클릭 시 연동 · 색 = 공정 단계&nbsp;&nbsp;<span class="rc5-lg" style="background:#2a78d6"></span>ETCH(식각)&nbsp;<span class="rc5-lg" style="background:#1baf7a"></span>DEPO(증착)&nbsp;<span class="rc5-lg" style="background:#eda100"></span>CMP(연마)&nbsp;<span class="rc5-lg" style="background:#4a3aa7"></span>CLEAN(세정)</span></div>
+          <div class="box-title"><span>원인 장비 · 결함 패턴 · 패턴별 채택 원인</span><span style="font-weight:400;">클릭 = 연동 필터 · 색 = 공정&nbsp;&nbsp;<span class="rc5-lg" style="background:#2a78d6"></span>ETCH(식각)&nbsp;<span class="rc5-lg" style="background:#1baf7a"></span>DEPO(증착)&nbsp;<span class="rc5-lg" style="background:#eda100"></span>CMP(연마)&nbsp;<span class="rc5-lg" style="background:#4a3aa7"></span>CLEAN(세정)</span></div>
           <div class="rc5-grid">
             <div>
-              <div class="rc5-sub">채택 유력 8건 기준</div>
+              <div class="rc5-sub">원인 장비<span class="sd">채택 유력 8건 기준</span></div>
               <svg id="rc5donut" viewBox="0 0 300 230"></svg>
             </div>
             <div>
-              <div class="rc5-sub">파랑 = 원인 분석 대상</div>
+              <div class="rc5-sub">결함 패턴별 웨이퍼 수<span class="sd">파랑 = 원인 분석 대상</span></div>
               <svg id="rc5pareto" viewBox="0 0 400 240"></svg>
             </div>
             <div>
-              <div class="rc5-sub">패턴별 채택 유력 원인 — 글자가 원인, 색이 해당 공정</div>
+              <div class="rc5-sub">패턴별 채택 원인<span class="sd">색 = 발생 공정</span></div>
               <div id="rc5causes"></div>
               <details class="rc5-help">
                 <summary>ⓘ 읽는 법 — 색·등급이 뜻하는 것 (펼쳐보기)</summary>
@@ -209,17 +236,17 @@
         </details>
 
         <div class="box">
-          <div class="box-title"><span>◆ 가설 검토 대기열 — 분석 완료 결과 누적 (<span id="queueCount">0</span>건, 행 클릭 시 결과 열람)</span><span style="font-weight:400;">↓ 수율영향순</span></div>
+          <div class="box-title"><span>◆ 가설 검토 대기열 (<span id="queueCount">0</span>건)</span><span style="font-weight:400;">수율영향 큰 순 · 행 클릭 = 결과 열람</span></div>
           <table id="queueTable"></table>
-          <div class="caption" id="queueEmptyCap" style="display:none;">아직 분석된 결과가 없습니다. 아래 "오늘 판독 배치 확인" 버튼을 누르면 그룹화부터 Hypothesis·Critic 전과정이 한 번에 실행되고, 결과가 이 대기열에 쌓입니다.</div>
-          <div class="caption">위에서부터 수율영향 큰 순 · 수율영향 색(고/중/저)은 프론트 표시 규칙(−3%p·−2%p 임계) — 백엔드 severity 필드 아님 · 클릭 없이 뭐부터 볼지 파악</div>
+          <div class="caption" id="queueEmptyCap" style="display:none;">분석 결과가 아직 없습니다. 아래 [오늘 판독 배치 확인]을 누르면 결과가 여기에 쌓입니다.</div>
+          <div class="caption">수율영향 색: <b class="imp-hi">−3%p 이하</b> · <b class="imp-md">−2%p 이하</b> · <span class="imp-lo">그 외</span></div>
         </div>
 
         <div style="margin-top:16px; text-align:center;">
-          <button class="primary-btn" id="dashBtn" onclick="dashPrimary()">▶ 오늘 판독 배치 확인 (그룹화 → 에이전트 전과정 실행)</button>
+          <button class="primary-btn" id="dashBtn" onclick="dashPrimary()">▶ 오늘 판독 배치 확인</button>
         </div>
       </div>
-      <div class="foot-note" id="dashFootNote">버튼 클릭 = 어제 누적 데이터 자동 그룹화 + 전 그룹 Hypothesis·Critic 일괄 실행 → 결과가 대기열에 누적</div>
+      <div class="foot-note" id="dashFootNote">클릭하면 그룹화부터 검증까지 자동 실행되고, 결과가 대기열에 쌓입니다</div>
     </div>
   </section>
 
@@ -264,14 +291,15 @@
       <div class="caption" id="runMeta" style="margin:0 0 8px; font-variant-numeric: tabular-nums;"></div>
       <div class="donebar" id="doneBar"></div>
       <div class="ctlrow">
-        <span class="caption" style="margin:0;">단계 1→5 순서로 <b>전 그룹 일괄 진행</b> · 단계 안에서는 위험도순 · 분석 소요 <b id="progClock">0.0s</b></span>
+        <span class="caption" style="margin:0;">전 그룹이 단계 1→5 순서로 진행됩니다 (단계 안은 위험도순)</span>
+        <span style="margin-left:auto;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;" id="progClock">0.0초</span>
       </div>
-      <div class="steps" id="stepBar" style="margin:6px 0 10px;">
-        <div class="step" data-step="1"><div class="circle">1</div><div class="label">자동 그룹화<div class="sub">(웨이퍼→패턴)</div></div></div>
-        <div class="step" data-step="2"><div class="circle">2</div><div class="label">원인 후보 검색<div class="sub">(GraphRAG)</div><div class="sub" id="cnt2">&nbsp;</div></div></div>
-        <div class="step" data-step="3"><div class="circle">3</div><div class="label">증거 수집<div class="sub">(Hypothesis·MCP)</div><div class="sub" id="cnt3">&nbsp;</div></div></div>
-        <div class="step" data-step="4"><div class="circle">4</div><div class="label">검증<div class="sub">(Critic)</div><div class="sub" id="cnt4">&nbsp;</div></div></div>
-        <div class="step" data-step="5"><div class="circle">5</div><div class="label">완료<div class="sub">(대기열 누적)</div><div class="sub" id="cnt5">&nbsp;</div></div></div>
+      <div class="steps" id="stepBar" style="margin:18px 0 12px;">
+        <div class="step" data-step="1"><div class="circle">1</div><div class="label">자동 그룹화<div class="sub">웨이퍼→패턴</div></div></div>
+        <div class="step" data-step="2"><div class="circle">2</div><div class="label">원인 후보 검색<div class="sub">GraphRAG</div><div class="sub" id="cnt2">&nbsp;</div></div></div>
+        <div class="step" data-step="3"><div class="circle">3</div><div class="label">증거 수집<div class="sub">Hypothesis·MCP</div><div class="sub" id="cnt3">&nbsp;</div></div></div>
+        <div class="step" data-step="4"><div class="circle">4</div><div class="label">검증<div class="sub">Critic</div><div class="sub" id="cnt4">&nbsp;</div></div></div>
+        <div class="step" data-step="5"><div class="circle">5</div><div class="label">완료<div class="sub">대기열 누적</div><div class="sub" id="cnt5">&nbsp;</div></div></div>
       </div>
       <div class="caption" id="nowLine" style="margin:0 0 8px;"></div>
       <div id="pipeResult"></div>
@@ -421,14 +449,14 @@ function updateDashBtn() {
   const b = document.getElementById('dashBtn'), f = document.getElementById('dashFootNote');
   if (!b) return;
   if (phase === 'idle') {
-    b.innerHTML = '▶  확인 (그룹화 → 에이전트 전과정 실행)';
-    f.textContent = '버튼 클릭 = 어제 누적 데이터 자동 그룹화 + 전 그룹 Hypothesis·Critic 일괄 실행(원클릭) → 결과가 대기열에 누적';
+    b.innerHTML = '▶ 오늘 판독 배치 확인';
+    f.textContent = '클릭하면 그룹화부터 검증까지 자동 실행되고, 결과가 대기열에 쌓입니다';
   } else if (phase === 'running') {
     b.innerHTML = '로그 확인 (분석 진행 중)';
-    f.textContent = '금일 배치 분석 진행 중 — 버튼 클릭 = 진행 로그 열람 (재실행 아님)';
+    f.textContent = '분석 진행 중 — 클릭하면 진행 로그를 볼 수 있습니다 (재실행 아님)';
   } else {
     b.innerHTML = '로그 확인';
-    f.textContent = '금일 배치 완료 — 로그 확인 = 결함 패턴별 단계 로그·소요시간 열람 · 결과는 대기열 행 클릭';
+    f.textContent = '오늘 배치 완료 — 결과는 대기열 행 클릭, 단계별 로그는 이 버튼으로 확인합니다';
   }
 }
 
@@ -447,7 +475,7 @@ function renderQueue() {
     const ok = g.judgment === 'ok';
     const cause = ok ? g.hypotheses[0].cause : (JUDGMENT_CAUSE[g.judgment] || '판단 불가');
     const conf = CONF_LABELS[g.confidence] || '불확실';   /* R1 confidence — 백엔드 §2.5, "high"(확정) 없음 */
-    const badge = ok ? '<span class="badge dark">검토완료</span>' : '<span class="badge">판단불가</span>';
+    const badge = ok ? '<span class="status-pill ok">✓ 검토 완료</span>' : '<span class="status-pill na">⚠ 판단 불가</span>';
     return `<tr class="clickable" onclick="openResult('${id}')">
       <td>${g.pattern}</td>
       <td class="${impClass(g.yieldImpact)}" style="font-weight:700;">${g.yieldImpact}%p</td>
@@ -495,7 +523,7 @@ function showWafers(lotId, pattern, chipEl, depthId) {
 }
 function hideWafers(depthId) { const wd = document.getElementById(depthId); if (wd){ wd.style.display='none'; wd.innerHTML=''; } }
 
-/* ----------  — 파이프라인 팝업 (승인 전 정지 · 닫아도 계속) ---------- */
+/* ---------- 오늘 판독 배치 — 파이프라인 팝업 (승인 전 정지 · 닫아도 계속) ---------- */
 let progTimer = null, progT = 0, phase = 'idle';
 let logs = [], tasks = [], tasksDone = 0;
 function stopProgressTimers() {} /* 팝업을 닫아도 분석 유지 — 의도적 no-op */
@@ -568,7 +596,7 @@ function stepBarUpdate() {
 }
 function stageDur(id, k) {
   const s = LANE_PLAN[id].stages.find(s => s[2] === k);
-  return s ? s[1].toFixed(1) + 's' : null;
+  return s ? s[1].toFixed(1) + '초' : null;
 }
 function groupLogHTML(id) {
   const sections = [
@@ -600,19 +628,26 @@ function renderPipe() {
   else now.textContent = '';
   const area = document.getElementById('pipeResult');
   if (phase !== 'done') { area.innerHTML = ''; return; }
-  area.innerHTML = '<div class="box-title" style="margin-top:2px;">결함 패턴별 로그 — 패턴을 열면 단계별 토글로 나뉘어 필요한 단계만 확인 · 결과 열람은 대시보드 대기열 행 클릭</div>' +
+  area.innerHTML = '<div class="box-title" style="margin-top:2px;"><span>결함 패턴별 로그</span><span style="font-weight:400;">패턴 클릭 = 단계별 로그 · 결과는 대기열에서 열람</span></div>' +
     defaultOrder().map(id => {
       const g = GROUPS[id];
       const ok = g.judgment === 'ok';
       const gdur = LANE_PLAN[id].stages.reduce((a, s) => a + s[1], 0).toFixed(1);
-      const cause = (ok ? g.hypotheses[0].cause + ' · 확신 ' + (CONF_LABELS[g.confidence] || '불확실') : (JUDGMENT_CAUSE[g.judgment] || '판단 불가')) + ' · 소요 ' + gdur + 's';
-      const badge = ok ? '<span class="badge dark">검토완료</span>' : '<span class="badge">판단불가</span>';
+      const badge = ok ? '<span class="status-pill ok">✓ 검토 완료</span>' : '<span class="status-pill na">⚠ 판단 불가</span>';
+      /* 접기 전에도 핵심이 보이도록 라벨:값 형태로 노출 */
+      const rows = ok
+        ? [['유력 원인', '<span class="pi-v mono">' + g.hypotheses[0].cause + '</span>'],
+           ['판정', '<span class="pi-v">' + (CONF_LABELS[g.confidence] || '불확실') + '</span>'],
+           ['소요 시간', '<span class="pi-v">' + gdur + '초</span>']]
+        : [['판정 사유', '<span class="pi-v">' + (JUDGMENT_CAUSE[g.judgment] || '판단 불가') + '</span>'],
+           ['소요 시간', '<span class="pi-v">' + gdur + '초</span>']];
+      const info = rows.map(r => '<span class="pi-pair"><span class="pi-l">' + r[0] + '</span>' + r[1] + '</span>').join('');
       const prev = document.getElementById('pt_' + id);
       const keep = prev && prev.open;
       return '<details class="acc" id="pt_' + id + '"' + (keep ? ' open' : '') + '>' +
-        '<summary>▸ ' + g.pattern +
-        ' <span style="font-weight:400;color:var(--text-dim);font-size:11px;">유력: ' + cause + '</span>' +
-        '<span class="tw">' + badge + '</span>' +
+        '<summary class="pat-sum">' +
+        '<div class="pat-head"><span class="pat-arr"></span><span class="pat-name">' + g.pattern + '</span>' + badge + '</div>' +
+        '<div class="pat-info">' + info + '</div>' +
         '</summary><div class="acc-body">' + groupLogHTML(id) + '</div></details>';
     }).join('');
 }
@@ -620,7 +655,7 @@ function runBatchAnalysis() {
   if (progTimer) { clearInterval(progTimer); progTimer = null; }
   phase = 'running'; progT = 0; logs = [];
   document.getElementById('doneBar').style.display = 'none';
-  document.getElementById('progClock').textContent = '0.0s';
+  document.getElementById('progClock').textContent = '0.0초';
   buildTasks();
   pushLog(null, 1, 'auto_group_wafermaps(어제 누적 저수율 로트) → ' + BATCH_IDS.length + '개 패턴 그룹 감지', true);
   pushLog(null, 0, '분석 시작 (원클릭 실행) — 단계 1→5 일괄 · 단계 내 순서(위험도순): ' + defaultOrder().map(id => GROUPS[id].pattern).join(' → '), true);
@@ -634,7 +669,7 @@ function runBatchAnalysis() {
 }
 function tickFn() {
   progT += 0.1;
-  document.getElementById('progClock').textContent = progT.toFixed(1) + 's';
+  document.getElementById('progClock').textContent = progT.toFixed(1) + '초';
   tasks.forEach(t => {
     if (!t.done && progT >= t.end - 1e-9) {
       t.done = true; tasksDone++;
@@ -646,11 +681,16 @@ function tickFn() {
     phase = 'done'; clearInterval(progTimer); progTimer = null;
     const bar = document.getElementById('doneBar');
     bar.style.display = 'block';
-    bar.innerHTML = '✔ 분석 완료 — 총 ' + progT.toFixed(1) + 's · ' + BATCH_IDS.length +
-      '건이 대시보드 대기열에 쌓였습니다. 아래 결함 패턴별 토글에서 로그를 확인하세요 · 결과는 대시보드 대기열 행 클릭으로 열람합니다.';
+    /* 한 줄: 제목 · KPI 숫자 · 우측 행동 버튼 — 안내문 대신 눌러서 바로 가는 버튼 */
+    bar.innerHTML = '<div class="kpi-row">' +
+      '<span class="done-title">✔ 분석 완료</span>' +
+      '<div class="kpi"><div class="kpi-num">' + progT.toFixed(1) + '초</div><div class="kpi-label">분석 시간</div></div>' +
+      '<div class="kpi"><div class="kpi-num">' + BATCH_IDS.length + '건</div><div class="kpi-label">생성 결과</div></div>' +
+      '<button class="primary-btn" style="margin-left:auto;" onclick="closePipe()">대기열에서 결과 보기 →</button>' +
+      '</div>';
     document.getElementById('ppTitle').textContent = '오늘 판독 배치 파이프라인 — 완료';
-    document.getElementById('runMeta').textContent = 'Run 2026-03-11 #1 · 상태: 완료 · 총 소요 ' + progT.toFixed(1) + 's · 승인: 수율 엔지니어';
-    showToast('분석 완료 — 결과가 대기열에 쌓였습니다 · 상세 로그는 "로그 확인" 버튼');
+    document.getElementById('runMeta').textContent = 'Run 2026-03-11 #1 · 상태: 완료 · 총 소요 ' + progT.toFixed(1) + '초 · 승인: 수율 엔지니어';
+    showToast('분석 완료 · 결과 ' + BATCH_IDS.length + '건 — 대기열에서 확인하세요');
     renderQueue();
     const cb = document.getElementById('chartBox'); if (cb) cb.open = false;
     closePipe();   /* 완료 즉시 대시보드의 분석 결과(대기열)부터 표시 — 로그는 "로그 확인"으로 열람 */
@@ -777,7 +817,9 @@ renderQueue();
 .rc5-grid{display:grid;grid-template-columns:3fr 4fr 5fr;gap:16px;align-items:start}
 @media(max-width:900px){.rc5-grid{grid-template-columns:1fr}}
 .rc5-lg{display:inline-block;width:8px;height:8px;margin-right:4px;vertical-align:-1px}
-.rc5-sub{font-size:10.5px;color:var(--text-dim);margin-bottom:6px}
+/* 차트 소제목 — 짧고 진하게(제목), 부가 설명은 뒤에 작게. 연한 장문 설명 금지 */
+.rc5-sub{font-size:12px;color:var(--text);font-weight:700;margin-bottom:6px}
+.rc5-sub .sd{font-weight:400;color:var(--text-dim);font-size:10px;margin-left:7px}
 .rc5-crow{display:grid;grid-template-columns:64px 1fr;gap:6px;margin-bottom:6px;align-items:start}
 .rc5-crow>div{display:flex;gap:6px;flex-wrap:wrap}
 .rc5-cpat{text-align:right;font-size:11px;color:var(--text);padding-top:3px}

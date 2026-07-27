@@ -26,18 +26,28 @@ def get_yield_daily() -> dict:
     """§2.8 — { days: [{date, yield}], events: [{date, analysis_id, pattern, status,
     cause, equipment, stage, tier, confidence}] }.
 
-    days: metric_series(metric='yield') 전 구간의 날짜별 장비 단순평균(0~100, 소수 1자리).
-    events: defect_date가 잡힌 분석 전부(§2.7 저장분 조회) — reviewed 외 상태도 이상 이벤트로 내림.
+    days: metric_series(metric='yield')의 날짜별 장비 단순평균(0~100, 소수 1자리) —
+    **배치 커서(분석 완료 지점)까지만** 내린다. events: defect_date가 잡힌 분석 전부
+    (§2.7 저장분 조회) — reviewed 외 상태도 이상 이벤트로 내림.
+
+    왜 커서로 자르나 — 대시보드는 "지금까지 분석된 것"을 보여주는 화면이다. fab.db에는 아직
+    배치가 닿지 않은 미래 구간까지 들어 있어서, 전 구간을 그리면 분석 카드가 없는 급락 지점이
+    차트에만 뜬다("이 급락은 왜 분석이 없지?"). 커서까지만 그리면 차트 끝과 대기열이 같은
+    시점을 가리키고, 배치를 돌릴 때마다 차트가 하루씩 자라 누적이 눈에 보인다.
+    커서가 없으면(배치 이력 없음) 빈 배열 — 분석된 게 없으니 보여줄 실적도 없다.
     """
     try:
         events = store.list_analysis_events()
+        cursor = store.get_cursor()
     except Exception:
         raise HTTPException(status_code=500, detail="분석 이벤트를 불러오지 못했습니다.")
-    return {"days": _daily_line_yield(), "events": events}
+    return {"days": _daily_line_yield(cursor), "events": events}
 
 
-def _daily_line_yield() -> list[dict]:
-    """metric_series 전 구간 일별 라인 평균 수율. fab.db 없으면 빈 배열(곱게 무너짐)."""
+def _daily_line_yield(cursor: str | None) -> list[dict]:
+    """metric_series 일별 라인 평균 수율(커서 이하). fab.db 없으면 빈 배열(곱게 무너짐)."""
+    if cursor is None:
+        return []
     try:
         con = sqlite3.connect(fab_db_path())
         con.row_factory = sqlite3.Row
@@ -46,10 +56,11 @@ def _daily_line_yield() -> list[dict]:
                 """
                 SELECT date(ts) AS d, AVG(value) AS v
                 FROM metric_series
-                WHERE metric = 'yield'
+                WHERE metric = 'yield' AND date(ts) <= date(?)
                 GROUP BY date(ts)
                 ORDER BY d ASC
-                """
+                """,
+                (cursor,),
             ).fetchall()
         finally:
             con.close()

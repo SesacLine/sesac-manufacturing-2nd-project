@@ -107,30 +107,35 @@
 - `?sort=latest|oldest` — `latest`(최신순, 기본값) 또는 `oldest`(오래된순). 생략 시 `latest`. **정렬은 서버가 수행**하며 프론트는 받은 `items` 순서 그대로 렌더한다(정렬 키는 서버 내부값 = `app_state.db`의 배치 실행 시각이라 응답 JSON에 싣지 않는다).
 - `?limit=10&offset=0` — 페이지네이션(offset 기반). `limit` 기본값 `10`(배치 1회 최대 결과 4건이 안 잘리도록 여유를 둔 값), `offset` 기본값 `0`.
 
-> **배치 1회 최대 그룹 수 = 4**: 그룹은 결함 패턴별로 1개씩 생기고, 결함 패턴은 `Center`·`Edge-Ring`·`Scratch`·`Unknown` 4종이다(`pattern` enum 5종 중 `Normal`은 정상이라 그룹을 만들지 않는다, 3장). 따라서 한 배치가 만드는 `analysis`는 최대 4건이다.
+> **배치 1회 결과 건수**(v2.0 개정): 예전에는 "패턴별 1건이라 최대 4건"이었으나, ② grouper가 **결함 확정일 단위로도** 그룹을 나누면서 상한이 `결함 패턴 4종 × 배치 창의 날짜 수 + 판독상 정상(normal_reading) 날짜 수`가 됐다.
+> 평상시 창은 하루라 최대 5건(결함 4 + 정상 1)이지만, 첫 배치·주말 건너뜀 같은 캐치업에서는 그 이상 나온다. `limit` 기본값 `10`은 평상시를 기준으로 한 값이므로, 캐치업 결과를 한 화면에서 보려면 `limit`을 키우거나 페이지를 넘겨야 한다.
 
 **응답 200**
 ```json
 {
   "count": 4,
   "items": [
-    { "analysis_id": "grp_edgering_20260706_01", "pattern": "Edge-Ring", "lot_count": 8, "top_cause": "etch_nonuniformity",  "status": "reviewed",     "confidence": "medium", "yield_impact": -3.8 },
-    { "analysis_id": "grp_scratch_20260706_01",  "pattern": "Scratch",   "lot_count": 8, "top_cause": "handling_mechanical", "status": "reviewed",     "confidence": "medium", "yield_impact": -2.4 },
-    { "analysis_id": "grp_center_20260706_01",   "pattern": "Center",    "lot_count": 8, "top_cause": null,                  "status": "insufficient", "confidence": "low",    "yield_impact": -1.2 },
-    { "analysis_id": "grp_unknown_20260706_01",  "pattern": "Unknown",   "lot_count": 6, "top_cause": null,                  "status": "novel",        "confidence": "low",    "yield_impact": -1.5 }
+    { "analysis_id": "grp_edgering_20260706_01", "batch_id": "batch_20260706_01", "analyzed_date": "2026-07-06", "pattern": "Edge-Ring", "lot_count": 8, "top_cause": "etch_nonuniformity",  "status": "reviewed",     "confidence": "medium", "yield_impact": -3.8 },
+    { "analysis_id": "grp_scratch_20260706_01",  "batch_id": "batch_20260706_01", "analyzed_date": "2026-07-06", "pattern": "Scratch",   "lot_count": 8, "top_cause": "handling_mechanical", "status": "reviewed",     "confidence": "medium", "yield_impact": -2.4 },
+    { "analysis_id": "grp_center_20260706_01",   "batch_id": "batch_20260706_01", "analyzed_date": "2026-07-06", "pattern": "Center",    "lot_count": 8, "top_cause": null,                  "status": "insufficient", "confidence": "low",    "yield_impact": -1.2 },
+    { "analysis_id": "grp_unknown_20260706_01",  "batch_id": "batch_20260706_01", "analyzed_date": "2026-07-06", "pattern": "Unknown",   "lot_count": 6, "top_cause": null,                  "status": "novel",        "confidence": "low",    "yield_impact": -1.5 }
   ]
 }
 ```
-- **`analysis_id` 형식**: `grp_{패턴}_{배치날짜}_{순번}` (예: `grp_edgering_20260706_01`, 순번은 그날 배치 순번 2자리). 같은 Edge-Ring 패턴이라도 **배치 실행마다 다른 ID로 누적**되어 배치별 이력이 각각 보존된다(같은 날 2회차는 `_02`). 배치 날짜·순번이 `analysis_id` 문자열에 내장돼 있어 별도 `batch_id` 필드 없이도 어느 배치 소산인지 식별된다(대기열 화면이 배치ID를 소비하지 않아 응답에서 제외).
+- **`analysis_id` 형식**: `grp_{패턴}_{배치날짜}_{순번}` (예: `grp_edgering_20260706_01`, 순번은 그날 배치 순번 2자리). 같은 Edge-Ring 패턴이라도 **배치 실행마다 다른 ID로 누적**되어 배치별 이력이 각각 보존된다(같은 날 2회차는 `_02`).
+  - **같은 배치 안에서 같은 패턴이 여러 건일 수 있다**(v2.0 개정): ② grouper가 결함 확정일 단위로 그룹을 나누므로, 캐치업 배치에서는 같은 Center라도 1/20 사건과 1/30 사건이 별도 분석이 된다. 이때 두 번째부터 뒤에 `_2`·`_3`을 붙여 유니크를 유지한다(예: `grp_center_20260205_01_2`).
+- **`batch_id` (v2.0 신설)**: 이 분석을 만든 배치 id. 대기열 화면이 "로그 확인"(2.4 배치 진행/로그 화면)으로 이어가는 데 쓴다. 예전에는 `analysis_id` 문자열에 배치 날짜가 내장돼 있으니 불필요하다고 봤으나, **날짜만으로는 batch_id를 되만들 수 없어**(같은 날 2회차·순번 규칙) 링크를 걸 수 없었다 — 프론트가 실행 응답을 로컬에 저장해 두는 우회를 쓰다가, 그 브라우저에서 실행한 적이 없으면 링크가 사라지는 문제가 있어 응답에 실었다.
+- **`analyzed_date` (v2.0 신설 · string|null, `YYYY-MM-DD`)**: **분석 실행일**(그 분석을 만든 배치의 시작일) — 결함이 발생한 날(`defect_date`, 2.8 이벤트)이 **아니다**. 대기열은 "언제 돌린 분석인가" 순으로 쌓이므로 누적 이력을 읽는 축으로 쓴다. 배치 row가 없는 구 저장분은 `null`(키는 항상 존재).
 - **`top_cause` (열린 문자열 · Nullable)**: **워크플로우 ⑦응답생성**이 지정한 **대표 채택 원인**(= 2.5 `hypotheses[0]`의 cause). 채택 여부(어느 가설이 accepted인지)는 Critic의 `verdict`가 정하지만, 여러 accepted 중 **대표 1개 선정은 Critic이 아니라 응답생성 단계 몫**이다(Critic은 순위를 내지 않음). API는 파이프라인 결론을 전달만 하며 자체 정렬/선정을 하지 않는다. 채택 0개면 `null`.
   - **값 집합은 enum이 아니다.** KG cause id(`etch_nonuniformity`·`handling_mechanical` 등)로, KG 내용에 따라 값이 늘어나는 **열린 문자열**이다. `status`/`pattern`처럼 고정 집합을 나열하지 않으며, **프론트는 값을 하드코딩하지 말고 받은 문자열을 그대로 표시**한다(현재 화면은 cause id 원문을 렌더). 한국어 라벨이 필요해지면 별도 매핑 테이블을 두는 것은 향후 과제.
-- **`status` (v2.0: 4종)**: `reviewed`(채택된 가설 있음) | `insufficient`(원인 매핑은 됐으나 Critic이 채택 0개 → 판단 불가·근거부족) | `unmapped`(기지 패턴인데 KG 후보가 없음 — 지식 공백, 판독까지만 지원) | **`novel`(CNN이 `Unknown`으로 판정한 미지 패턴 — open-set, 억지 분류 대신 abstain·격리+전문가 재판독 대상)**. `reviewed`가 아니면 `top_cause`는 `null`.
+- **`status` (v2.0: 5종)**: `reviewed`(채택된 가설 있음) | `insufficient`(원인 매핑은 됐으나 Critic이 채택 0개 → 판단 불가·근거부족) | `unmapped`(기지 패턴인데 KG 후보가 없음 — 지식 공백, 판독까지만 지원) | **`novel`(CNN이 `Unknown`으로 판정한 미지 패턴 — open-set, 억지 분류 대신 abstain·격리+전문가 재판독 대상)** | **`normal_reading`(#69 — 저수율로 걸렸지만 CNN 판독은 `Normal`. 결함 패턴이 없어 그룹 서브그래프(④~⑦)를 아예 타지 않고 `batch_runner`가 직접 만드는 카드)**. `reviewed`가 아니면 `top_cause`는 `null`.
+  - `normal_reading`은 **"원인을 못 밝혔다"가 아니라 "찾을 결함이 없다"** 는 뜻이라 다른 셋과 성격이 다르다 — 판단불가 3종(a/b/c)과 같은 줄에 놓지 말 것. 수율 하락 원인은 결함 패턴 밖(계측·설비·설계 등)에 있다는 신호이므로 화면에서도 조치 대상이 아닌 톤으로 표시한다. 가설이 없으므로 §2.7 근거 조회는 `404`다.
   - v1.0에선 `pattern:"Unknown"`이 `unmapped`였으나 v2.0에서 **`novel`로 분리**됐다(판단불가 세분류: (a) unmapped=지식 공백 / (b) novel=신규 패턴 OSR / (c) insufficient=근거부족 NFF). 현 파이프라인 특성상 매핑 3종은 KG 후보가 항상 있어 `unmapped`는 사실상 드물다 — 계약으로는 유지한다.
 - **`confidence` (v2.0 신설, R1 확신 수준)**: `medium`(잠정 지지 — 소수 채택 + fab 증거 적극 지지) | `low`(불확실 — 채택 다수이거나 지지 증거 약함). **`high`(확정)는 존재하지 않는다** — RCA 스코프는 "가설+근거"까지이며 단정하지 않는다. 구 저장분은 서버가 `"low"`로 폴백해 내려준다(키는 항상 존재).
 - **`yield_impact` (v2.0 신설 · number|null, %p)**: 그룹 수율영향. 계산식은 2.5 참조. 구 저장분·창 데이터 없음이면 `null`(키는 항상 존재). 대기열의 위험도순 정렬은 이 값 기준(정렬 자체는 프론트 몫 — 서버 정렬 키는 여전히 배치 시각).
 - **`pattern` (enum 5종, KG 표준 엔티티)**: `Center` | `Edge-Ring` | `Scratch` | `Unknown` | `Normal`. 원인 매핑 대상 3종(`Center`/`Edge-Ring`/`Scratch`) + 비매핑 결함 통합값 `Unknown`(기획안 v1.5 §6.1의 "새로운 결함 패턴" — WM-811K 원 9종 중 `Edge-Loc`·`Loc`·`Donut`·`Near-Full`·`Random`을 단일화) + 정상 `Normal`. CNN/DB가 어떤 표기로 내보내든 FastAPI가 이 5종으로 정규화해 내려준다(비매핑 결함은 고유명 대신 `Unknown`으로 접어 내려줌 — CNN 내부 출력 형식은 계약 밖·FastAPI↔LangGraph 구현 영역). `Unknown`은 `status:"novel"`(v2.0). (3장 enum·3.2 형상 gloss 표와 동일 집합.)
 - **`count`**: 필터·페이지네이션 **적용 전 전체 결과 수**(현재 페이지의 `items.length`가 아님). 프론트는 이 값으로 총 페이지 수를 계산한다.
-- **필드 존재 계약(v2.0: 7키)**: `items[]`의 7개 키(`analysis_id`·`pattern`·`lot_count`·`top_cause`·`status`·`confidence`·`yield_impact`)는 **항상 존재**한다. `top_cause`(reviewed 아니면 `null`)·`yield_impact`(구 저장분/창 데이터 없음이면 `null`)만 Nullable, 나머지는 값이 채워진다.
+- **필드 존재 계약(v2.0: 9키)**: `items[]`의 9개 키(`analysis_id`·`batch_id`·`analyzed_date`·`pattern`·`lot_count`·`top_cause`·`status`·`confidence`·`yield_impact`)는 **항상 존재**한다. Nullable은 `top_cause`(reviewed 아니면 `null`)·`yield_impact`(구 저장분/창 데이터 없음이면 `null`)·`analyzed_date`(배치 row 없는 구 저장분이면 `null`) 셋뿐, 나머지는 값이 채워진다.
 
 
 **응답 200 (결과 없음)** — 에러가 아니라 빈 목록으로 반환한다. 프론트는 "아직 분석된 결과가 없습니다" 안내를 띄운다.
@@ -153,9 +158,17 @@
 ### 2.3 `POST /batches` — 오늘 판독 배치 실행 (화면1 버튼)
 **직전 배치 이후 누적된 저수율 로트**를 대상으로 파이프라인 전체(⓪~⑦)를 1회 실행한다. **오래 걸리므로 비동기**로 접수만 하고 즉시 `batch_id`를 반환한다.
 
-> **실행 빈도 = 1회(확정)**: 배치는 **하루 1회**이며, 이벤트 기준일이 고정일 `2026-04-01`(1장)이라 실질적으로 **완료된 배치가 1건이라도 있으면 이후 실행 요청은 전부 `409`**다. 프론트는 실행 버튼을 비활성화하고 "기존 완료된 분석이 있습니다" 안내와 함께 대기열(화면2)로 유도한다. 재실행이 필요하면 서버 상태 저장소(`app_state.db`)를 초기화한다. `batch_id`의 `{순번}`은 포맷상 예약만 되고(`_02`~) 현 정책에서는 생성되지 않는다.
+> **실행 빈도 = 하루 1회(v2.0 개정)**: 배치는 **서버 '오늘' 하루에 1회**다. 예전 서술("완료된 배치가 1건이라도 있으면 이후 요청은 전부 409")은 **폐기** — 이벤트 기준일이 고정 상수라서 생긴 부작용이었고, 그 규칙 아래에서는 "매일 아침 눌러 전날치를 본다"는 이 서비스의 사용 방식이 실제로는 **딱 한 번만** 가능했다.
+>
+> 지금은 서버 '오늘'이 **배치 커서에서 파생**된다(`config.event_date_for` — 커서 없으면 env `EVENT_DATE`, 있으면 `커서 + 2일`). 배치가 끝나 커서가 전진하면 '오늘'도 하루 앞으로 가고, 그래서 "그 날짜의 완료 배치"가 없어져 다음 클릭이 통과한다. `409`는 **그 날짜에 이미 완료된 배치가 있을 때만** 난다. 버튼을 반복해서 누르면 하루씩 전진하며 결과가 누적된다.
+>
+> `batch_id`의 `{순번}`도 실제로 증가한다(전역 시퀀스라 날짜가 바뀌어도 이어짐 — `batch_20260207_02` 같은 값이 정상).
 
-> **분석 대상 범위 = 누적(확정)**: ⓪저수율 로트 선별의 스코프는 **직전 배치 이후 누적된 저수율 로트**이며, "데이터셋 최신일 1일 창"이 아니다. 서버가 배치 커서(직전 배치 지점)를 보관하고 배치 실행 시 그 이후 구간을 대상으로 전진시킨다 — 배치를 며칠 건너뛰어도 그 사이 로트가 누락되지 않는다. (2.1 `yield-summary`의 "최근 7일"은 화면1 추이 차트 전용 창이라 이 스코프와 무관하다.)
+> **분석 대상 범위 = 전날 하루치(v2.0 개정)**: ⓪저수율 로트 선별의 스코프는 `(직전 커서, min(데이터축 최신일, 서버 '오늘'의 전날)]`이다. 커서가 매 배치 하루씩 전진하므로 **평상시에는 전날 하루치**만 처리한다 — "오늘 아침에 눌러 어제 쌓인 걸 본다"는 운영 방식 그대로다.
+>
+> 누적 보장은 그대로다: 배치를 며칠 건너뛰어도 커서는 그 자리에 있으므로 다음 실행이 밀린 구간을 이어서 따라잡는다. **첫 배치**(커서 없음)만 예외로 데이터축 처음(`DATA_EPOCH`)부터 env `EVENT_DATE`의 전날까지를 한 번에 훑는다(BACKEND_DECISIONS D2). 이때만 대상 구간이 하루보다 넓다.
+>
+> (2.1 `yield-summary`의 "최근 7일"은 화면1 추이 차트 전용 창이라 이 스코프와 무관하다.)
 
 **요청 본문** (비어있음)
 ```json
@@ -167,22 +180,80 @@
 ```json
 { "batch_id": "batch_20260706_01", "status": "running" }
 ```
-- **`batch_id` 형식 — `batch_{배치날짜}_{순번}`**: 날짜 뒤에 배치 순번(2자리, `01`부터)을 붙인다. 이 순번이 **여러 번 실행해도 ID가 충돌하지 않게** 하는 discriminator다. 현 정책(1회 실행)에선 실질적으로 `_01`만 나오지만, 포맷을 지금부터 순번 포함으로 고정해 **추후 "배치 하나 더 생성"을 켜도 프론트 파서를 고칠 필요가 없게** 한다. 이 배치가 만들어내는 그룹들은 같은 순번을 물려받는다(`grp_{패턴}_{배치날짜}_{순번}`). (근거: 3장 유니크 규칙.)
+- **`batch_id` 형식 — `batch_{배치날짜}_{순번}`**: 날짜는 **서버 '오늘'**(위 개정 참고), 순번은 2자리 전역 시퀀스(`01`부터)다. 이 순번이 **여러 번 실행해도 ID가 충돌하지 않게** 하는 discriminator다. 날짜가 바뀌어도 순번은 초기화되지 않으므로 `batch_20260207_02`처럼 날짜와 순번이 어긋나 보이는 값이 정상이다 — **순번을 날짜별 카운트로 해석하지 말 것**. 이 배치가 만들어내는 그룹들은 같은 순번을 물려받는다(`grp_{패턴}_{배치날짜}_{순번}`). (근거: 3장 유니크 규칙.)
 
 **에러**
 - `409` — 두 경우다. **어느 쪽이든 진행 화면 자동 이동은 하지 않고**, `detail` 문자열을 그대로 안내에 쓴다(프론트는 문자열을 파싱해 분기하지 않는다 — 두 경우 모두 "실행 불가"로 동일 처리).
   - 이미 **실행 중인** 배치가 있는 경우(중복 클릭 방지, 버튼 비활성화의 방어용)
-  - 이미 **완료된** 배치가 있는 경우(1회 실행 정책)
+  - **그 날짜에** 이미 완료된 배치가 있는 경우(하루 1회 정책). `detail`에 날짜가 들어간다.
 ```json
 { "detail": "이미 진행 중인 배치가 있습니다." }
 ```
 ```json
-{ "detail": "기존 완료된 분석이 있습니다." }
+{ "detail": "2026-02-07 분석이 이미 완료되었습니다." }
 ```
 - `500` — 그룹화/에이전트 실행 시작에 실패
 ```json
 { "detail": "배치 실행을 시작하지 못했습니다." }
 ```
+
+---
+
+### 2.3.1 `GET /batches/today` — 서버 '오늘'과 이번 클릭의 대상 구간 (화면1 배지)
+실행 **전에** "지금 누르면 어느 날짜의 배치가 도는지"를 알려준다. 화면1 헤더 배지(`일 1회 배치 · 2026-02-07`)와 버튼 잠금이 이 값을 쓴다 — 예전에는 눌러서 `409`를 받아야만 버튼이 잠겼다.
+
+**응답 200**
+```json
+{
+  "today": "2026-02-07",
+  "target_from": "2026-02-06",
+  "target_to": "2026-02-06",
+  "done": false,
+  "batch_id": null
+}
+```
+- **`today`** — 서버가 인식하는 오늘(§1). 커서 파생이라 배치 1회당 하루 전진한다. **벽시계 날짜가 아니다.**
+- **`target_from`·`target_to`** — 이번 실행이 훑을 데이터축 구간(양끝 포함). 평상시엔 같은 날짜 하루치, 첫 배치·건너뛴 날이 있으면 넓어진다. **fab.db가 없으면 둘 다 `null`**(§2.8 days와 같은 폴백 — 200은 유지).
+- **`done`** — `true`면 그 날짜 배치가 이미 완료돼 `POST /batches`가 409를 준다. 프론트는 이 값으로 버튼을 미리 잠근다.
+- **`batch_id`** — `done=true`일 때 그 배치 id, 아니면 `null`.
+
+> **라우트 순서 주의(구현 계약)**: `/batches/today`는 `/batches/{batch_id}`보다 **먼저** 등록돼야 한다. 뒤에 두면 `"today"`가 `batch_id`로 잡혀 404가 난다. `backend/tests/server/test_api_contract.py::test_batches_today_shape_and_route_order`가 이걸 지킨다.
+
+**에러** — 없음(조회 전용, 실패 시에도 배지만 못 뜨고 배치 실행은 막지 않는다).
+
+---
+
+### 2.3.2 `POST /batches/reset` — 마지막 배치 되돌리기 (시연용)
+가장 최근 배치를 통째로 되돌린다. **시연 중 "방금 그 날짜를 다시 돌려보기"** 를 위한 것이지 정규 운영 기능이 아니다.
+
+지우는 것: 그 배치가 만든 `analysis` 전부 · `batch` row · 전진했던 **커서(시작 지점으로 복원)**. 커서가 되돌아가면 서버 '오늘'도 하루 뒤로 가므로, 버튼을 다시 누르면 같은 날짜를 재분석한다.
+
+**요청 본문** (비어있음) — 대상은 항상 "가장 최근 배치"라 입력이 없다.
+```json
+{}
+```
+
+**응답 200**
+```json
+{ "batch_id": "batch_20260207_02", "removed_analyses": 5, "cursor_restored_to": "2026-02-05" }
+```
+- **`cursor_restored_to`** — 복원된 커서. 되돌린 배치가 첫 배치였다면 `null`(커서 없음 상태로 복귀).
+
+**에러**
+- `404` — 되돌릴 배치가 없음
+```json
+{ "detail": "되돌릴 배치가 없습니다." }
+```
+- `409` — 진행 중인 배치가 있음(중간 상태를 지우면 결과가 꼬인다)
+```json
+{ "detail": "진행 중인 배치가 있어 초기화할 수 없습니다." }
+```
+- `500` — 롤백 실패
+```json
+{ "detail": "초기화에 실패했습니다." }
+```
+
+> 프론트는 되돌린 뒤 대기열·차트·배지를 **함께** 다시 읽어야 한다 — 커서가 움직이면 세 값이 전부 한 칸 되돌아가기 때문이다.
 
 ---
 
@@ -267,7 +338,7 @@
 ### 2.5 `GET /analyses/{analysis_id}` — 분석 결과 상세 (화면3)
 가설 카드 · Critic · 인용 · 소속 로트 · 권장 조치. 대시보드에서 각 행 상태 버튼 클릭 시 호출.
 
-> **전제 — 항상 종료상태만 반환**: 그룹 `status`는 `reviewed | insufficient | unmapped | novel` 4종(v2.0)뿐이며 "진행중" 상태는 없다. 아직 분석 중인 그룹은 **2.2 대기열에 노출되지 않아** 화면3에서 클릭 대상이 되지 않으므로, 2.5는 분석이 끝난 그룹만 조회한다. (배치 진행 상태는 2.4 소관.)
+> **전제 — 항상 종료상태만 반환**: 그룹 `status`는 `reviewed | insufficient | unmapped | novel | normal_reading` 5종(v2.0)뿐이며 "진행중" 상태는 없다. 아직 분석 중인 그룹은 **2.2 대기열에 노출되지 않아** 화면3에서 클릭 대상이 되지 않으므로, 2.5는 분석이 끝난 그룹만 조회한다. (배치 진행 상태는 2.4 소관.)
 
 **응답 200 (판독 성공 · `status: "reviewed"`)**
 ```json
@@ -318,7 +389,13 @@
 ```
 - **`description` (VLM 자연어 서술 · Nullable)**: **③VLM 노드가 그룹 대표 패턴에 대해 생성한 자유서술 문장**이다(기획안 v1.5 §4 기능4·노드③의 최소구현 산출물). 화면3의 그룹 서술로 그대로 노출한다. 이 값은 **LLM 생성물이라 배치 실행마다 문구가 달라질 수 있고**, 프론트는 내용을 파싱하지 말고 문장 그대로 표시한다.
   - **결정적 gloss 조립값과 혼동 금지**: 프론트가 `pattern`·`stage`로 조립하는 한 줄 요약은 이것과 **별개의 값**이며, 이름도 `summary_line`으로 구분한다(상수표·조립 규칙·fallback은 **부록 3.2(프론트 파생 표시값, 비계약)** 참조). `description`이 `null`이면 프론트는 `summary_line`으로 fallback한다.
-  - 🔲 **백엔드 확인(4장)**: 현재 백엔드 `VLMResult`(`state.py:21`)의 `description`은 **웨이퍼 1장 단위**라, 그룹 대표 서술을 무엇으로 삼을지(대표 웨이퍼 선정 vs 그룹 단위 재생성)가 미정이다. 또 VLM은 아직 실제 모델 미연동(패턴 하드코딩) 상태다. 확정·연동 전까지 `description`은 `null`일 수 있으며, 그동안 화면3은 `summary_line` fallback으로 동작한다.
+  - **⚠️ 언어는 운영 스위치 2개에 달려 있다 (자주 걸리는 함정)**: ③VLM은 **영어만** 생성하고(프롬프트 단순·출력 자연스러움), **한국어 번역은 ⑦ 응답노드 소관**이다(`deps.response_translator` → `nodes/response._group_description`). 그래서 스위치 조합에 따라 화면3 "결함 서술 요약"이 이렇게 갈린다.
+    - `VLM_LIVE=0` → `description: null` (스켈레톤 폴백 문구는 지어낸 값이라 **노출 금지**) → 프론트가 `summary_line`으로 fallback
+    - `VLM_LIVE=1`, `RESPONSE_LLM=0` → **영어 원문 그대로 내려간다** (번역기 미주입 = 결정적·LLM 비용 0)
+    - `VLM_LIVE=1`, `RESPONSE_LLM=1` → 한국어 번역문. **한국어로 보이려면 두 스위치를 함께 켜야 한다.**
+
+    번역 실패 시에는 원문(영어)으로 폴백한다 — 실제 관측 내용을 잃지 않는 쪽을 택했다(곱게 무너짐). 즉 **영어로 보이는 것은 버그가 아니라 `RESPONSE_LLM`이 꺼져 있다는 신호**다.
+  - 🔲 **백엔드 확인(4장)**: 현재 백엔드 `VLMResult`(`state.py:21`)의 `description`은 **웨이퍼 1장 단위**라, 그룹 대표 서술을 무엇으로 삼을지(대표 웨이퍼 선정 vs 그룹 단위 재생성)가 미정이다. 확정 전까지 `description`은 `null`일 수 있으며, 그동안 화면3은 `summary_line` fallback으로 동작한다. (VLM "실제 모델 미연동" 서술은 폐기 — `VLM_LIVE=1` 경로가 붙었다.)
 
 - **`confidence` (v2.0 신설 · R1 확신 수준 · 그룹 단위)**: `medium`(잠정 지지) | `low`(불확실). **`high`(확정)는 내지 않는다** — 표현 층 환각 완화(R1). 판정 기준(서버 결정론): 채택 ≤3건이고 그중 fab 증거로 적극 지지되는 가설(방향일치 drift 또는 정상비율<0.5)이 있으면 `medium`, 아니면 `low`. `reviewed`가 아니면 항상 `low`. 프론트는 `low`+`reviewed`일 때 "확정 아님" 경고 배너를 띄운다(와이어프레임 v8).
 - **`yield_impact` (v2.0 신설 · number|null, %p)**: 그룹 수율영향. **계산식(확정)** — `impact = Σ_{lot∈group}(y_lot − ȳ_window) / N_window × 100` (소수 1자리). ȳ_window = 배치 커서 창 전체 로트(정상 포함) 수율 단순평균, N_window = 창 전체 로트 수. 의미: "그룹 로트들을 평균 수율로 치환했을 때 대비 라인 평균이 몇 %p 낮아졌나" — 저수율 그룹은 음수(예: `-3.8`). 그룹별 합이 전체 하락분으로 분해되어 그룹 간 정렬·비교에 정합. 원천은 ⓪ 선별 시 보존한 창 전체 로트 수율(`lot_yields`)이며 배치 시점에 계산·저장된다(§2.7 원칙 — 조회 시 재계산 없음).
@@ -737,9 +814,9 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
 ---
 
 ### 2.8 `GET /yield-daily` — 일별 수율 + 분석 이벤트 오버레이 (화면1 확장 차트, v2.0 신설)
-데이터축 전 구간의 일별 라인 수율 추이와, 급락 지점에 겹칠 분석 이벤트 마커. 대시보드 확장 차트(와이어프레임 v8) 진입 시 1회 호출.
+**분석이 끝난 구간까지**의 일별 라인 수율 추이와, 급락 지점에 겹칠 분석 이벤트 마커. 대시보드 확장 차트(와이어프레임 v8) 진입 시 1회 호출, 배치 실행·초기화 후 재호출.
 
-**요청** 파라미터 없음(전 구간 고정 — 기간 선택 UI 없음).
+**요청** 파라미터 없음(범위는 서버 커서가 정한다 — 기간 선택 UI 없음).
 
 **응답 200**
 ```json
@@ -751,7 +828,9 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
                 "confidence": "medium" } ]
 }
 ```
-- **`days[]`**: `fab.db metric_series(metric='yield')` **전 구간**의 날짜별 장비 단순평균(2.1과 같은 정의) ×100, **소수 1자리**(2.1의 0~100 정수와 스케일 취지는 같고 정밀도만 다름 — 추이 차트가 소수점 급락을 구분해야 해서). fab.db 접근 불가 시 **`days: []`로 200 유지**(이벤트는 별도 저장소라 계속 내려간다).
+- **`days[]`**: `fab.db metric_series(metric='yield')`의 날짜별 장비 단순평균(2.1과 같은 정의) ×100, **소수 1자리**(2.1의 0~100 정수와 스케일 취지는 같고 정밀도만 다름 — 추이 차트가 소수점 급락을 구분해야 해서). fab.db 접근 불가 시 **`days: []`로 200 유지**(이벤트는 별도 저장소라 계속 내려간다).
+  - **범위 = 배치 커서 이하(v2.0 개정)**: 예전에는 데이터축 **전 구간**을 내렸으나, fab.db에는 아직 배치가 닿지 않은 미래 구간까지 들어 있어서 **분석 카드가 없는 급락 지점이 차트에만 뜨는** 문제가 있었다("이 급락은 왜 분석이 없지?"). 지금은 `date(ts) <= 커서`로 잘라 차트 끝과 대기열이 같은 시점을 가리키고, 배치를 돌릴 때마다 차트가 하루씩 자라 누적이 눈에 보인다.
+  - **커서가 없으면(배치 이력 0건) `days: []`** — 분석된 게 없으니 보여줄 실적도 없다. 첫 배치 전 대시보드는 빈 차트가 정상이다.
 - **`events[]`**: 저장된 분석 중 **`defect_date`**(그룹 로트들의 EDS 통과 최종일 — 데이터축, 배치 시점에 fab.db에서 계산·저장)가 잡힌 전부, 날짜 오름차순. `reviewed` 외 상태(`insufficient`/`novel`)도 **이상 이벤트 자체는 유효**하므로 내린다 — 표시 구분(마커 스타일)은 프론트 몫. `cause`/`equipment`/`stage`/`tier`는 대표 가설이 없으면 `null`. §2.7 원칙대로 **저장분 조회만** 한다(온디맨드 재계산 없음). 구 저장분(defect_date 없음)은 목록에서 빠진다.
 - **프론트 결합**: 이벤트 마커의 y좌표는 `events[].date`로 `days[]`를 조회해 얻는다(서버가 중복 게재하지 않음).
 
@@ -800,7 +879,7 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
 | Evidence | hypothesis_id, cause, stage, tier, verdict, verdict_reason, suspect, sections{commonality, telemetry, events}, unverified[], next_actions[], citations[] | MCP 도구 집계(배치 시 EvidenceEntry 보존) |
 
 > **고정 vocabulary (enum)** — 아래 값들은 문자열이지만 정해진 집합만 허용한다. 백엔드는 Pydantic `Enum`으로, 프론트는 이 값 기준으로 배지/색을 매핑한다.
-> - `status` (분석 결과, 2.2·2.5 · v2.0 4종): `reviewed` | `insufficient` | `unmapped` | `novel`
+> - `status` (분석 결과, 2.2·2.5 · v2.0 5종): `reviewed` | `insufficient` | `unmapped` | `novel` | `normal_reading`(#69, 판독상 정상)
 > - `status` (배치 진행, 2.3·2.4): `running` | `completed` | `failed` — 접수(2.3 `202`)는 항상 `running`, 진행 조회(2.4)에서 `completed`/`failed`로 전이. 큐 없음(접수 즉시 실행)이라 `queued`는 두지 않는다.
 > - `pattern` (결함 패턴, 5종 · KG 표준 엔티티): `Center` | `Edge-Ring` | `Scratch` | `Unknown` | `Normal` — 원인 매핑은 앞 3종(`Center`/`Edge-Ring`/`Scratch`)만, 비매핑 결함 통합값 `Unknown`(원 9종 중 `Edge-Loc`·`Loc`·`Donut`·`Near-Full`·`Random`)은 `novel`(v2.0), `Normal`은 정상. CNN/DB 표기를 FastAPI가 이 집합으로 정규화
 > - `series[].name` (수율 시리즈, 2.1): `low_yield_eq`(저수율 장비) | `line_avg`(라인 평균) — 프론트가 이 키로 라벨·색 매핑
@@ -818,19 +897,21 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
 
 ## 3.1 엔드포인트별 에러 요약 (한눈에 보기)
 
-> **계약 라우트는 아래 표의 10개가 전부다**(2장 §2.1~§2.9 + §2.6.1 — v2.0에서 §2.8·§2.9 추가). 라우트 수를 셀 때는 절 번호가 아니라 이 표를 센다 — §2.6.1은 §2.6의 하위 절 번호를 달고 있지만 별개의 HTTP 라우트다. 다른 문서에서 "API 계약 N종"을 적을 때도 이 표를 기준으로 한다.
+> **계약 라우트는 아래 표의 12개가 전부다**(2장 §2.1~§2.9 + §2.3.1·§2.3.2·§2.6.1 — v2.0에서 §2.8·§2.9, 이어 §2.3.1·§2.3.2 추가). 라우트 수를 셀 때는 절 번호가 아니라 이 표를 센다 — §2.3.1·§2.3.2·§2.6.1은 하위 절 번호를 달고 있지만 각각 별개의 HTTP 라우트다. 다른 문서에서 "API 계약 N종"을 적을 때도 이 표를 기준으로 한다.
 
 | 엔드포인트 | 200 정상 | 발생 가능 에러 |
 |---|---|---|
 | `GET /yield-summary` | 추이 데이터 | `500`(DB) |
 | `GET /analyses` | 목록(빈 목록 포함) | `422`(sort 값) · `500`(저장소 조회 실패) |
-| `POST /batches` | `202` 접수 | `409`(실행 중 / 기존 완료 배치 존재) · `500`(시작 실패) |
+| `POST /batches` | `202` 접수 | `409`(실행 중 / **그 날짜에** 완료 배치 존재) · `500`(시작 실패) |
+| `GET /batches/today` | 서버 '오늘' + 대상 구간 | 없음(조회 전용) |
+| `POST /batches/reset` | 되돌린 배치 요약 | `404`(되돌릴 배치 없음) · `409`(실행 중) · `500`(롤백 실패) |
 | `GET /batches/{id}` | 진행/완료/실패 상태 | `404`(없는 batch) |
 | `GET /analyses/{id}` | 상세(reviewed/insufficient/unmapped/novel) | `404`(없는 analysis) · `500`(내부 오류) |
 | `GET /lots/{id}/wafers` | 웨이퍼 목록(빈 목록 포함) | `404`(없는 lot) · `500` |
 | `GET /lots/{id}/wafers/{wid}/die-map` | `image/png` 바이너리(비-JSON) | `404`(없는 wafer/이미지) · `500` |
 | `GET /analyses/{id}/evidence/{hypothesis_id}` | 근거 3섹션(섹션별 `available`) | `404`(없는 hypothesis_id / unmapped·novel 그룹) · `500` |
-| `GET /yield-daily` | 일별 수율 전 구간 + 이벤트(빈 배열 포함) | `500`(저장소) |
+| `GET /yield-daily` | 일별 수율(커서 이하) + 이벤트(빈 배열 포함) | `500`(저장소) |
 | `GET /stats/causes` | 장비·원인·패턴 집계(빈 배열 포함) | `500`(저장소) |
 
 > **핵심 원칙**
@@ -871,6 +952,19 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
 | `CMP` | CMP 공정 연관 추정 |
 | `CLEAN` | CLEAN 공정 연관 추정 |
 | `EDS` | EDS 공정 연관 추정 |
+
+**원인(cause) gloss — 열린 문자열의 한국어 표시** (프론트 `labels.ts: CAUSE_LABELS` / `causeLabel()`)
+
+`cause`는 KG가 문헌에서 자유 추출한 **열린 문자열**이라 서버 enum이 아니다(현 산출물 기준 검증 가능 등급만 166종, 재빌드마다 바뀐다). 그래서 **전수 번역이 원리적으로 불가능**하고, 프론트는 다음 2단으로 표시한다.
+
+1. `CAUSE_LABELS`에 있으면 한국어 gloss (`center_polishing_too_fast` → `중심부 연마 과다(CMP)`). 실제로 채택돼 화면에 뜨는 원인 위주로 채운다.
+2. 없으면 `snake_case`를 읽히는 형태로만 낮춘다 (`etch_rate_drift` → `Etch rate drift`). **키 부재는 버그가 아니라 설계된 경로다.**
+
+> **원문 id는 화면에서 지우지 않는다** — 가설 카드는 gloss 아래에 원문을 작게 병기하고, 대기열은 tooltip으로 단다. KG 조회·평가 스크립트(`matched_cause` 대조)가 쓰는 키가 원문 문자열이라, 화면에 원문이 없으면 엔지니어가 결과를 KG로 되짚을 수 없다.
+
+**상태 배지 — 대기열은 2종으로 접는다** (프론트 `labels.ts: QUEUE_STATUS_PILL`, 와이어프레임 v9)
+
+대기열 상태 열은 `status` 5종을 그대로 찍지 않고 **"조치가 필요한가"** 로만 표시한다: `reviewed` → `✓ 검토 완료`, 판단불가 3종(`insufficient`/`unmapped`/`novel`) → `⚠ 판단 불가`, `normal_reading` → `판독상 정상`(조치 대상 아님, 가장 낮은 대비). 판단불가의 **세부 사유는 바로 옆 "유력 원인 후보" 열이 (a)/(b)/(c)로 이미 말해주므로**, 배지까지 5종이면 한 행에서 같은 정보를 두 번 읽게 된다. 5종 구분이 필요한 화면3 헤더·판단불가 카드는 `STATUS_LABELS`/`UNABLE_BOX`로 따로 쓴다.
 
 > 6종은 `fab_model.yaml:2 route`(=KG `ProcessStep` 고정 vocabulary = fab.db `EQUIPMENT.step_group`)와 동일 집합. gloss 문구는 표시 취향에 따라 조정 가능(현재는 공정 코드 그대로 노출).
 > 🔲 **백엔드 확인(4장)**: `stage`는 응답에 존재하는 가설 카드 필드지만(2.5), 현재 백엔드 `Hypothesis`(`state.py:90`)엔 `stage`/`step`이 없다(`equipment`만 보유). ⑤에서 `cand.step`을 실어주기 전까지는 카드 `stage`와 이 파생 요약의 공정 조각 둘 다 값을 못 받는다(2.5 `stage` 필드의 🔲와 동일 갭·동일 조치).

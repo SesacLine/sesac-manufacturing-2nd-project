@@ -1,8 +1,15 @@
 /** API 계약 타입 — 정본 docs/API_명세서_v2.0.md. 키는 snake_case 그대로 쓴다(§1). */
 
 export type Pattern = "Center" | "Edge-Ring" | "Scratch" | "Unknown" | "Normal";
-/** v1.1: novel = CNN Unknown(미지 패턴, OSR) — 구 unmapped에서 분리(판단불가 세분류 (b)) */
-export type AnalysisStatus = "reviewed" | "insufficient" | "unmapped" | "novel";
+/** v1.1: novel = CNN Unknown(미지 패턴, OSR) — 구 unmapped에서 분리(판단불가 세분류 (b))
+ *  normal_reading(#69) = 저수율인데 판독상 정상 — 그룹 서브그래프를 타지 않고 batch_runner가
+ *  직접 만든 카드라 가설·근거가 없다(§2.5 evidence는 404). */
+export type AnalysisStatus =
+  | "reviewed"
+  | "insufficient"
+  | "unmapped"
+  | "novel"
+  | "normal_reading";
 export type BatchStatus = "running" | "completed" | "failed";
 export type LogStatus = "done" | "running" | "error";
 export type Tier = "auto" | "semi_auto" | "none";
@@ -29,12 +36,17 @@ export interface YieldSummary {
 /** §2.2 (v1.1: confidence·yield_impact 추가 — 대기열 확신 수준·수율영향 컬럼) */
 export interface AnalysisSummary {
   analysis_id: string;
+  /** 이 분석을 만든 배치 id — 대시보드가 "로그 확인" 링크를 거는 데 쓴다. */
+  batch_id: string;
   pattern: Pattern;
   lot_count: number;
   top_cause: string | null;
   status: AnalysisStatus;
   confidence: Confidence; // 구 저장분은 서버가 "low" 폴백
   yield_impact: number | null; // %p (음수 = 라인 평균을 끌어내림). 구 저장분 null
+  /** 분석 실행일(YYYY-MM-DD) — 그 분석을 만든 배치의 시작일. 결함 발생일이 아니다.
+   *  배치 row가 없는 구 저장분은 null → 대기열에서 "—"로 표시. */
+  analyzed_date: string | null;
 }
 export interface AnalysisList {
   count: number;
@@ -45,6 +57,15 @@ export interface AnalysisList {
 export interface BatchAccepted {
   batch_id: string;
   status: "running";
+}
+
+/** §2.3 부속 — 서버가 인식하는 '오늘'과 이번 클릭의 대상 구간(화면1 배지·버튼 문구) */
+export interface BatchToday {
+  today: string; // YYYY-MM-DD, 커서에서 파생 — 배치 1회당 하루 전진
+  target_from: string | null; // fab.db 없으면 null
+  target_to: string | null;
+  done: boolean; // true면 그 날짜 배치가 이미 완료(POST /batches는 409)
+  batch_id: string | null; // done일 때 그 배치 id
 }
 
 /** §2.4 — 세 status 공통 7키 superset */

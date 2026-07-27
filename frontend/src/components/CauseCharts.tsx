@@ -3,7 +3,7 @@
  *  KG 매핑 3종 여부(§3) — mapped=파랑, 미매핑=회색. 정답 라벨 누출 없음(집계 카운트만). */
 
 import type { CauseStats } from "../api/types";
-import { CHART_NEUTRAL, stageColor, TIER_LABELS } from "../labels";
+import { causeLabel, CHART_NEUTRAL, stageColor, TIER_LABELS } from "../labels";
 
 // ---- 도넛 (원인 장비 구성비) ----
 function Donut({ equipment }: { equipment: CauseStats["equipment"] }) {
@@ -85,7 +85,7 @@ function Pareto({ patterns }: { patterns: CauseStats["patterns"] }) {
             >
               <title>
                 {v.pattern} — {v.wafer_count.toLocaleString()}장 ·{" "}
-                {v.mapped ? "원인 매핑 완료" : "미매핑(판독까지)"}
+                {v.mapped ? "원인 분석 대상" : "판독만 지원"}
               </title>
             </rect>
             <text className="chart-vl" x={x(v.wafer_count) + 5} y={Y + bh / 2 + 4}>
@@ -125,7 +125,7 @@ function CauseChips({ causes }: { causes: CauseStats["causes"] }) {
                 style={{ background: stageColor(c.stage) }}
                 title={`${c.cause} — ${c.count}건 · ${TIER_LABELS[c.tier ?? "none"] ?? c.tier ?? ""}${c.stage ? ` · ${c.stage}` : ""}`}
               >
-                {c.cause}
+                {causeLabel(c.cause)}
                 {c.count > 1 ? ` ×${c.count}` : ""}
                 {c.stage && <small>{c.stage}</small>}
               </span>
@@ -138,18 +138,27 @@ function CauseChips({ causes }: { causes: CauseStats["causes"] }) {
 }
 
 export default function CauseCharts({ data }: { data: CauseStats }) {
+  // 도넛의 모수 — 채택 원인으로 지목된 건수 합(장비별 count의 합). v9는 더미라 8을 박아뒀지만
+  // 여기서는 실제 집계에서 센다("8건 기준"이 데이터와 어긋나면 오히려 신뢰를 깎는다).
+  const adoptedTotal = data.equipment.reduce((n, e) => n + e.count, 0);
   return (
     <div className="chart-grid">
       <div>
-        <div className="chart-sub">이번 분석에서 채택 유력 원인으로 지목된 장비</div>
+        <div className="chart-sub">
+          원인 장비<span className="sd">채택 유력 {adoptedTotal}건 기준</span>
+        </div>
         <Donut equipment={data.equipment} />
       </div>
       <div>
-        <div className="chart-sub">결함 패턴별 판독 웨이퍼 수 (파랑 = 원인 매핑 3종)</div>
+        <div className="chart-sub">
+          결함 패턴별 웨이퍼 수<span className="sd">파랑 = 원인 분석 대상</span>
+        </div>
         <Pareto patterns={data.patterns} />
       </div>
       <div>
-        <div className="chart-sub">패턴별 채택 유력 원인 — 글자가 원인, 색이 해당 공정</div>
+        <div className="chart-sub">
+          패턴별 채택 원인<span className="sd">색 = 발생 공정</span>
+        </div>
         <CauseChips causes={data.causes} />
       </div>
     </div>

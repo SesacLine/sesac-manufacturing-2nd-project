@@ -1,11 +1,12 @@
-/** §2.7 근거 모달 3섹션 — available:false는 "미수집"으로 렌더(에러 아님),
+/** §2.7 설비 데이터 근거 모달 3섹션 — available:false는 "미수집"으로 렌더(에러 아님),
+ *  섹션 제목은 도구 이름(Commonality·Telemetry)이 아니라 그 섹션이 답하는 질문으로 쓴다,
  *  ratio·normal_ratio.value만 % 변환(caption은 완성 문장이라 그대로),
  *  telemetry 차트에 normal_range 밴드·t0 수직선. */
 
 import { useEffect, useState } from "react";
 import { api, ApiError, formatDetail } from "../api/client";
 import type { Evidence, TelemetrySection } from "../api/types";
-import { REASON_LABELS, TIER_LABELS, VERDICT_LABELS } from "../labels";
+import { causeLabel, REASON_LABELS, TIER_LABELS, VERDICT_LABELS } from "../labels";
 
 function TelemetryChart({ tel }: { tel: TelemetrySection }) {
   const W = 300;
@@ -45,7 +46,7 @@ function TelemetryChart({ tel }: { tel: TelemetrySection }) {
         <polyline points={pts} fill="none" stroke="#1f2328" strokeWidth="2" />
       </svg>
       <div className="caption">
-        {tel.t0 ? `점선 세로: 이상 시작 추정 t0(${tel.t0}) · ` : ""}
+        {tel.t0 ? `점선 = 이상이 시작된 것으로 추정되는 시점(${tel.t0}) · ` : ""}
         {tel.normal_range ? `정상범위 [${tel.normal_range[0]}, ${tel.normal_range[1]}] ` : ""}
         {tel.caption ?? ""}
       </div>
@@ -79,7 +80,7 @@ export default function EvidenceModal({
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="modal-head">
-          <span>근거 상세 — {cause}</span>
+          <span>설비 데이터 근거 — {causeLabel(cause)}</span>
           <button className="close-btn" onClick={onClose}>
             ✕ 닫기
           </button>
@@ -90,16 +91,16 @@ export default function EvidenceModal({
           {evidence && sections && (
             <>
               <div className="caption" style={{ marginBottom: 10 }}>
-                판정: {VERDICT_LABELS[evidence.verdict] ?? evidence.verdict} ·{" "}
+                {VERDICT_LABELS[evidence.verdict] ?? evidence.verdict} ·{" "}
                 {TIER_LABELS[evidence.tier] ?? evidence.tier}
                 {evidence.suspect &&
-                  ` · 용의 장비: ${evidence.suspect.equipment_id}${evidence.suspect.chamber_id ? ` (${evidence.suspect.chamber_id})` : ""}`}
+                  ` · 의심 장비: ${evidence.suspect.equipment_id}${evidence.suspect.chamber_id ? ` (${evidence.suspect.chamber_id})` : ""}`}
                 {evidence.verdict_reason && ` · ${evidence.verdict_reason}`}
               </div>
 
               <div className="ev-sec">
                 <div className="ev-sec-title">
-                  <span className="num">①</span>Commonality — 공통 장비 집계
+                  <span className="num">①</span>불량 로트가 공통으로 지난 장비
                 </div>
                 <div className="ev-sec-body">
                   {sections.commonality.available ? (
@@ -108,7 +109,7 @@ export default function EvidenceModal({
                         <thead>
                           <tr>
                             <th>장비 (챔버)</th>
-                            <th>불량 Lot 통과</th>
+                            <th>불량 로트 통과</th>
                             <th>일치율</th>
                             <th>비고</th>
                           </tr>
@@ -148,12 +149,12 @@ export default function EvidenceModal({
 
               <div className="ev-sec">
                 <div className="ev-sec-title">
-                  <span className="num">②</span>Telemetry — 파라미터 시계열 vs 정상범위
+                  <span className="num">②</span>센서값 추이와 정상범위
                 </div>
                 <div className="ev-sec-body">
                   {sections.telemetry.available ? (
                     <>
-                      <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 6 }}>
                         {evidence.suspect?.equipment_id} · {sections.telemetry.param}
                         {sections.telemetry.unit ? ` (${sections.telemetry.unit})` : ""}
                         {sections.telemetry.drift_detected != null &&
@@ -172,7 +173,7 @@ export default function EvidenceModal({
 
               <div className="ev-sec">
                 <div className="ev-sec-title">
-                  <span className="num">③</span>Alarm · Maintenance 이력
+                  <span className="num">③</span>정비·알람 이력
                 </div>
                 <div className="ev-sec-body">
                   {sections.events.available ? (
@@ -181,7 +182,7 @@ export default function EvidenceModal({
                         <tr>
                           <th>시각</th>
                           <th>구분</th>
-                          <th>Equipment</th>
+                          <th>장비</th>
                           <th>내용</th>
                         </tr>
                       </thead>
@@ -209,7 +210,7 @@ export default function EvidenceModal({
 
               {evidence.unverified.length > 0 && (
                 <div className="caption" style={{ marginTop: 10 }}>
-                  검증 제외 인용:{" "}
+                  설비 데이터로 확인하지 못한 인용:{" "}
                   {evidence.unverified.map((u) => `${u.ref} (${u.reason})`).join(" · ")}
                 </div>
               )}
