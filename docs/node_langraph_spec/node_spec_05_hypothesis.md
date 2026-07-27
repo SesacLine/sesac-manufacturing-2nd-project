@@ -286,3 +286,27 @@ build_hypotheses(candidates, lot_ids, mcp)
 | investigated | 그 후보를 실제로 도구 조회했는지 여부(bool). False면 ⑥이 판단 보류 |
 | 옵션 A | 수치는 코드가 도구 반환에서 계산하고, LLM은 서술(rationale)만 담당하는 방식 |
 | 함정(trap) | 상관관계는 높지만 실제 원인이 아닌 장비. ground truth `traps_to_reject`에 명시돼 있고, 시뮬레이터가 의도적으로 넣는다 |
+
+---
+
+## 부록 C — commonality 코호트 (0727, 하루 단위 그룹 #97 대응)
+
+**문제**: #97로 그룹이 결함일(하루) 단위가 되자 그룹당 1~2로트가 표준이 됐다.
+1로트 commonality는 그 로트가 통과한 모든 장비가 "공통"이라 판별력이 0이다.
+
+**설계 — 그룹(카드) 단위와 증거 코호트의 분리**: 카드·yield_impact·defect_ts(P2)·
+time_range는 종전대로 **그룹 로트만** 쓰고, `run_commonality_analysis` **입력만**
+"그룹 로트 + 같은 패턴으로 판독됐던 최근 K일 로트"로 확장한다(`_commonality_cohort`).
+실제 팹의 commonality 분석 관행(롤링 창 코호트)과 같고, 사건 스팬 실측(3~6일)을 덮도록
+`COHORT_LOOKBACK_DAYS = 7`, 이질 사건 혼입 억제로 `COHORT_MAX_LOTS = 8`(EDS 최신순).
+
+- 재료: 과거 판독은 `app_state.wafer_reading`(배치마다 저장) 직접 SQL — lowyield.py의
+  "내부 배치 단계라 MCP 계약 무관" 논리와 동일. 날짜는 fab.db lot_history의 EDS.
+- 폴백: defect_ts 없음·이력 없음(콜드 스타트)·조회 실패 → 그룹 그대로(무해).
+- **P2 무영향이 불변식**: defect_ts는 그룹 로트만으로 계산한다. 코호트를 시간 게이트에
+  섞으면 광역 스팬 문제(#97 이전)가 되돌아온다.
+- 투명성: evidence에 `cohort_size`/`cohort_days` 스탬프(⑥ 규칙은 미소비, 모달·디버깅용).
+- 한계: 캐치업 배치(여러 날 일괄)에서는 같은 배치 내 타 날짜 로트가 저장 전이라 코호트에
+  안 잡힌다 — 하루씩 전진하는 정상 운영/데모 시나리오에서는 배치마다 이력이 쌓여 유효.
+  캐치업 커버는 ②가 cohort를 미리 채워주는 확장(팀 논의 필요)으로 가능.
+- 테스트: `backend/tests/unit/test_hypothesis_cohort.py` 5건.

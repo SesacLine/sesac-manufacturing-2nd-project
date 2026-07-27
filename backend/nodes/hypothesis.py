@@ -29,8 +29,12 @@ from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphRecursionError
 from ..mcp_client.client import _as_dict   # 도구 반환 정규화 헬퍼 재사용
 import os
+import sqlite3
 from langchain_openai import ChatOpenAI
 from datetime import datetime, timedelta
+
+from ..config import app_state_db_path
+from ..schemas import normalize_pattern
 
 
 # --- 0713 Walking Skeleton: 팀 결정 3가지를 전부 "가장 단순한 선택"으로 하드코딩했다.
@@ -62,6 +66,10 @@ async def build_hypotheses(state: GroupState, mcp: MCPClient) -> dict:
     time_range = await _group_time_range(lot_ids, mcp)
     defect_ts = await _group_defect_ts(lot_ids, mcp)
     maint_range = _maintenance_range(time_range, defect_ts)   # 처방1: 반박 재료는 결함 이후까지
+    # 코호트(0727): 하루 단위 그룹(#97)은 1~2로트라 commonality 판별력이 없다(1로트면 통과
+    # 장비 전부가 "공통"). 카드/시간정합(P2) 단위는 그룹 그대로 두고, **공통 장비 탐색 입력만**
+    # "같은 패턴으로 판독됐던 최근 K일 로트"로 확장한다 — 그룹 단위와 증거 코호트의 분리.
+    comm_lot_ids = _commonality_cohort(state["pattern"], lot_ids, defect_ts)
 
     # S2-2: 자동 tier 전부 → 그룹 조사관(에이전트, step 배치). 반자동·근거없음 → 결정론 유지.
     auto = [c for c in candidates if c["tier"] == "자동"]
@@ -69,7 +77,7 @@ async def build_hypotheses(state: GroupState, mcp: MCPClient) -> dict:
     if auto:
         tools = await mcp.get_agent_tools()            # 그룹당 1회
         model = _make_model()
-        results = await investigate_group(auto, lot_ids, mcp, time_range, tools, model)
+        results = await investigate_group(auto, comm_lot_ids, mcp, time_range, tools, model)
         agent_hyps = dict(zip((id(c) for c in auto), results))  # 반환 순서 = 입력 순서 계약
 
     # 같은 (step, evidence_label, evidence)는 결과 재사용 — 결정①.
@@ -82,7 +90,7 @@ async def build_hypotheses(state: GroupState, mcp: MCPClient) -> dict:
             continue
         key = (candidate["step"], candidate["evidence_label"], candidate["evidence"])
         if key not in verify_cache:
-            verify_cache[key] = await _verify_unit(candidate, lot_ids, mcp, time_range, maint_range)
+            verify_cache[key] = await _verify_unit(candidate, comm_lot_ids, mcp, time_range, maint_range)
         suspect, evidence = verify_cache[key]
         hypotheses.append(_det_hypothesis(candidate, suspect, dict(evidence), investigated=False))
 
@@ -98,6 +106,10 @@ async def build_hypotheses(state: GroupState, mcp: MCPClient) -> dict:
 
     for hyp in hypotheses:                # 시간정합 기준(defect_ts) 일괄 스탬프 — ④가 수집(firewall)
         hyp["evidence"]["defect_ts"] = defect_ts
+        # 코호트 투명성 스탬프 — commonality가 몇 로트를 봤는지(그룹 로트 포함 총수).
+        # ⑥ 규칙은 이 키를 읽지 않는다(additive) — 근거 모달/디버깅용.
+        hyp["evidence"]["cohort_size"] = len(comm_lot_ids)
+        hyp["evidence"]["cohort_days"] = COHORT_LOOKBACK_DAYS
 
     return {"hypotheses": hypotheses}
 
@@ -111,6 +123,12 @@ AGENT_RECURSION_LIMIT = 8
 # 공정 구간 창 밖이라 수집 0건 → P2 무발화였음. 원인 신호(telemetry)는 결함 이전이 맞으므로
 # 그 창은 안 넓히고, 반박 재료(maintenance)만 비대칭으로 넓힌다.
 MAINT_LOOKAHEAD_DAYS = 14
+# 코호트(0727): commonality 전용 이력 확장 창. GT 실측상 한 사건의 로트들이 3~6일에 걸쳐
+# 같은 장비를 통과하므로 7일이면 사건 하나를 덮는다. 다른 사건 혼입 위험은 있지만
+# commonality는 soft 증거고 최종 판정은 ⑥ 규칙이 한다 — 그룹 자체를 섞는 것과 다르다.
+COHORT_LOOKBACK_DAYS = 7
+# commonality 입력 상한(그룹 로트 제외, EDS 최신순 우선) — 과대 코호트의 이질 사건 혼입 억제.
+COHORT_MAX_LOTS = 8
 
 
 def _make_model():
@@ -277,6 +295,55 @@ def _to_hypotheses_batch(candidates, result, suspect, base_evidence) -> list[Hyp
             "investigated": param in normal_ranges,   # 실제 조회된 param만 True — 미조회는 ⑤ judge_unknown 재료(§3-3 C3)
         })
     return hypotheses
+
+
+def _commonality_cohort(pattern: str, lot_ids: list[str], defect_ts: str | None) -> list[str]:
+    """commonality 전용 확장 로트 목록: 그룹 로트 + 같은 패턴으로 판독됐던 최근 K일 로트.
+
+    하루 단위 그룹(#97)과 증거 코호트의 분리 — 카드·yield_impact·defect_ts(P2)·time_range는
+    전부 그룹 로트만 쓰고, 이 목록은 run_commonality_analysis 입력으로만 쓴다(P2 오염 금지).
+
+    재료는 전부 기존 저장분이다: 과거 판독 패턴은 app_state.wafer_reading(배치마다 저장,
+    lowyield.py의 fab.db 직접 SQL과 같은 "내부 배치 단계" 논리), 날짜는 fab.db lot_history의
+    EDS ts_out. 콜드 스타트(첫 배치·이력 없음)나 조회 실패 시 그룹 그대로 반환(곱게 무너짐).
+    반환 순서: 그룹 로트 먼저, 이력 로트는 EDS 최신순 최대 COHORT_MAX_LOTS개.
+    """
+    if defect_ts is None or not lot_ids:
+        return lot_ids
+    try:
+        con = sqlite3.connect(app_state_db_path())
+        rows = con.execute(
+            "SELECT DISTINCT lot_id FROM wafer_reading WHERE defect_pattern = ?",
+            (normalize_pattern(pattern),),
+        ).fetchall()
+        con.close()
+    except sqlite3.Error:
+        return lot_ids
+    prior = [r[0] for r in rows if r[0] not in set(lot_ids)]
+    if not prior:
+        return lot_ids
+
+    horizon = (datetime.fromisoformat(defect_ts) - timedelta(days=COHORT_LOOKBACK_DAYS)).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+    try:
+        con = sqlite3.connect(os.environ["FAB_DB"])
+        placeholders = ",".join("?" * len(prior))
+        eds_rows = con.execute(
+            f"SELECT lot_id, MAX(ts_out) AS ts FROM lot_history "
+            f"WHERE step = 'EDS' AND lot_id IN ({placeholders}) GROUP BY lot_id",
+            prior,
+        ).fetchall()
+        con.close()
+    except sqlite3.Error:
+        return lot_ids
+    # defect_ts(그룹 첫 결함) 이전 K일 창의 로트만 — 미래 로트는 이 사건의 코호트가 아니다.
+    recent = sorted(
+        (r for r in eds_rows if r[1] and horizon <= r[1] <= defect_ts),
+        key=lambda r: r[1],
+        reverse=True,
+    )[:COHORT_MAX_LOTS]
+    return lot_ids + [r[0] for r in recent]
 
 
 async def _prepass(candidate, lot_ids, mcp):
