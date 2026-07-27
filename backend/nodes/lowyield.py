@@ -30,7 +30,8 @@ def select_low_yield_lots(state: RCAState) -> dict:
     rows = con.execute(
         """
         SELECT w.lot_id AS lot_id,
-               AVG(CASE WHEN w.is_normal THEN 1.0 ELSE 0.0 END) AS yield_ratio
+               AVG(CASE WHEN w.is_normal THEN 1.0 ELSE 0.0 END) AS yield_ratio,
+               MIN(h.ts_out) AS defect_ts
         FROM wafer w
         JOIN lot_history h ON h.lot_id = w.lot_id AND h.step = 'EDS'
         WHERE date(h.ts_out) > date(?) AND date(h.ts_out) <= date(?)
@@ -44,4 +45,11 @@ def select_low_yield_lots(state: RCAState) -> dict:
     # 창 전체 로트(정상 수율 포함)의 수율 맵 — 그룹별 수율영향(yield_impact) 계산의 원천.
     # 저수율만 남기면 "라인 평균 대비 기여"를 계산할 분모·기준선이 사라지므로 전체를 보존한다.
     lot_yields = {r["lot_id"]: r["yield_ratio"] for r in rows}
-    return {"target_lot_ids": target_lot_ids, "lot_yields": lot_yields}
+    # 로트별 결함 확정(EDS) 시각 — ② grouper의 시간 서브클러스터링 기준. 여기서 이미 EDS를
+    # 조인하므로 같이 실어 보낸다(grouper는 DB를 안 보는 순수 함수로 유지).
+    lot_defect_ts = {r["lot_id"]: r["defect_ts"] for r in rows if r["defect_ts"]}
+    return {
+        "target_lot_ids": target_lot_ids,
+        "lot_yields": lot_yields,
+        "lot_defect_ts": lot_defect_ts,
+    }

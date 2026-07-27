@@ -15,6 +15,7 @@ run_batch는:
 from __future__ import annotations
 
 import asyncio
+import collections
 import contextlib
 import datetime
 import inspect
@@ -24,7 +25,7 @@ from typing import Any
 
 from . import deps, store
 from .assembler import build_analysis_payload, compute_yield_impact
-from .config import DATA_EPOCH, EVENT_DATE_COMPACT, fab_db_path
+from .config import DATA_EPOCH, EVENT_DATE, EVENT_DATE_COMPACT, fab_db_path
 from .graph import _CURRENT_GROUP, build_graph
 from .graph_client import KGClient
 from .mcp_client import MCPClient
@@ -143,7 +144,13 @@ def _cursor_range() -> tuple[str, str]:
     """(cursor_date exclusive, cursor_end inclusive) — §2.3 누적 스코프.
 
     첫 배치는 데이터축 처음(EPOCH)부터 전부 본다(직전 배치 없음 = 전체 누적,
-    BACKEND_DECISIONS.md D2). cursor_end는 데이터축 최신일(max ts) — 벽시계 아님(§1).
+    BACKEND_DECISIONS.md D2).
+
+    cursor_end는 **서버 '오늘'(EVENT_DATE)의 전날**과 데이터축 최신일 중 이른 쪽이다
+    — 둘 다 데이터축 값이라 벽시계는 여전히 안 쓴다(§1). "아침에 한 번 눌러 전날 쌓인
+    것을 본다"가 이 서비스의 운영 시나리오이므로, 아직 오지 않은 날(EVENT_DATE 당일
+    이후)의 데이터를 미리 당겨오지 않는다. EVENT_DATE를 옮기면 그 전날까지만 대상이
+    되므로 특정 일자 재현(데모·회귀)도 가능하다.
     """
     cursor = store.get_cursor()
     if cursor is None:
@@ -155,8 +162,11 @@ def _cursor_range() -> tuple[str, str]:
         row = con.execute("SELECT MAX(date(ts_out)) FROM lot_history").fetchone()
     finally:
         con.close()
-    cursor_end = row[0] or DATA_EPOCH
-    return cursor, cursor_end
+    data_max = row[0] or DATA_EPOCH
+    yesterday = (
+        datetime.date.fromisoformat(EVENT_DATE) - datetime.timedelta(days=1)
+    ).isoformat()
+    return cursor, min(data_max, yesterday)   # ISO 날짜라 문자열 비교로 충분
 
 
 def launch_batch(batch_id: str, kg_client: KGClient, mcp: MCPClient) -> None:
@@ -308,21 +318,34 @@ def _persist_results(batch_id: str, seq: int, state: dict) -> list[str]:
     v1.1: yield_impact(⓪ lot_yields 기반)·defect_date(EDS 최종일)·top 필드(장비/공정/등급)·
     confidence를 함께 저장한다 — §2.2 목록·§2.8/§2.9 차트의 원천.
     """
-    by_pattern: dict[str, dict] = {}
+    # 같은 패턴이 여러 건 남을 수 있다: ② grouper의 시간 서브클러스터링으로 사건이 갈린 경우
+    # (같은 Center라도 1월 사건 / 3월 사건). unmapped·novel만 종전대로 1건으로 접고(D4),
+    # 그 외(reviewed·insufficient)는 각각 별도 분석으로 남긴다 — 접으면 사건 하나가 통째로
+    # 사라진다(옛 코드는 조용히 덮어써 유실됐다).
+    kept: list[tuple[str, dict]] = []
+    folded: dict[str, dict] = {}
     for final in state.get("final_response", {}).values():
         pattern = normalize_pattern(final["pattern"])
-        if pattern in by_pattern and final["status"] in ("unmapped", "novel"):
-            merged = by_pattern[pattern]
-            merged["lot_ids"] = merged["lot_ids"] + final["lot_ids"]
-            merged["lot_count"] = len(merged["lot_ids"])
-            continue
-        if pattern not in by_pattern:
-            by_pattern[pattern] = dict(final)
+        if final["status"] in ("unmapped", "novel"):
+            if pattern in folded:
+                merged = folded[pattern]
+                merged["lot_ids"] = merged["lot_ids"] + final["lot_ids"]
+                merged["lot_count"] = len(merged["lot_ids"])
+                continue
+            folded[pattern] = dict(final)
+            kept.append((pattern, folded[pattern]))
+        else:
+            kept.append((pattern, dict(final)))
 
     lot_yields = state.get("lot_yields") or {}
     result_ids: list[str] = []
-    for pattern, final in by_pattern.items():
-        analysis_id = f"grp_{pattern_slug(pattern)}_{EVENT_DATE_COMPACT}_{seq:02d}"
+    # 같은 패턴이 여럿이면 analysis_id 뒤에 순번을 붙여 충돌을 막는다(§3 유니크 계약 유지).
+    seen_pattern: collections.Counter = collections.Counter()
+    for pattern, final in kept:
+        seen_pattern[pattern] += 1
+        nth = seen_pattern[pattern]
+        dup = "" if nth == 1 else f"_{nth}"
+        analysis_id = f"grp_{pattern_slug(pattern)}_{EVENT_DATE_COMPACT}_{seq:02d}{dup}"
         # 수율영향은 병합(unmapped/novel) 확정 뒤의 최종 lot_ids로 계산해 payload에 주입한다.
         final["yield_impact"] = compute_yield_impact(final["lot_ids"], lot_yields)
         payload = build_analysis_payload(analysis_id, final)
@@ -372,35 +395,54 @@ def _persist_normal_reading(
     if not normal_lots:
         return []
 
-    analysis_id = f"grp_normal_{EVENT_DATE_COMPACT}_{seq:02d}"
-    final = {
-        "pattern": "Normal",
-        "status": "normal_reading",
-        "reason": (
-            "저수율이지만 웨이퍼맵 판독상 결함 패턴이 없습니다 — 맵에 보이지 않는 "
-            "수율손실(파라메트릭 등) 의심. 웨이퍼맵 RCA 범위 밖이므로 별도 조사가 필요합니다."
-        ),
-        "lot_ids": normal_lots,
-        "lot_count": len(normal_lots),
-        "hypotheses": [],
-        # 채택 원인이 없으므로 확신은 항상 low(R1 규약).
-        "confidence": "low",
-        # 판독은 정상이어도 저수율 로트라 수율영향은 정상적으로 음수가 나온다.
-        "yield_impact": compute_yield_impact(normal_lots, lot_yields),
-        "actions": group_actions("normal_reading", "Normal", len(normal_lots), None),
-    }
-    payload = build_analysis_payload(analysis_id, final)
-    store.save_analysis(
-        analysis_id=analysis_id,
-        batch_id=batch_id,
-        seq=seq,
-        pattern=payload["pattern"],
-        status=payload["status"],
-        lot_count=payload["lot_count"],
-        top_cause=None,
-        payload=payload,
-        confidence=payload["confidence"],
-        yield_impact=payload["yield_impact"],
-        defect_date=_defect_date(normal_lots),
-    )
-    return [analysis_id]
+    # ② grouper의 결함일 단위 분할을 여기에도 적용한다 — Normal은 그룹을 안 만들어
+    # split_by_day를 안 거치므로, 캐치업 배치에서 2주치가 한 카드로 뭉치는 일이 있었다
+    # (실측 2026-07-27: 1/19~2/2 4로트 1건). 정상 운영(하루 창)에서는 나올 수 없는 카드라
+    # 결함일별로 나눠 "그날 눌렀다면 나왔을 결과"와 같게 만든다.
+    result_ids: list[str] = []
+    for nth, (day, lots) in enumerate(
+        sorted(_group_lots_by_defect_day(state, normal_lots).items()), start=1
+    ):
+        dup = "" if nth == 1 else f"_{nth}"
+        analysis_id = f"grp_normal_{EVENT_DATE_COMPACT}_{seq:02d}{dup}"
+        final = {
+            "pattern": "Normal",
+            "status": "normal_reading",
+            "reason": (
+                "저수율이지만 웨이퍼맵 판독상 결함 패턴이 없습니다 — 맵에 보이지 않는 "
+                "수율손실(파라메트릭 등) 의심. 웨이퍼맵 RCA 범위 밖이므로 별도 조사가 필요합니다."
+            ),
+            "lot_ids": lots,
+            "lot_count": len(lots),
+            "hypotheses": [],
+            # 채택 원인이 없으므로 확신은 항상 low(R1 규약).
+            "confidence": "low",
+            # 판독은 정상이어도 저수율 로트라 수율영향은 정상적으로 음수가 나온다.
+            "yield_impact": compute_yield_impact(lots, lot_yields),
+            "actions": group_actions("normal_reading", "Normal", len(lots), None),
+        }
+        payload = build_analysis_payload(analysis_id, final)
+        store.save_analysis(
+            analysis_id=analysis_id,
+            batch_id=batch_id,
+            seq=seq,
+            pattern=payload["pattern"],
+            status=payload["status"],
+            lot_count=payload["lot_count"],
+            top_cause=None,
+            payload=payload,
+            confidence=payload["confidence"],
+            yield_impact=payload["yield_impact"],
+            defect_date=day or _defect_date(lots),
+        )
+        result_ids.append(analysis_id)
+    return result_ids
+
+
+def _group_lots_by_defect_day(state: dict, lots: list[str]) -> dict[str, list[str]]:
+    """로트를 결함 확정일별로 묶는다. 날짜 미상은 빈 키("")로 한 덩어리."""
+    defect_ts = state.get("lot_defect_ts") or {}
+    by_day: dict[str, list[str]] = {}
+    for lot in lots:
+        by_day.setdefault((defect_ts.get(lot) or "")[:10], []).append(lot)
+    return by_day

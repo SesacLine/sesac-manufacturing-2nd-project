@@ -254,6 +254,9 @@ class RCAState(TypedDict):
     target_lot_ids: list[str]
     # ⓪이 함께 내보내는 창 전체 로트 수율 맵(lot_id→0~1) — 그룹별 yield_impact 계산 원천.
     lot_yields: NotRequired[dict[str, float]]
+    # ⓪이 함께 내보내는 로트별 결함 확정(EDS) 시각(lot_id→"YYYY-MM-DD HH:MM:SS").
+    # ② grouper가 시간 서브클러스터링(같은 패턴이라도 사건이 다르면 분리)에 쓴다.
+    lot_defect_ts: NotRequired[dict[str, str]]
     cnn_results: list[CNNResult]  # 구 vlm_results — 생산자가 ① CNN(cnn.py)이 되며 키·타입 함께 개명(07-24)
     groups: list[Group]
     # ② grouper 산출(이슈 #69): 다수결이 Normal인 로트 — 저수율인데 판독상 정상(맵 비가시

@@ -212,7 +212,7 @@ def _observe_group_live(group: dict, state: RCAState) -> dict:
     스태킹 멤버 규칙은 기본 경로와 공통(_member_keys) — 신호 희석 방지.
     VLM 이미지 분기(Scratch 단일)는 어댑터가 처리.
     """
-    keys = _member_keys(group["pattern"], group["lot_ids"], state["cnn_results"])
+    keys = _member_keys(group["pattern"], group["lot_ids"], state.get("cnn_results") or [])
     die_maps = _fetch_die_maps_by_keys(keys)
     if not die_maps:
         return {**group, "observation": _build_observation(group["pattern"], group["lot_ids"])}
