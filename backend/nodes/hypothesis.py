@@ -22,6 +22,7 @@ personalspace/0711 work/kg_mapping_vocabulary.md 참고.
 
 from __future__ import annotations
 
+from ..config import resolve_model
 from ..mcp_client import MCPClient
 from ..state import EvidenceEntry, GraphRAGCandidate, GroupState, Hypothesis
 from langgraph.prebuilt import create_react_agent    # 또는 수동 루프(LangGraph_fs.md 7.2)
@@ -132,7 +133,13 @@ COHORT_MAX_LOTS = 8
 
 
 def _make_model():
-      return ChatOpenAI(model=os.environ["OPENAI_MODEL"], temperature=0)   # temp=0 = 재현성(§8-7)
+      # 역할 변수 RCA_AGENT_MODEL (설계서 v2.0 §4 — 기본 배정 gpt-5.4).
+      # temp=0 = 재현성(§8-7). ⚠️ temperature 0을 못 받는 모델(gpt-5.5·5.6 계열은 1 고정 +
+      # top_p까지 거부)은 여기 넣지 말 것 — 400으로 죽고, 폴백으로 우회하면 재현성을 잃는다.
+      return ChatOpenAI(
+          model=resolve_model("RCA_AGENT_MODEL", purpose="⑤ Hypothesis 에이전트"),
+          temperature=0,
+      )
 
 
 def _det_hypothesis(candidate, suspect, evidence, investigated: bool) -> Hypothesis:

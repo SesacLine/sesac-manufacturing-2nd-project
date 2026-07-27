@@ -12,6 +12,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from .config import resolve_model
 from .graph_client import KGClient, LiveKGClient
 from .graph_client.semantic_entry import (
     EMBEDDING_MODEL,
@@ -119,13 +120,17 @@ def response_translator():
     아니면 None(응답노드가 원문 영어를 그대로 운반 — 결정적, LLM 비용 0).
 
     ChatOpenAI(temperature=0)로 재현성 확보(hypothesis._make_model과 같은 관례).
+    역할 변수는 TRANSLATE_MODEL (기본 배정 gpt-5.4).
     """
     if os.getenv("RESPONSE_LLM", "").lower() not in ("1", "true", "yes"):
         return None
     global _response_llm
     if _response_llm is None:
         from langchain_openai import ChatOpenAI
-        _response_llm = ChatOpenAI(model=os.environ["OPENAI_MODEL"], temperature=0)
+        _response_llm = ChatOpenAI(
+            model=resolve_model("TRANSLATE_MODEL", purpose="⑦ 응답 번역"),
+            temperature=0,
+        )
     llm = _response_llm
 
     def translate(english: str) -> str:
