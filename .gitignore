@@ -81,3 +81,6 @@ kg_rca/outputs/embedding_cache.json
 
 # 루브릭 평가 리포트 — 실행할 때마다 재생성되는 산출물(루브릭·원자료만 커밋)
 wafer_reading/rubric_gen/reports/
+
+# vlm serving model
+wafer_reading/vlm/serving/models/
