@@ -22,7 +22,7 @@ from .gen_assets import SEED, _flat
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--pkl", default="secsgem-mcp/datasets/raw/WM811K.pkl")
-    ap.add_argument("--track", default=None, help="open|pty (default: VLM_TRACK env or open)")
+    ap.add_argument("--track", default=None, help="open|pty (default: VLM_TRACK env or pty)")
     ap.add_argument("--pattern", default="Edge-Ring", choices=["Center", "Edge-Ring", "Scratch"])
     ap.add_argument("--n", type=int, default=9, help="group wafer count")
     ap.add_argument("--with-cnn", default=None, metavar="CKPT",

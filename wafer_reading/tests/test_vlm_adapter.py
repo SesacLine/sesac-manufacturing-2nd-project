@@ -92,3 +92,48 @@ def test_parse_rejects_missing_field():
 def test_parse_accepts_code_fenced_json():
     fenced = "```json\n" + json.dumps(VALID) + "\n```"
     assert _parse_response(fenced)["total_description"] == VALID["total_description"]
+
+
+# --- 트랙 선택 (기본 pty / open의 local·remote 두 모드) — 모델 로드·네트워크 없이 확인 ---
+
+
+def test_default_track_is_pty(monkeypatch):
+    """GPU 없는 팀원·CI가 기본값으로 동작해야 하므로 open은 opt-in이다."""
+    monkeypatch.delenv("VLM_TRACK", raising=False)
+    reader = VLMReader(backend=FakeBackend([]))
+    assert reader.track == "pty"
+    assert reader.open_mode is None
+
+
+def test_open_track_is_local_without_base_url(monkeypatch):
+    monkeypatch.delenv("VLM_OPEN_BASE_URL", raising=False)
+    assert VLMReader(track="open", backend=FakeBackend([])).open_mode == "local"
+
+
+def test_open_track_is_remote_with_base_url(monkeypatch):
+    monkeypatch.setenv("VLM_OPEN_BASE_URL", "http://gpu-host:8001/v1")
+    assert VLMReader(track="open", backend=FakeBackend([])).open_mode == "remote"
+
+
+def test_open_remote_backend_targets_endpoint_and_open_model(monkeypatch):
+    """원격 모드는 OpenAI 호환 백엔드를 쓰되 **open 모델명**으로 부른다(pty 모델이 아니라)."""
+    from wafer_reading.vlm.adapter import _open_backend
+    from wafer_reading.vlm.backends.openai_api import OpenAIBackend
+    from wafer_reading.vlm.backends.qwen_local import MODEL_ID
+
+    monkeypatch.setenv("VLM_OPEN_BASE_URL", "http://gpu-host:8001/v1")
+    monkeypatch.setenv("VLM_OPEN_API_KEY", "token-123")
+    monkeypatch.delenv("VLM_OPEN_SERVED_MODEL", raising=False)
+
+    backend = _open_backend(timeout_s=1.0)
+    assert isinstance(backend, OpenAIBackend)
+    assert backend._model == MODEL_ID
+    assert str(backend._client.base_url).rstrip("/") == "http://gpu-host:8001/v1"
+
+
+def test_open_remote_backend_honors_served_model_override(monkeypatch):
+    from wafer_reading.vlm.adapter import _open_backend
+
+    monkeypatch.setenv("VLM_OPEN_BASE_URL", "http://gpu-host:8001/v1")
+    monkeypatch.setenv("VLM_OPEN_SERVED_MODEL", "qwen3-vl-8b")
+    assert _open_backend(timeout_s=1.0)._model == "qwen3-vl-8b"

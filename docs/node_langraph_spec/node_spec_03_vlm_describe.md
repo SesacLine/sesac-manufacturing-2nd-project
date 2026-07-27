@@ -28,7 +28,8 @@
 |---|---|---|
 | `FAB_DB` | die_map 로드 | 스켈레톤 관측으로 폴백 (배치는 계속) |
 | `VLM_LIVE` | `1`이면 VLM 자연어 켬 (기본 꺼짐) | 꺼짐 = 결정적 관측만 |
-| `VLM_TRACK` | `open`(Qwen 로컬) / `pty`(OpenAI) | 기본 `open` |
+| `VLM_TRACK` | `pty`(OpenAI) / `open`(Qwen3-VL-8B 로컬) | **기본 `pty`**(07-27) — open은 GPU + 사전 다운로드된 가중치가 전제라 opt-in |
+| `VLM_OPEN_MODEL` | open 트랙 모델 ID | 기본 `Qwen/Qwen3-VL-8B-Instruct`. 캐시에 없으면 **런타임 다운로드 없이 즉시 실패** |
 | `OPENAI_API_KEY` | pty 트랙용 (.env) | pty 선택 시 호출 실패 → 결정적 관측으로 강등 |
 
 - **입력에 대해 내가 가정하는 것**: `group["pattern"]`은 5클래스 중 하나다. Normal 그룹은
@@ -165,7 +166,7 @@ VLM_LIVE 꺼짐? ─예→ [기본 경로] 멤버 규칙 필터(cnn_results 있�
 |---|---|---|---|
 | fab.db `die_map` | `FAB_DB` | 결정적 | 스켈레톤 폴백 |
 | stacking + quantitative | `wafer_reading/` | 결정적 | (코드 의존 — 없을 수 없음) |
-| **VLM 호출** | open: Qwen3-VL-4B 로컬 / pty: OpenAI API | **잠재적 비결정** — greedy/temp 0으로 고정했지만 API 서버측 변동·모델 업데이트 가능성 있음. `vlm_track` 기록이 재현성 보조 | 강등 (결정적 관측만) |
+| **VLM 호출** | open: Qwen3-VL-8B 로컬 / pty: OpenAI API | **잠재적 비결정** — greedy/temp 0으로 고정했지만 API 서버측 변동·모델 업데이트 가능성 있음. `vlm_track` 기록이 재현성 보조 | 강등 (결정적 관측만) |
 | few-shot 예시 이미지 3장 | `wafer_reading/vlm/assets/` (커밋됨) | 결정적 (시드 고정 생성물, 정답 JSON과 쌍 고정) | 어댑터 예외 → 강등 |
 
 - 호출 횟수/지연: **그룹당 VLM 1콜** (배치당 최대 4~5콜). pty 콜당 수 초. open은 최초 모델
