@@ -95,3 +95,101 @@ def test_default_index_path_points_to_kg_rca_outputs(monkeypatch):
     monkeypatch.delenv("KG_SIGNATURE_INDEX_PATH", raising=False)
     p = deps._signature_index_path()
     assert p.parts[-3:] == ("kg_rca", "outputs", "signature_index.json")
+
+
+# ── 모델 교체 시 deps 층의 방어 (API 호출 전에 메타만 보고 거른다) ─────────────────────
+
+def _write_index(path, model=None, dim=2):
+    """model=None이면 포맷 1(플랫, 메타 없음)로 쓴다."""
+    sigs = {"ring@edge": {"text": "t", "embedding": [1.0] + [0.0] * (dim - 1)}}
+    if model is None:
+        path.write_text(json.dumps(sigs), encoding="utf-8")
+    else:
+        path.write_text(
+            json.dumps({"meta": {"format": 2, "model": model, "dim": dim, "count": 1}, "signatures": sigs}),
+            encoding="utf-8",
+        )
+
+
+def test_stale_index_model_disables_semantic_without_api_call(monkeypatch, tmp_path, capsys):
+    """인덱스가 다른 모델로 빌드됐으면 임베더를 만들지도 않고 의미 진입을 끈다."""
+    index_path = tmp_path / "signature_index.json"
+    _write_index(index_path, model="some-other-embedding-model")
+    monkeypatch.delenv("KG_SEMANTIC", raising=False)
+    monkeypatch.setenv("KG_SIGNATURE_INDEX_PATH", str(index_path))
+
+    import langchain_openai
+
+    def _must_not_be_called(*a, **k):
+        raise AssertionError("모델 불일치인데 임베더를 생성했다(비용 발생)")
+
+    monkeypatch.setattr(langchain_openai, "OpenAIEmbeddings", _must_not_be_called)
+
+    assert deps._semantic_index() is None
+    out = capsys.readouterr().out
+    assert "낡았습니다" in out and "7_build_signature_index.py" in out   # 조치까지 안내
+
+
+def test_matching_model_index_wires_normally(monkeypatch, tmp_path):
+    index_path = tmp_path / "signature_index.json"
+    _write_index(index_path, model=deps.EMBEDDING_MODEL)
+    monkeypatch.delenv("KG_SEMANTIC", raising=False)
+    monkeypatch.setenv("KG_SIGNATURE_INDEX_PATH", str(index_path))
+
+    class _FakeEmbeddings:
+        def __init__(self, model):
+            assert model == deps.EMBEDDING_MODEL
+        def embed_query(self, text):
+            return [1.0, 0.0]
+
+    import langchain_openai
+    monkeypatch.setattr(langchain_openai, "OpenAIEmbeddings", _FakeEmbeddings)
+    assert deps._semantic_index() is not None
+
+
+def test_legacy_index_without_meta_is_allowed_with_warning(monkeypatch, tmp_path, capsys):
+    """구 포맷은 막지 않는다 — 모델을 '모르는' 것과 '다른' 것은 다르게 취급한다."""
+    index_path = tmp_path / "signature_index.json"
+    _write_index(index_path, model=None)
+    monkeypatch.delenv("KG_SEMANTIC", raising=False)
+    monkeypatch.setenv("KG_SIGNATURE_INDEX_PATH", str(index_path))
+
+    class _FakeEmbeddings:
+        def __init__(self, model): ...
+        def embed_query(self, text):
+            return [1.0, 0.0]
+
+    import langchain_openai
+    monkeypatch.setattr(langchain_openai, "OpenAIEmbeddings", _FakeEmbeddings)
+
+    assert deps._semantic_index() is not None
+    assert "빌드 모델 정보가 없습니다" in capsys.readouterr().out
+
+
+def test_corrupt_index_file_degrades_to_none(monkeypatch, tmp_path):
+    index_path = tmp_path / "signature_index.json"
+    index_path.write_text("{ this is not json", encoding="utf-8")
+    monkeypatch.delenv("KG_SEMANTIC", raising=False)
+    monkeypatch.setenv("KG_SIGNATURE_INDEX_PATH", str(index_path))
+    assert deps._semantic_index() is None
+
+
+def test_uncalibrated_model_warns_about_threshold(monkeypatch, tmp_path, capsys):
+    """실측되지 않은 모델이면 하한이 보정되지 않았음을 알린다(추측값을 조용히 쓰지 않는다)."""
+    monkeypatch.setattr(deps, "EMBEDDING_MODEL", "brand-new-model")
+    index_path = tmp_path / "signature_index.json"
+    _write_index(index_path, model="brand-new-model")
+    monkeypatch.delenv("KG_SEMANTIC", raising=False)
+    monkeypatch.delenv("KG_SEMANTIC_MIN_SCORE", raising=False)
+    monkeypatch.setenv("KG_SIGNATURE_INDEX_PATH", str(index_path))
+
+    class _FakeEmbeddings:
+        def __init__(self, model): ...
+        def embed_query(self, text):
+            return [1.0, 0.0]
+
+    import langchain_openai
+    monkeypatch.setattr(langchain_openai, "OpenAIEmbeddings", _FakeEmbeddings)
+
+    deps._semantic_index()
+    assert "실측된 값이 없습니다" in capsys.readouterr().out
