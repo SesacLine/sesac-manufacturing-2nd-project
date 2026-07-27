@@ -1,0 +1,30 @@
+# VLM 온프레미스 서빙 — WAEFER 독자 모델 이미지(waefer-vlm) 기동 구성
+#
+# ⚠️ 실행 요건: NVIDIA GPU(VRAM 24GB+ 권장) + nvidia-container-toolkit.
+#    현재 데모 인프라(t3.medium, GPU 없음)에서는 기동 불가 — 이미지·구성 준비 산출물이다.
+#    데모는 pty 트랙(OpenAI API)으로 추론한다(VLM_TRACK 기본값).
+#
+# 기동:   docker compose up -d
+# 확인:   curl http://localhost:8001/v1/models
+# 전환:   백엔드 .env에 아래 2줄 — open 트랙 원격 모드(PR #99, adapter._open_backend)
+#           VLM_TRACK=open
+#           VLM_OPEN_BASE_URL=http://<이 호스트>:8001/v1
+#         (served-model-name을 repo id로 고정했으므로 VLM_OPEN_SERVED_MODEL 불필요)
+
+services:
+  vlm:
+    image: waefer-vlm:0.1
+    build: .                      # models/waefer-vlm 가중치 준비 후 docker compose build
+    container_name: waefer-vlm
+    ports:
+      - "8001:8001"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    # 프라이빗 서브넷 배치 전제 — 외부 노출 금지(웨이퍼맵 이미지가 지나가는 경로).
+    # 보안그룹/방화벽에서 8001은 앱 서버에서만 접근 허용할 것.
