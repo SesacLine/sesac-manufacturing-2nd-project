@@ -49,6 +49,8 @@ class Observation(TypedDict):
     description: NotRequired[str]                # location+morphology 대체용 단일 서술(폴백)
     vlm_track: NotRequired[str]                  # 관측 메타: open|pty (트랙별 평가 비교용)
     image_mode: NotRequired[str]                 # 관측 메타: stacked|single (Scratch 단일 분기)
+    vlm_pattern_guess: NotRequired[str]          # VLM이 이미지만 보고 읽은 패턴. CNN 라벨을 프롬프트에 주지 않으므로 독립 판독.
+                                                 # pattern_candidate와 다르면 CNN 오판 후보 신호로 간주.
     signature: NotRequired[str | None]           # 규칙 정규화가 shape@zone을 직접 줄 때만(선택)
 
 
