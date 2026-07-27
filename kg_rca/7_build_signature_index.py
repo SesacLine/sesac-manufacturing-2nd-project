@@ -37,7 +37,9 @@ from langchain_openai import OpenAIEmbeddings
 
 from backend.graph_client.semantic_entry import (
     EMBEDDING_MODEL,
+    MIN_MATCH_SCORE_BY_MODEL,
     build_signature_index,
+    load_index_meta,
     save_index,
 )
 
@@ -58,16 +60,37 @@ def main() -> None:
         print("SpatialSignature 노드가 0개입니다. 먼저 0_reset ~ 5_build를 실행하세요.")
         sys.exit(1)
 
-    print(f"임베딩 모델: {EMBEDDING_MODEL}")
+    print(f"임베딩 모델: {EMBEDDING_MODEL}  (바꾸려면 .env의 KG_EMBEDDING_MODEL)")
+
+    # 모델이 바뀌었는지 먼저 알려준다 — 지금 덮어쓰는 인덱스가 무엇에서 무엇으로 가는지
+    # 보이면, 재빌드가 필요한 이유와 하한 재측정 필요성이 같이 인지된다.
+    if OUTPUT_PATH.exists():
+        try:
+            prev = load_index_meta(OUTPUT_PATH).get("model")
+            if prev and prev != EMBEDDING_MODEL:
+                print(f"  ↳ 모델 교체 감지: '{prev}' → '{EMBEDDING_MODEL}' (인덱스를 새로 만듭니다)")
+            elif not prev:
+                print("  ↳ 기존 인덱스에 모델 정보 없음(구 포맷) — 이번 빌드부터 기록됩니다")
+        except Exception:  # noqa: BLE001 — 안내용이라 실패해도 빌드는 계속
+            pass
+
     embedder = OpenAIEmbeddings(model=EMBEDDING_MODEL)
 
     index = build_signature_index(graph, embedder.embed_query)
-    save_index(index, OUTPUT_PATH)
+    save_index(index, OUTPUT_PATH, model=EMBEDDING_MODEL)
 
     dim = len(next(iter(index.values()))["embedding"]) if index else 0
-    print(f"\n인덱스 {len(index)}개 시그니처 저장 완료 (차원 {dim}): {OUTPUT_PATH}")
+    print(f"\n인덱스 {len(index)}개 시그니처 저장 완료 (모델 {EMBEDDING_MODEL}, 차원 {dim}): {OUTPUT_PATH}")
     for sig in sorted(index):
         print(f"  - {sig}")
+
+    if EMBEDDING_MODEL not in MIN_MATCH_SCORE_BY_MODEL:
+        print(
+            f"\n⚠️ '{EMBEDDING_MODEL}'은 매칭 하한(MIN_MATCH_SCORE)이 실측되지 않은 모델입니다.\n"
+            f"   코사인 점수 분포는 모델마다 달라서 기존 하한을 그대로 쓰면 오답이 문턱을 넘거나\n"
+            f"   정답이 통째로 잘립니다. 정답/오답 점수를 재측정한 뒤\n"
+            f"   semantic_entry.MIN_MATCH_SCORE_BY_MODEL에 등록하거나 KG_SEMANTIC_MIN_SCORE로 주세요."
+        )
 
 
 if __name__ == "__main__":
