@@ -92,6 +92,23 @@ def build_signature_index(graph, embed_fn) -> dict:
     return index
 
 
+def reembed_index(index: dict, embed_fn) -> dict:
+    """기존 인덱스의 **텍스트는 그대로 두고 벡터만** 새 임베더로 다시 만든다.
+
+    임베딩 모델만 바뀐 경우를 위한 경로다. 그때 재료 텍스트(그래프의 FORMS_IN 서술 등)는
+    하나도 안 바뀌었고 그 텍스트는 이미 인덱스에 저장돼 있으므로, Neo4j에 다시 붙을 이유가
+    없다 — 모델을 바꾸는 사람이 그래프를 안 띄우는 경우가 많아 이 결합을 끊어 둔다.
+
+    ⚠️ **그래프가 바뀐 경우엔 쓰면 안 된다**(문헌 추가·5_build 재실행). 그때는 텍스트 자체가
+    달라졌으므로 build_signature_index로 그래프에서 다시 긁어와야 한다. 여기서는 그 사실을
+    알 방법이 없다(텍스트만 보고는 최신인지 모른다) — 호출자가 구분해야 한다.
+    """
+    return {
+        sig: {"text": entry["text"], "embedding": embed_fn(entry["text"])}
+        for sig, entry in index.items()
+    }
+
+
 def save_index(index: dict, path: str | Path, model: str = EMBEDDING_MODEL) -> None:
     """인덱스를 **어떤 모델로 만들었는지와 함께** 저장한다(포맷 2).
 

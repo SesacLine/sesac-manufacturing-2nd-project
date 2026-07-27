@@ -291,3 +291,44 @@ def test_same_dim_different_model_still_matches_but_is_caught_at_load():
     sem = SemanticSignatureIndex(INDEX, _fake_embed, min_score=0.1)
     assert sem.match("ring") != []       # 차원이 같으면 매칭 자체는 계속 된다
     assert sem.disabled_reason is None
+
+
+def test_reembed_keeps_text_and_replaces_vectors():
+    """모델만 바뀐 경우의 경로 — 텍스트는 보존하고 벡터만 새로 만든다(그래프 접속 없음)."""
+    from backend.graph_client.semantic_entry import reembed_index
+
+    def new_model_embed(text: str) -> list[float]:
+        return [9.0, 9.0, 9.0, 9.0]   # 차원까지 달라진 새 모델을 가정
+
+    out = reembed_index(INDEX, new_model_embed)
+
+    assert out.keys() == INDEX.keys()
+    for sig in INDEX:
+        assert out[sig]["text"] == INDEX[sig]["text"]         # 재료는 그대로
+        assert out[sig]["embedding"] == [9.0, 9.0, 9.0, 9.0]  # 벡터만 교체
+    assert index_dim(out) == 4
+
+
+def test_reembedded_index_matches_again_after_model_change(tmp_path):
+    """모델 교체 → 재임베딩 → 다시 정상 매칭되는 전체 흐름."""
+    from backend.graph_client.semantic_entry import reembed_index
+
+    # 새 모델: 축 순서가 다른(= 좌표계가 다른) 4차원 임베더
+    def new_embed(text: str) -> list[float]:
+        t = text.lower()
+        return [0.0, float(t.count("center")), float(t.count("line")), float(t.count("ring"))]
+
+    # 1) 낡은 인덱스 + 새 모델 → 차원이 달라 매칭이 꺼진다
+    stale = SemanticSignatureIndex(INDEX, new_embed, min_score=0.1)
+    assert stale.match("ring at the edge") == []
+    assert stale.disabled_reason is not None
+
+    # 2) 재임베딩 후 저장 → 다시 로드 → 정상 매칭
+    rebuilt = reembed_index(INDEX, new_embed)
+    path = tmp_path / "idx.json"
+    save_index(rebuilt, path, model="new-model")
+    assert load_index_meta(path)["model"] == "new-model"
+
+    fresh = SemanticSignatureIndex(load_index(path), new_embed, min_score=0.1)
+    assert fresh.match("a ring near the edge", k=1)[0][0] == "ring@edge"
+    assert fresh.disabled_reason is None
