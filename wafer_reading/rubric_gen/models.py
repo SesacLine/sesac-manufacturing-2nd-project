@@ -23,7 +23,9 @@ from ..vlm.backends.openai_api import MODEL as VLM_PTY_MODEL
 RUBRIC_GEN_MODEL = os.environ.get("RUBRIC_GEN_MODEL", "gpt-5.5-2026-04-23")
 JUDGE_MODEL = os.environ.get("JUDGE_MODEL", "gpt-5.2-2025-12-11")
 
-QWEN_LOCAL_MODEL = "Qwen/Qwen3-VL-4B-Instruct"  # open 트랙 서술 모델(로컬)
+# open 트랙 서술 모델(로컬) — 백엔드 상수를 그대로 읽는다(모델을 바꿔도 리포트 meta가 따라옴).
+# import 시 torch/transformers를 끌어오지 않도록 상수만 참조한다.
+from ..vlm.backends.qwen_local import MODEL_ID as QWEN_LOCAL_MODEL  # noqa: E402
 
 _DATE_SUFFIX = re.compile(r"-\d{4}-\d{2}-\d{2}$")
 

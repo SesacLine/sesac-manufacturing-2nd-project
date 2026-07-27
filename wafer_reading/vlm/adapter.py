@@ -36,12 +36,54 @@ class VLMCallError(RuntimeError):
     """재시도 소진 후에도 유효한 VLM 응답을 얻지 못할 경우"""
 
 
+def _open_remote_url() -> str:
+    """open 트랙 원격 엔드포인트. 빈 문자열이면 로컬 모드."""
+    return os.environ.get("VLM_OPEN_BASE_URL", "").strip()
+
+
+def _open_backend(timeout_s: float):
+    """open 트랙 백엔드 선택 — 트랙 의미("오픈웨이트 모델")는 유지하고 실행 위치만 나눈다.
+
+    `VLM_OPEN_BASE_URL` 설정 → OpenAI 호환 서버(자체 호스팅 vLLM 등)를 호출한다. **GPU 불필요**
+    이므로 GPU 없는 팀원·CPU 인스턴스도 open 트랙을 그대로 쓸 수 있다(발견문제 #25).
+    미설정 → 종전대로 프로세스 안에 직접 로드한다(GPU + 사전 다운로드된 가중치 필요).
+
+    서버가 알리는 모델명이 repo id와 다르면(`vllm serve --served-model-name`)
+    `VLM_OPEN_SERVED_MODEL`로 맞춘다. 기본은 `VLM_OPEN_MODEL`과 같은 값이라 보통 손댈 필요 없다.
+    """
+    base_url = _open_remote_url()
+    if not base_url:
+        from .backends.qwen_local import QwenLocalBackend
+
+        return QwenLocalBackend()
+
+    from .backends.openai_api import OpenAIBackend
+    from .backends.qwen_local import MODEL_ID  # 상수만 참조 — torch를 끌어오지 않는다
+
+    return OpenAIBackend(
+        model=os.environ.get("VLM_OPEN_SERVED_MODEL", MODEL_ID),
+        timeout_s=timeout_s,
+        base_url=base_url,
+        api_key=os.environ.get("VLM_OPEN_API_KEY"),
+    )
+
+
 class VLMReader:
-    """flag(open/pty) 택1 백엔드로 그룹 이미지를 서술. 프롬프트는 트랙 공용으로 사용."""
+    """flag(open/pty) 택1 백엔드로 그룹 이미지를 서술. 프롬프트는 트랙 공용으로 사용.
+
+    `open`은 실행 위치가 둘이다 — `open_mode` 속성으로 확인한다:
+    `"local"`(프로세스 내 로드) / `"remote"`(OpenAI 호환 서버). 산출물이 경로에 따라 문장
+    수준에서 달라질 수 있으므로 평가 수치를 낼 때는 한쪽으로 고정할 것.
+    """
 
     def __init__(self, track: str | None = None, backend=None, timeout_s: float = DEFAULT_TIMEOUT_S):
-        self.track = track or os.environ.get("VLM_TRACK", "open")
+        # 기본은 pty(OpenAI API) — GPU 없는 팀원·CI가 기본값으로 동작해야 하기 때문이다.
+        # open(로컬 오픈웨이트)은 GPU와 사전 다운로드된 가중치를 요구하므로 명시적 opt-in이다.
+        self.track = track or os.environ.get("VLM_TRACK", "pty")
         self.timeout_s = timeout_s
+        self.open_mode = (
+            ("remote" if _open_remote_url() else "local") if self.track == "open" else None
+        )
         if backend is not None:  # 테스트용
             self._backend = backend
         elif self.track == "pty":
@@ -49,9 +91,7 @@ class VLMReader:
 
             self._backend = OpenAIBackend(timeout_s=timeout_s)
         elif self.track == "open":
-            from .backends.qwen_local import QwenLocalBackend
-
-            self._backend = QwenLocalBackend()
+            self._backend = _open_backend(timeout_s)
         else:
             raise ValueError(f"unknown VLM_TRACK: {self.track!r} (open|pty)")
 

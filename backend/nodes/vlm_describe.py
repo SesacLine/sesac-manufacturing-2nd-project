@@ -170,7 +170,8 @@ def observe_groups(state: RCAState) -> dict:
     분기 flag `VLM_LIVE`(KG_LIVE와 같은 관례): 미설정(기본)이면 결정적 관측만
     (quantitative die-matrix 통계, 자연어 빈 값 — 위 기본 경로 그대로), 1/true/yes면
     같은 결정적 관측 위에 **실제 VLM 자연어(location/morphology_text)를 오버레이**한다
-    (wafer_reading.vlm.VLMReader — 트랙은 VLM_TRACK open|pty). VLM 실패 시 결정적 관측만
+    (wafer_reading.vlm.VLMReader — 트랙은 VLM_TRACK, 기본 pty(OpenAI API)이고 open은 opt-in).
+    VLM 실패 시 결정적 관측만
     으로 이어간다(자연어 없이도 signature enum 진입이 성립하므로 배치는 죽지 않는다).
     """
     if os.getenv("VLM_LIVE", "").lower() in ("1", "true", "yes"):
@@ -198,7 +199,7 @@ def _get_vlm_reader():
     if _vlm_reader is None:
         from wafer_reading.vlm import VLMReader
 
-        _vlm_reader = VLMReader()  # 트랙은 VLM_TRACK 환경변수 (기본 open)
+        _vlm_reader = VLMReader()  # 트랙은 VLM_TRACK 환경변수 (기본 pty, open은 opt-in)
     return _vlm_reader
 
 
