@@ -222,6 +222,36 @@ cd secsgem-mcp && pytest -q -m "not data"            # 31건 — 상대경로(cw
 
 ⚠️ 루트에서 인자 없이 `pytest`를 돌리면 secsgem-mcp 테스트가 cwd 문제로 실패한다 — 위처럼 나눠 돌 것.
 
+## 배포 서버 (AWS, 2026-07-27 배포 — 관리: 안지운)
+
+**서비스 주소 `https://waefer.site`** (HTTP는 HTTPS로 301). EC2 1대(t3.medium, Ubuntu 24.04,
+서울)에 Nginx(정적 프론트 + `/api/` 리버스 프록시) + uvicorn(systemd `waefer.service`,
+`--workers 1` 필수 — MCP 싱글턴). 상세 해설은 `personalspace_rca/0727 work/aws_readme.md`,
+절차 런북은 같은 폴더 `aws_kickoff.md` (둘 다 git 밖).
+
+```powershell
+# 접속 (키: repo 밖 관리 — 안지운 로컬 D:\...\aws\waefer.pem, 팀원은 안지운에게 요청)
+ssh -o ServerAliveInterval=60 -i <키경로>\waefer.pem ubuntu@54.180.5.85
+# 파일 업로드
+scp -i <키경로>\waefer.pem "<로컬파일>" ubuntu@54.180.5.85:~/waefer/<대상>/
+```
+
+```bash
+# 서버 안 — 자주 쓰는 것
+sudo systemctl status waefer                      # 상태 확인
+sudo systemctl restart waefer                     # 재시작(.env 수정 후 필수)
+sudo journalctl -u waefer -f                      # 실시간 로그
+cd ~/waefer && git pull && sudo systemctl restart waefer   # 코드 반영(의존성 변경 시 uv sync 추가)
+rm -f ~/waefer/app_state.db                       # 배치 상태 리셋(+restart) — fab.db는 불변
+```
+
+- 서버 `.env`는 로컬과 다르다: **KG_LIVE 금지**(서버에 Neo4j 없음 — 넣으면 ④에서 배치 사망).
+  fab.db·CNN 체크포인트는 git 밖이라 갱신 시 scp로 올리고 MD5 대조.
+- 프론트 반영: 로컬 `frontend/`에서 `npm run build`(`.env.production`의
+  `VITE_API_BASE_URL=/api/v1` 유지) → `dist/*`를 `/tmp/web/` scp → 서버에서
+  `sudo cp -r /tmp/web/* /var/www/waefer/`.
+- 발표 후 정리(필수): EC2 Terminate + EIP 릴리스 (`aws_kickoff.md` §7 체크리스트).
+
 ## 알려진 단순화 / TODO (코드에 `# 결정①/②` 또는 `TODO(팀 결정 필요)`로 표시됨)
 
 | 위치 | 지금 선택 | 비고 |
