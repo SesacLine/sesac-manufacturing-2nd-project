@@ -18,7 +18,7 @@ export default function App() {
       <div className="topbar">
         <div>
           <span className="brand">
-            SesacLine SemiRCA
+            왜?이퍼 Waefer
             <span className="dim">웨이퍼 결함 RCA · 그룹 단위 분석 · 결과 누적</span>
           </span>
         </div>

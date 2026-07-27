@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, formatDetail } from "../api/client";
 import type { Batch } from "../api/types";
+import BatchLogByPattern from "../components/BatchLogByPattern";
 import { BATCH_STATUS_LABELS, STEP_LABELS, TOOL_LABELS } from "../labels";
 
 const POLL_MS = 1500;
@@ -105,18 +106,34 @@ export default function ProgressPage() {
           })}
         </div>
 
-        <div className="box-title">MCP 도구 호출 로그</div>
-        <div className="log-console" ref={consoleRef}>
-          {batch.logs.length === 0 && <div>대기 중...</div>}
-          {batch.logs.map((log, i) => (
-            <div key={i}>
-              [{log.time}] {TOOL_LABELS[log.tool] ?? log.tool} — {log.message}{" "}
-              {log.status === "done" && <span className="ok">✓ 완료</span>}
-              {log.status === "running" && <span className="run">… 진행</span>}
-              {log.status === "error" && <span className="err">✗ 오류</span>}
+        {/* 진행 중에는 흐르는 콘솔(지금 무슨 도구를 부르는지), 완료 후에는 패턴별 토글
+            (무엇을 어떻게 확인했는지 되짚기). 같은 로그를 목적에 맞게 다르게 보여준다. */}
+        {done || failed ? (
+          <>
+            <div className="box-title">
+              <span>결함 패턴별 분석 로그</span>
+              <span style={{ fontWeight: 400, color: "var(--text-dim)" }}>
+                패턴 클릭 → 도구별 호출 내역 · 결과 열람은 대기열에서
+              </span>
             </div>
-          ))}
-        </div>
+            <BatchLogByPattern logs={batch.logs} />
+          </>
+        ) : (
+          <>
+            <div className="box-title">설비 데이터 조회 로그</div>
+            <div className="log-console" ref={consoleRef}>
+              {batch.logs.length === 0 && <div>대기 중...</div>}
+              {batch.logs.map((log, i) => (
+                <div key={i}>
+                  [{log.time}] {TOOL_LABELS[log.tool] ?? log.tool} — {log.message}{" "}
+                  {log.status === "done" && <span className="ok">✓ 완료</span>}
+                  {log.status === "running" && <span className="run">… 진행</span>}
+                  {log.status === "error" && <span className="err">✗ 오류</span>}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {batch.status === "running" && (
           <div className="caption" style={{ marginTop: 8 }}>
@@ -134,8 +151,8 @@ export default function ProgressPage() {
         {failed && <div className="notice error">배치 실행 실패 — {batch.error}</div>}
       </div>
       <div className="foot-note">
-        그룹화부터 Hypothesis → Critic 전과정 · 완료 시 모든 그룹 결과가 대시보드 대기열에 한
-        번에 누적
+        결함 패턴별 그룹화 → 원인 후보 조회 → 설비 데이터 검증까지 진행합니다 · 완료되면 모든
+        그룹 결과가 대시보드 목록에 한 번에 올라갑니다
       </div>
     </section>
   );

@@ -650,12 +650,23 @@ def describe_path(row: dict) -> str:
 
 
 def _fallback_sentence(pattern: str, row: dict) -> str:
-    """LLM이 문장을 덜 돌려줬을 때. 가설을 조용히 버리느니 사실만 이어 붙인다."""
-    where = "문헌이 직접 지목" if row["route"] == "direct" else f"{row['step']} 공정"
-    return (
-        f"{pattern} 패턴은 {where}의 {row['cause_name']}이(가) 원인으로 보입니다. "
-        f"검증 신호: {row['evidence']} [{TIER_TAG[row['tier']]}]"
-    )
+    """LLM이 문장을 덜 돌려줬을 때. 가설을 조용히 버리느니 사실만 이어 붙인다.
+
+    이 문장은 그대로 화면3 원인 후보 카드의 본문(`narrative`)이 되므로 **조사를 붙이지 않는
+    형태**로 적는다. 예전 템플릿은 `{where}의 {cause_name}이(가) 원인으로 보입니다`였는데,
+    cause_name이 대부분 영어라 "문헌이 직접 지목의 etch-rate nonuniformity이(가) 원인으로
+    보입니다" 같은 비문이 사용자 화면에 그대로 나갔다. 항목을 라벨:값으로 끊으면 조사 문제가
+    사라지고, 등급 코드([자동]) 대신 확인 방법을 말해 카드만 읽어도 뜻이 통한다.
+    """
+    where = "문헌이 패턴에서 직접 지목" if row["route"] == "direct" else f"{row['step']} 공정"
+    tier = row["tier"]
+    if tier == TIER_AUTO:
+        check = f"{row['evidence']} 센서값이 정상범위를 벗어났는지 확인"
+    elif tier == TIER_SEMI:
+        check = f"{row['evidence_name']} 이력 확인 (판정은 사람이)"
+    else:
+        check = "문헌 서술만 있어 설비 데이터로는 확인 불가"
+    return f"{pattern} 패턴 — 추정 원인: {row['cause_name']} ({where}). 확인 방법: {check}"
 
 
 def synthesize(llm, pattern: str, rows: list[dict]) -> list[str]:
