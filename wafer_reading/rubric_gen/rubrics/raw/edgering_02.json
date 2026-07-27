@@ -1,0 +1,49 @@
+{
+  "defect_types": "Edge-Ring",
+  "spatial_rubric": {
+    "zone": "Must-hit keywords: wafer periphery, outer edge, perimeter, edge, interior comparatively less affected, sparse/scattered center",
+    "distribution": "Must-hit keywords: near-continuous ring, concentrated along periphery, around outer edge, circumferential distribution, scattered defects toward center",
+    "clock_position": "Must-hit keywords: uniform around most clock positions, all-around ring, no dominant clock-position sector",
+    "coordinates_hint": "Must-hit keywords: peripheral/edge radius, outer circumference, center only scattered; no specific x-y coordinates provided",
+    "spatial_avoid": [
+      "center-localized",
+      "central cluster",
+      "single quadrant",
+      "localized spot",
+      "linear band across wafer",
+      "diagonal streak",
+      "radial spoke",
+      "scratch",
+      "edge-excluding",
+      "donut with clean edge",
+      "specific coordinates",
+      "only at 3 o'clock",
+      "only at 6 o'clock",
+      "only at 9 o'clock",
+      "only at 12 o'clock"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must-hit keywords: thick circumferential band, edge-ring, near-continuous ring, high-density ring",
+    "density": "Must-hit keywords: high-density defects at edge/periphery, sparse interior, scattered center, slight local intensity variation",
+    "geometric_structure": "Must-hit keywords: ring, circumferential band, perimeter band, annular/edge-ring structure, no dominant linear feature, no central feature",
+    "texture_description": "Must-hit keywords: mottled, blocky texture, fairly uniform around most clock positions",
+    "morphology_avoid": [
+      "thin line",
+      "straight line",
+      "linear scratch",
+      "radial streak",
+      "spoke pattern",
+      "central blob",
+      "center-localized cluster",
+      "bullseye centered cluster",
+      "spiral",
+      "grid",
+      "checkerboard",
+      "random uniform across wafer",
+      "isolated dots only",
+      "clean perimeter"
+    ]
+  },
+  "summary": "Near-continuous Edge-Ring defect pattern with high-density defects concentrated around the wafer perimeter/outer edge, forming a thick mottled circumferential band and leaving the interior comparatively sparse with only scattered center defects."
+}

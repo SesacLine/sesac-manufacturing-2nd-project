@@ -1,0 +1,48 @@
+{
+  "defect_types": "Scratch",
+  "spatial_rubric": {
+    "zone": "Must hit: lower-right quadrant; localized region; confined area. Correct answers should identify the defect as located in the lower-right portion of the wafer.",
+    "distribution": "Must hit: localized linear defect; short horizontal segment; not full-wafer; confined rather than broadly distributed.",
+    "clock_position": "Must hit: 3 to 4 o'clock position; around 3-4 o'clock.",
+    "coordinates_hint": "No numeric coordinates are provided. Must reference only the lower-right quadrant and 3 to 4 o'clock positional cue.",
+    "spatial_avoid": [
+      "upper-left",
+      "upper-right",
+      "lower-left",
+      "center",
+      "central",
+      "full wafer",
+      "wafer-wide",
+      "edge ring",
+      "peripheral ring",
+      "radial",
+      "all quadrants",
+      "uniformly distributed",
+      "randomly scattered",
+      "numeric coordinates"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must hit: scratch; linear defect; straight narrow line; short horizontal segment.",
+    "density": "Must hit: compact; localized; made of contiguous die-level marks. Should not describe the defect as diffuse or broadly dense.",
+    "geometric_structure": "Must hit: straight; narrow; segmented bar-like morphology; horizontal line; small protrusions beneath it.",
+    "texture_description": "Must hit: bright marks; contiguous die-level marks; segmented line; compact bar-like appearance.",
+    "morphology_avoid": [
+      "diffuse cluster",
+      "ring",
+      "circular",
+      "arc",
+      "spiral",
+      "radial streak",
+      "cross-shaped",
+      "vertical line",
+      "diagonal line",
+      "large blob",
+      "random speckles",
+      "dense cloud",
+      "donut",
+      "concentric"
+    ]
+  },
+  "summary": "A short, localized scratch appears as a bright, straight, narrow, segmented horizontal line in the lower-right quadrant around the 3 to 4 o'clock position, with minor protrusions beneath it and no diffuse cluster or ring morphology."
+}

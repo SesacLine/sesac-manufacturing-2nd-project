@@ -1,0 +1,1485 @@
+{
+  "schema_version": "wafer-rubric-v1",
+  "pattern": "Scratch",
+  "n_samples": 5,
+  "min_support": 3,
+  "dimensions": {
+    "spatial": {
+      "must_hit": [],
+      "must_avoid": [
+        {
+          "phrase": "edge ring",
+          "support": 5
+        },
+        {
+          "phrase": "horizontal band",
+          "support": 3
+        },
+        {
+          "phrase": "bullseye",
+          "support": 3
+        }
+      ]
+    },
+    "morphology": {
+      "must_hit": [
+        {
+          "phrase": "scratch like",
+          "support": 4,
+          "axes": [
+            "pattern_type",
+            "texture_description"
+          ]
+        },
+        {
+          "phrase": "linear",
+          "support": 3,
+          "axes": [
+            "geometric_structure"
+          ]
+        }
+      ],
+      "must_avoid": [
+        {
+          "phrase": "spiral",
+          "support": 4
+        },
+        {
+          "phrase": "checkerboard",
+          "support": 4
+        },
+        {
+          "phrase": "circular",
+          "support": 3
+        },
+        {
+          "phrase": "ring",
+          "support": 3
+        },
+        {
+          "phrase": "donut",
+          "support": 3
+        }
+      ]
+    }
+  },
+  "dropped": {
+    "low_support": [
+      {
+        "phrase": "upper left to lower right",
+        "support": 2,
+        "axes": [
+          "clock_position"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "diagonal",
+        "support": 2,
+        "axes": [
+          "coordinates_hint",
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "lower right",
+        "support": 2,
+        "axes": [
+          "coordinates_hint",
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "concentrated",
+        "support": 2,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "wafer center",
+        "support": 2,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "upper left",
+        "support": 2,
+        "axes": [
+          "coordinates_hint",
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "outside this band",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "sparsely scattered",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "remaining area",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "diagonal band",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "through center",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "short horizontal segment",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "confined rather than broadly distributed",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "localized region",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "around 3 4 o clock",
+        "support": 1,
+        "axes": [
+          "clock_position"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "confined area",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "low background elsewhere",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "right side",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "near edge",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "upper right",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "crossing wafer",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "diagonal paths",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "few diagonal linear paths",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "sparse isolated points",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "die level spots",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "concentrated along lines",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "interior",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "wafer scale diagonal streaks",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "band or trace",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "upper left quadrant",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "central crossing",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "linear",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "central area",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "lower right quadrant",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "dominant feature",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "diagonal from negative x",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "near center",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "sparse isolated defects elsewhere",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "negative y region",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "positive y region toward positive x",
+        "support": 1,
+        "axes": [
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "toward bottom edge",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "scattered across wafer",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "narrow band",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "narrow vertical band",
+        "support": 1,
+        "axes": [
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "bottom edge",
+        "support": 1,
+        "axes": [
+          "clock_position",
+          "coordinates_hint"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "6 o clock direction",
+        "support": 1,
+        "axes": [
+          "clock_position"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "lower half",
+        "support": 1,
+        "axes": [
+          "clock_position",
+          "coordinates_hint",
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "sparse outside band",
+        "support": 1,
+        "axes": [
+          "distribution"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "slightly left of center",
+        "support": 1,
+        "axes": [
+          "coordinates_hint",
+          "zone"
+        ],
+        "dimension": "spatial"
+      },
+      {
+        "phrase": "radial spokes",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "center only",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "vertical band",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "peripheral ring",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "donut",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "edge only",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "concentric",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "full wafer uniform",
+        "support": 2,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "uniform distribution",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "random only pattern",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "lower left to upper right",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "lower left",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "center",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "all quadrants",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "upper right",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "radial",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "wafer wide",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "central",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "randomly scattered",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "numeric coordinates",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "full wafer",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "upper left",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "uniformly distributed",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "quadrant only defect",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "random only",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "radial symmetry",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "edge dominant",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "center dominant",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "center cluster",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "single localized blob",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "localized corner cluster",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "ring",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "wafer wide haze",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "upper right to lower left",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "random uniform distribution",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "upper half dominant",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "centered circular pattern",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "peripheral only",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "right of center",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "diagonal band",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "random only distribution",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "top edge",
+        "support": 1,
+        "dimension": "spatial",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "segmented",
+        "support": 2,
+        "axes": [
+          "geometric_structure",
+          "pattern_type",
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "sparse background",
+        "support": 2,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "elongated",
+        "support": 2,
+        "axes": [
+          "geometric_structure",
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "narrow",
+        "support": 2,
+        "axes": [
+          "geometric_structure",
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "diagonal",
+        "support": 2,
+        "axes": [
+          "geometric_structure",
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "jagged",
+        "support": 2,
+        "axes": [
+          "geometric_structure",
+          "pattern_type",
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "narrow width",
+        "support": 2,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "speckles",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "diagonal direction",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "isolated speckles",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "broken",
+        "support": 1,
+        "axes": [
+          "pattern_type",
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "dense rectangular defect clusters",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "linear streak",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "aligned",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "rectangular clusters",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "short horizontal segment",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "linear defect",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "straight narrow line",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "contiguous die level marks",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "localized",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "segmented line",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "segmented bar like morphology",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "horizontal line",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "compact bar like appearance",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "made of contiguous die level marks",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "small protrusions beneath it",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "discontinuous linear streaks",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "paths",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "thin",
+        "support": 1,
+        "axes": [
+          "pattern_type",
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "discontinuous",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "bright die level spots",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "low background density",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "sparse isolated defects elsewhere",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "streaks",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "die level",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "bright spots",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "bright",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "continuous line",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "sparse background speckles",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "low density background",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "stands out from background speckles",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "segmented or slightly segmented",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "isolated defects elsewhere",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "irregular intensity",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "slightly segmented",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "dominant main line",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "diagonal line",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "irregular",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "isolated point like defects",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "elongated vertical band",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "vertical line",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "elongated streak",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "high density defects in the streak",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "low density isolated defects elsewhere",
+        "support": 1,
+        "axes": [
+          "density"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "sparse scattered points",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "straight line",
+        "support": 1,
+        "axes": [
+          "geometric_structure"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "linear continuity",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "straight",
+        "support": 1,
+        "axes": [
+          "pattern_type"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "contrast to main line feature",
+        "support": 1,
+        "axes": [
+          "texture_description"
+        ],
+        "dimension": "morphology"
+      },
+      {
+        "phrase": "grid",
+        "support": 2,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "comet tail",
+        "support": 2,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "arc",
+        "support": 2,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "uniform haze",
+        "support": 2,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "grid pattern",
+        "support": 2,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "ring shaped",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "crescent",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "clustered at edge only",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "smooth continuous line only",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "starburst",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "annular",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "blob like only",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "radial streak",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "random speckles",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "concentric",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "vertical line",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "cross shaped",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "large blob",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "dense cloud",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "diffuse cluster",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "diagonal line",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "radial spokes",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "thick continuous band",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "center dominant clustering",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "solid filled stripe",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "circular cluster",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "broad band",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "edge dominant clustering",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "circular blob",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "regular periodic pattern",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "large area patch",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "dense cluster",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "round spot",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "concentric circle",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "thick band",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "smooth arc",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "wide smear",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "haze",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "radial",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "diagonal scratch",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "horizontal scratch",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "cluster only",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "grainy uniform texture",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      },
+      {
+        "phrase": "blob",
+        "support": 1,
+        "dimension": "morphology",
+        "kind": "must_avoid"
+      }
+    ],
+    "conflict_resolved": [],
+    "instance_specific": []
+  },
+  "meta": {
+    "schema_version": "wafer-rubric-v1",
+    "support_ratio": 0.6,
+    "unscorable_dimensions": [
+      "spatial"
+    ],
+    "source_defect_types": [
+      "Scratch"
+    ],
+    "summaries": [
+      "A scratch defect appears as a diagonal band crossing the wafer from upper-left to lower-right through the center, with a narrow broken segmented linear morphology made of dense rectangular clusters and sparse scattered background speckles elsewhere.",
+      "A short, localized scratch appears as a bright, straight, narrow, segmented horizontal line in the lower-right quadrant around the 3 to 4 o'clock position, with minor protrusions beneath it and no diffuse cluster or ring morphology.",
+      "Scratch-like defect pattern dominated by a few diagonal, jagged, segmented linear streaks crossing the wafer, especially from upper-left toward the right side and from upper-right toward lower-right, with only sparse isolated die-level spots elsewhere and no ring, center, or edge-dominant clustering.",
+      "A dominant bright, narrow, jagged diagonal scratch runs from the upper-left quadrant to the lower-right quadrant, crossing near the wafer center, with sparse isolated background defects elsewhere.",
+      "A scratch defect appears as a narrow, straight, high-density vertical band slightly left of center, extending through the lower half toward the bottom edge, with sparse isolated point defects elsewhere."
+    ]
+  }
+}

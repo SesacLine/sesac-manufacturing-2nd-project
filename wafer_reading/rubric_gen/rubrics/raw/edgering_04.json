@@ -1,0 +1,54 @@
+{
+  "defect_types": "Edge-Ring",
+  "spatial_rubric": {
+    "zone": "Must-hit keywords: wafer periphery, outer edge, wafer perimeter, rim, edge. A correct answer should state that defects are concentrated along the peripheral/edge zone and that the interior/center is comparatively sparse.",
+    "distribution": "Must-hit keywords: near-continuous ring, circumferential band, around the outer edge, concentrated along the perimeter, sparse interior, no strong center localization.",
+    "clock_position": "No specific clock positions are mentioned. Correct answers should not invent positions such as 3 o'clock, 6 o'clock, 9 o'clock, or 12 o'clock.",
+    "coordinates_hint": "No coordinate references are provided. Correct answers should avoid invented x/y coordinates, die indices, or quadrant-specific coordinates.",
+    "spatial_avoid": [
+      "center cluster",
+      "central localization",
+      "bullseye",
+      "donut center",
+      "single quadrant",
+      "localized hotspot",
+      "diagonal line",
+      "scratch",
+      "radial spoke",
+      "edge exclusion only",
+      "top-left",
+      "bottom-right",
+      "3 o'clock",
+      "6 o'clock",
+      "9 o'clock",
+      "12 o'clock",
+      "x-coordinate",
+      "y-coordinate"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must-hit keywords: edge-ring, ring, circumferential band, thin band, near-continuous band, perimeter band. The answer should describe a ring-like defect structure along the wafer rim.",
+    "density": "Must-hit keywords: high-density defect pixels along the edge, intermittent brighter clusters around the rim, sparse interior, low-density speckling inside.",
+    "geometric_structure": "Must-hit keywords: thin circumferential band, circular ring, perimeter ring, outer-edge ring. The interior should be described as lacking a coherent geometric structure.",
+    "texture_description": "Must-hit keywords: intermittent brighter clusters, scattered speckling, low-density speckling, sparse scattered defects. Edge texture should be described as dense and nearly continuous, not uniform across the full wafer.",
+    "morphology_avoid": [
+      "solid disk",
+      "filled center",
+      "cross pattern",
+      "starburst",
+      "radial streaks",
+      "linear scratch",
+      "grid pattern",
+      "checkerboard",
+      "spiral",
+      "crescent",
+      "arc only",
+      "comet tail",
+      "cluster-only defect",
+      "uniform full-wafer haze",
+      "random uniform distribution",
+      "dense center"
+    ]
+  },
+  "summary": "A clear edge-ring defect pattern: defects form a thin, near-continuous, high-density circumferential band along the wafer perimeter, with intermittent brighter rim clusters and only sparse low-density speckling in the interior."
+}

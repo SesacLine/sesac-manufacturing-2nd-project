@@ -1,0 +1,51 @@
+{
+  "defect_types": "Center / central hotspot",
+  "spatial_rubric": {
+    "zone": "Must-hit keywords: central region, exact center, middle region; edge/periphery less intense",
+    "distribution": "Must-hit keywords: concentrated at center, strongest intensity at center, gradual decrease/tapering outward toward outer die fields, diffuse circular gradient",
+    "clock_position": "No specific clock positions mentioned; correct answer should not introduce 12 o'clock, 3 o'clock, 6 o'clock, or 9 o'clock locations",
+    "coordinates_hint": "Must-hit keywords: exact center; no numerical coordinates provided",
+    "spatial_avoid": [
+      "edge ring",
+      "peripheral band",
+      "corner",
+      "notch",
+      "scribe line",
+      "localized edge",
+      "upper left",
+      "upper right",
+      "lower left",
+      "lower right",
+      "12 o'clock",
+      "3 o'clock",
+      "6 o'clock",
+      "9 o'clock",
+      "radial streak",
+      "linear band",
+      "full-wafer uniform"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must-hit keywords: compact central hotspot, roughly circular, dense contiguous cluster, diffuse halo",
+    "density": "Must-hit keywords: highest density/intensity at center, dense cluster, decreasing/tapering outward, less intense at edge/periphery",
+    "geometric_structure": "Must-hit keywords: circular, central, halo, gradient; not linear or isolated",
+    "texture_description": "Must-hit keywords: compact core, diffuse outward halo, contiguous rather than isolated points",
+    "morphology_avoid": [
+      "linear feature",
+      "scratch",
+      "streak",
+      "arc",
+      "ring-only",
+      "donut",
+      "crescent",
+      "isolated points",
+      "random speckle",
+      "checkerboard",
+      "grid",
+      "cluster at edge",
+      "edge exclusion",
+      "radial spoke"
+    ]
+  },
+  "summary": "A compact, roughly circular central hotspot with peak defect density at the exact wafer center and a diffuse halo that gradually tapers toward the less-intense outer die fields."
+}

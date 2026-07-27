@@ -1,0 +1,50 @@
+{
+  "defect_types": "Center",
+  "spatial_rubric": {
+    "zone": "Must-hit keywords: central region, middle, center of wafer, outer die area tapering. A correct answer should state that defects are concentrated in the central zone of the wafer.",
+    "distribution": "Must-hit keywords: concentrated, brightest, most continuous cluster, density decreases progressively outward, tapering outward, no dominant edge-ring structure. The distribution is center-dominant with decreasing density toward the perimeter.",
+    "clock_position": "Must-hit keywords: none specified, no clock-position dependence. No specific 12/3/6/9 o'clock localization is mentioned.",
+    "coordinates_hint": "Must-hit keywords: near the middle, centered on wafer, central coordinates implied. No explicit x-y coordinates are provided.",
+    "spatial_avoid": [
+      "edge ring",
+      "edge-dominant",
+      "perimeter band",
+      "outer rim concentration",
+      "corner defect",
+      "localized notch",
+      "specific clock position",
+      "12 o'clock",
+      "3 o'clock",
+      "6 o'clock",
+      "9 o'clock",
+      "left edge",
+      "right edge",
+      "top edge",
+      "bottom edge"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must-hit keywords: compact, irregular central cluster, diffuse halo, high-density defect cluster. The pattern should be described as a central clustered morphology.",
+    "density": "Must-hit keywords: dense, high-intensity, brightest, continuous, density tapering outward. The center is highest density with gradual weakening outward.",
+    "geometric_structure": "Must-hit keywords: blocky, compact, irregular, non-linear, non-circumferential. The structure is not a ring, line, arc, or scratch.",
+    "texture_description": "Must-hit keywords: diffuse halo, continuous cluster, dense blocky region, intensity tapering. Texture is compact and bright at the center with softer outward diffusion.",
+    "morphology_avoid": [
+      "linear",
+      "line-shaped",
+      "scratch",
+      "circumferential",
+      "ring",
+      "donut",
+      "annular",
+      "arc",
+      "crescent",
+      "radial streak",
+      "spoke",
+      "grid",
+      "checkerboard",
+      "random sparse",
+      "uniform across wafer"
+    ]
+  },
+  "summary": "Compact irregular high-density defect cluster centered on the wafer, with a diffuse outward halo and progressively decreasing intensity toward the outer die area; no edge-dominant or circumferential pattern."
+}

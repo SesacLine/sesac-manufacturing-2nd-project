@@ -1,0 +1,43 @@
+{
+  "defect_types": "Scratch",
+  "spatial_rubric": {
+    "zone": "Must-hit keywords: diagonal paths, crossing wafer, upper-left, right side, upper-right, lower-right, interior, near edge. A correct answer should identify defects concentrated on a few diagonal linear paths across the wafer, with sparse isolated defects elsewhere in the interior and near the edge.",
+    "distribution": "Must-hit keywords: concentrated along lines, few diagonal linear paths, sparse isolated points, low background elsewhere. The strongest line runs from the upper-left toward the right side, with another diagonal line descending from the upper-right toward the lower-right.",
+    "clock_position": "Must-hit keywords: no explicit clock positions. Acceptable inferred descriptions include upper-left to right side, approximately 10-11 o'clock toward 3 o'clock, and upper-right to lower-right, approximately 1-2 o'clock toward 4-5 o'clock.",
+    "coordinates_hint": "Must-hit keywords: no explicit coordinates, die-level spots, wafer-scale diagonal streaks. No numeric coordinates are provided; location should be described by wafer-relative zones and diagonal orientation.",
+    "spatial_avoid": [
+      "center cluster",
+      "center-dominant",
+      "edge ring",
+      "edge-dominant",
+      "full wafer uniform",
+      "bullseye",
+      "concentric",
+      "radial symmetry",
+      "single localized blob",
+      "random only",
+      "quadrant-only defect"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must-hit keywords: scratch-like, thin, discontinuous linear streaks, diagonal, jagged, segmented. The morphology should be described as a few scratch-like linear streaks rather than a continuous thick band.",
+    "density": "Must-hit keywords: bright die-level spots, low background density, sparse isolated defects elsewhere. Defect density is high only along the diagonal streaks and low outside them.",
+    "geometric_structure": "Must-hit keywords: linear, diagonal, segmented, jagged, streaks, paths. The geometry is made of narrow discontinuous lines crossing portions of the wafer.",
+    "texture_description": "Must-hit keywords: thin, discontinuous, bright spots, die-level, segmented, jagged. The texture is spot-based along the lines, not smooth or filled-in.",
+    "morphology_avoid": [
+      "broad band",
+      "thick continuous band",
+      "ring",
+      "donut",
+      "center-dominant clustering",
+      "edge-dominant clustering",
+      "circular cluster",
+      "radial spokes",
+      "uniform haze",
+      "grid pattern",
+      "checkerboard",
+      "solid filled stripe"
+    ]
+  },
+  "summary": "Scratch-like defect pattern dominated by a few diagonal, jagged, segmented linear streaks crossing the wafer, especially from upper-left toward the right side and from upper-right toward lower-right, with only sparse isolated die-level spots elsewhere and no ring, center, or edge-dominant clustering."
+}

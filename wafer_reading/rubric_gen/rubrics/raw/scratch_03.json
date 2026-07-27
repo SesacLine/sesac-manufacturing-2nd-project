@@ -1,0 +1,47 @@
+{
+  "defect_types": "Scratch",
+  "spatial_rubric": {
+    "zone": "Must-hit keywords: upper-left quadrant, lower-right quadrant, central area, wafer center. A correct answer should state that the main defect crosses near the wafer center and extends diagonally across the wafer.",
+    "distribution": "Must-hit keywords: diagonal, linear, band or trace, dominant feature, sparse isolated defects elsewhere. The distribution is a prominent diagonal defect band from upper-left toward lower-right with only small scattered defects outside the main line.",
+    "clock_position": "Must-hit keywords: upper-left to lower-right. Acceptable clock-position phrasing: approximately 10 o'clock/10:30 toward 4 o'clock/4:30, crossing center.",
+    "coordinates_hint": "Must-hit keywords: diagonal from negative-x/positive-y region toward positive-x/negative-y region, near center, central crossing. Coordinate references should describe an upper-left to lower-right trajectory through the wafer center.",
+    "spatial_avoid": [
+      "ring",
+      "donut",
+      "radial spokes",
+      "edge ring",
+      "edge-only",
+      "center-only",
+      "bullseye",
+      "concentric",
+      "random uniform distribution",
+      "wafer-wide haze",
+      "localized corner cluster",
+      "upper-right to lower-left",
+      "horizontal band",
+      "vertical band"
+    ]
+  },
+  "morphology_rubric": {
+    "pattern_type": "Must-hit keywords: scratch-like, continuous line, diagonal line, jagged, segmented or slightly segmented. The main morphology is a narrow scratch trace rather than a broad area defect.",
+    "density": "Must-hit keywords: dominant main line, sparse background speckles, isolated defects elsewhere, low-density background. The scratch itself is prominent while other defects are sparse.",
+    "geometric_structure": "Must-hit keywords: narrow width, linear, diagonal, elongated, irregular. The geometry should be described as a thin elongated defect crossing the central wafer area.",
+    "texture_description": "Must-hit keywords: bright, jagged, irregular intensity, slightly segmented, stands out from background speckles. The scratch has uneven brightness and a broken/segmented appearance but remains essentially continuous.",
+    "morphology_avoid": [
+      "circular blob",
+      "round spot",
+      "dense cluster",
+      "uniform haze",
+      "smooth arc",
+      "concentric circle",
+      "grid pattern",
+      "checkerboard",
+      "spiral",
+      "comet tail",
+      "large area patch",
+      "thick band",
+      "regular periodic pattern"
+    ]
+  },
+  "summary": "A dominant bright, narrow, jagged diagonal scratch runs from the upper-left quadrant to the lower-right quadrant, crossing near the wafer center, with sparse isolated background defects elsewhere."
+}
