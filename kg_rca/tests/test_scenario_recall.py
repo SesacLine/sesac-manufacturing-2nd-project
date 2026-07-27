@@ -8,7 +8,9 @@ test_recall_regression.py가 "시뮬레이터가 **주입할 수 있는** 원인
 
 ground_truth의 정답(true_root_causes)과 KG 후보의 matched_cause는 둘 다 시뮬레이터 어휘
 (= golden에 고정)라 바로 대조된다. 이 테스트도 KG 조회(존재 여부)만 보므로 fab.db·관측이 필요 없다
-— 순위·검증(⑤/⑥)까지 가는 SC-CENTER-01 파이프라인 골든(top-1 + P2 기각)은 별도 -m data 몫.
+— 순위·검증(⑤/⑥)까지 가는 11개 시나리오 전체 파이프라인 골든(top-1 클러스터 + 함정 기각 +
+firewall)은 `backend/tests/e2e/test_hypocritic_scenario_eval.py`(2026-07-26 승격, 실LLM+MCP 비용
+opt-in `HYPO_CRITIC_EVAL=1`) 몫이다.
 
 ground_truth는 시뮬레이터 산출물(seed 20260101 스냅샷)이다. 폴더가 없으면 전체 skip한다
 — 커밋 안 한 환경에서도 CI가 죽지 않게. 재빌드(다른 seed)하면 시나리오가 표류할 수 있다.

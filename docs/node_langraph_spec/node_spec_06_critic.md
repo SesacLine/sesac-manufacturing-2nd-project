@@ -225,7 +225,7 @@ status = accepted 1건 이상 → "accepted",  0건 → "insufficient_evidence"
 
 ## 7. 테스트 현황
 
-- **단위 테스트**: `backend/tests/test_critic.py`(테스트 함수 22개). 규칙 체인 순서, 시간역전(P2)
+- **단위 테스트**: `backend/tests/unit/test_critic.py`(테스트 함수 22개). 규칙 체인 순서, 시간역전(P2)
   기각이 미조사보다 먼저 걸리는지, 미조사가 기각이 아니라 `judge_unknown`으로 가는지, 조사된
   자동 후보의 P4 판정, 채택 0건 시 status가 `insufficient_evidence`인지를 고정한다. 외부 의존이
   없어 mock 없이 실행된다.
@@ -233,7 +233,7 @@ status = accepted 1건 이상 → "accepted",  0건 → "insufficient_evidence"
     기각되는지, 함정 장비 모양(공통률 1.0 + drift 없음)이 죽는지, **규칙 순서 3중 고정**
     (미조사·반자동·반대근거가 P6보다 앞), 전건 P6 기각 시 `insufficient_evidence` 전환.
     순서 고정 3종이 특히 중요하다 — 누군가 ⑥을 앞으로 옮기면 여기서 즉시 깨진다.
-- **E2E 검증**: ground truth 11개 전량(`backend/tests/eval_hypocritic_scenario.py`, 실LLM+실MCP
+- **E2E 검증**: ground truth 11개 전량(`backend/tests/e2e/eval_hypocritic_scenario.py`, 실LLM+실MCP
   수동 하네스). 결과는 `personalspace_rca/0725 work/hypo_critic_test_result.md`.
 - **아직 검증 못 한 케이스**:
   - ⑦에 LLM이 붙은 뒤의 "문장 단위 faithfulness"(현재 규칙 게이트는 evidence 필드 단위까지만 본다).

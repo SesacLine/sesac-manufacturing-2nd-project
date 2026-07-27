@@ -189,12 +189,12 @@ VLM_LIVE 꺼짐? ─예→ [기본 경로] 멤버 규칙 필터(cnn_results 있�
 
 - **단위 테스트**: `wafer_reading/tests/test_vlm_adapter.py` 6건 — 텍스트 4필드 반환, Scratch
   단일 분기, 파싱 재시도/소진, 코드펜스 허용, 필드 누락 거부. 전부 fake backend 주입이라
-  데이터·GPU·키 없이 돈다. + 팀원의 `backend/tests/test_vlm_describe.py`(기본 경로).
+  데이터·GPU·키 없이 돈다. + 팀원의 `backend/tests/unit/test_vlm_describe.py`(기본 경로).
 - **실호출 검증**: 양 트랙 데모 성공(pty: Edge-Ring 스택·Scratch 단일 / open: Center 스택 —
   4B가 schema 강제 없이 유효 JSON). 실배치 완주(VLM_LIVE=1 pty, 4그룹).
   **07-24 머지 통합 main(#55·#58·#60) 재검증**: pty 실호출 1회(§3 — total_description 등 전부
   observation 내부 확인) + 전체 배치 완주(§4 — 3그룹, Center top-1 GT 메커니즘 부합)
-- **자동화 E2E(07-24, PR #67)**: `backend/tests/test_e2e_wafer_reading_path.py` — GT 시나리오
+- **자동화 E2E(07-24, PR #67)**: `backend/tests/e2e/test_e2e_wafer_reading_path.py` — GT 시나리오
   11종으로 ①→③→④ 진입 경계 기준선 고정(`@pytest.mark.data`). §8-1의 오염 실측(Center 대형
   스택 `ring@edge`, Scratch 스택 희석)이 **기준선표에 오답값 그대로 박혀 있어**, 그 한계가
   고쳐지면 이 테스트가 빨간불로 알린다(수치를 "정답"으로 읽지 말 것). VLM 실호출 검증은

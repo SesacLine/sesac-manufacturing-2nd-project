@@ -278,7 +278,7 @@ def test_observe_groups_completion_reaches_step_3():
 # (같은 코드 2회 캡처 실측: 차이 46곳이 전부 rationale이었다).
 BASELINE_MASKED_SHA = "1c758107412ccf071eead4d79f94dc39d29d7d5085e716dd8f082c447ad99828"
 AFTER_GOLDEN = (
-    Path(__file__).resolve().parents[2]
+    Path(__file__).resolve().parents[3]
     / "personalspace_rca" / "sdd" / "verify" / "golden_step3_after.json"
 )
 MASK_FIELDS = ("rationale",)

@@ -1,19 +1,28 @@
 """S3-2 평가 체인 (실LLM + 실MCP) — ground truth 시나리오로 ③→④→⑤→⑥ 관통.
 
-레포 루트에서 실행 (실LLM+MCP 수동 하네스 — pytest 자동수집 대상 아님, test_ 접두 없음 유지):
-    python "backend/tests/eval_hypocritic_scenario.py"              # 기본 SC-CENTER-01
-    python "backend/tests/eval_hypocritic_scenario.py" SC-CENTER-02 # 다른 시나리오
+**두 얼굴**: (1) 아래처럼 CLI로 돌리면 사람이 읽는 진단 리포트를 찍는 수동 하네스,
+(2) `run_scenario()`는 `test_hypocritic_scenario_eval.py`가 회귀 게이트로 import해
+11개 시나리오 전체에 assert를 건다. 로직은 하나 — 이 파일이 유일한 진실이고, 그 테스트는
+여기 계산값을 소비만 한다.
+
+레포 루트에서 실행 (pytest 자동수집 대상 아님, test_ 접두 없음 유지 — 진단 CLI 전용):
+    python "backend/tests/e2e/eval_hypocritic_scenario.py"              # 기본 SC-CENTER-01
+    python "backend/tests/e2e/eval_hypocritic_scenario.py" SC-CENTER-02 # 다른 시나리오
+
+회귀 게이트로 pytest 수집해 돌리려면(과금 opt-in, fab.db 필요):
+    HYPO_CRITIC_EVAL=1 pytest -m data backend/tests/e2e/test_hypocritic_scenario_eval.py
 
 이 프로젝트 **최초의 정답 대조 실행**이다. 지금까지 스모크는 lot101(시나리오 밖)로
 "기계가 도는가"만 봤다 — 여기서 처음으로 ground truth의 실제 lot_ids를 파이프라인에
 태우고 true_root_causes / traps_to_reject와 대조한다.
 
-통과/실패 단정이 목적이 아니라 **진단**이 목적이다(평가 주도 개발):
+CLI 출력은 통과/실패 단정이 아니라 **진단**이 목적이다(평가 주도 개발):
   ① 정답 원인(true_root_causes)이 matched_cause 기준으로 최종 랭킹 몇 위인가
   ② 함정(traps_to_reject 장비)이 ⑤에서 어떤 토큰으로 기각됐나 — 살아남았으면 그게 다음 과제
   ③ UC 상태(reviewed/insufficient/unmapped)
   ④ ⑤ firewall — Critic 구간 MCP 재조회 0회
 결과가 기대와 다르면 그 갭 자체가 S3-3 이후의 작업을 정의한다.
+`test_hypocritic_scenario_eval.py`는 이 중 ①③④를 회귀 gate로 못박는다(2026-07-26 승격).
 
 정답 대조 키 = matched_cause(kg cause→mapping_table 어휘 번역, S3-1에서 관통). cause
 문자열 직접 비교(skeleton_kickoff §8.5-3의 0% 이슈)를 우회한다.
@@ -26,7 +35,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO))                                 # 레포 루트 → backend import
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")                  # Windows cp949 콘솔 대비
@@ -54,8 +63,13 @@ def verdict_of(h: dict) -> str:
 
 
 def _trap_tokens(gt: dict) -> list[str]:
-    """traps_to_reject 문자열에서 장비 토큰(':' 앞)을 뽑는다. 예: 'LITHO-01: ...' → 'LITHO-01'."""
-    return [t.split(":", 1)[0].strip() for t in gt.get("traps_to_reject", [])]
+    """traps_to_reject 문자열에서 장비 토큰(':' 앞)을 뽑는다. 예: 'LITHO-01: ...' → 'LITHO-01'.
+
+    unmatched 시나리오는 이 키가 **존재하되 값이 null**이라(누락이 아님) `.get(k, [])`의
+    기본값이 안 먹혀 `for t in None`으로 TypeError가 난다 — `or []`로 None까지 방어한다
+    (회귀 게이트가 11개 시나리오를 전부 돌리면서 처음 드러난 잠재 버그, 2026-07-26).
+    """
+    return [t.split(":", 1)[0].strip() for t in (gt.get("traps_to_reject") or [])]
 
 
 def _cause_site_equipments(gt: dict) -> set[str]:
@@ -85,9 +99,15 @@ def event_trap_equipments(gt: dict) -> list[str]:
 
 
 def install_firewall_spy(mcp) -> dict:
-    """④/⑤ 단계별 MCP 콜 계측 — ⑤ 재조회 0(firewall) 검증용."""
+    """④/⑤ 단계별 MCP 콜 계측 — ⑤ 재조회 0(firewall) 검증용.
+
+    `mcp`는 모듈 싱글턴(backend.deps._mcp_client)이라 프로세스 안에서 여러 시나리오를
+    연달아 돌리면(회귀 게이트가 그렇게 한다) `mcp._call`이 이미 이전 호출의 spy로
+    치환돼 있을 수 있다 — `mcp._call`을 그대로 잡으면 spy가 spy를 감싸며 무한히
+    누적된다. 매번 **클래스 원본**을 다시 바인드해 항상 순정 `_call`을 감싼다.
+    """
     counts: dict = {"phase": "④", "hypothesis": {}, "critic": {}}
-    orig = mcp._call
+    orig = type(mcp)._call.__get__(mcp, type(mcp))
     async def spy(name, **kw):
         bucket = counts["critic"] if counts["phase"] == "⑤" else counts["hypothesis"]
         bucket[name] = bucket.get(name, 0) + 1
@@ -96,12 +116,13 @@ def install_firewall_spy(mcp) -> dict:
     return counts
 
 
-async def main() -> None:
-    scenario_id = sys.argv[1] if len(sys.argv) > 1 else "SC-CENTER-01"
-    # §10 비교 실험 Arm B(단일경로 + fab 검증): KG 1위 후보 **하나만** ⑤⑥에 태운다.
-    # Arm A(검증 없이 1위 직행)와 달리 "검증은 하되 후보를 안 넓힌 경우"를 재서,
-    # 성능 향상이 '검증' 덕인지 '다중 후보 탐색' 덕인지를 분리한다.
-    single_path = len(sys.argv) > 2 and sys.argv[2].lower() in ("single", "--single", "b")
+async def run_scenario(scenario_id: str, single_path: bool = False) -> dict:
+    """③→④→⑤→⑥ 관통 + 진단 출력 + **구조화 결과 반환**.
+
+    반환 dict는 `test_hypocritic_scenario_eval.py`가 회귀 assert에 그대로 쓴다 — 진단 출력
+    문자열을 파싱하지 않는다(원래 계산값을 그대로 넘김). CLI(`main()`)는 이 값을 버리고
+    출력만 본다 — 둘 다 여기 한 곳의 로직만 신뢰한다.
+    """
     gt = load_gt(scenario_id)
     pattern = (gt.get("defect_patterns") or ["Center"])[0]
     lot_ids = gt["lot_ids"]
@@ -239,6 +260,10 @@ async def main() -> None:
           + ("  ⚠ None → _check_time_consistency 전부 통과(P2 무발화 원인)" if defect_ts is None else ""))
 
     # ① 정답 행 전체 덤프 + 갈래 판별 (데이터 / ⑤critic로직 / ④조사 / ④랭킹)
+    # 회귀 게이트 반환용 — 두 분기(hits 있음/없음) 모두에서 값을 채운다(없으면 None/False).
+    top_cluster: str | None = None
+    exact_top1 = False
+    cluster_top1 = False
     if true_causes:
         hits = [(i, h) for i, h in enumerate(ordered) if h.get("matched_cause") in true_causes]
         if not hits:
@@ -300,7 +325,12 @@ async def main() -> None:
     else:
         print(f"① unmatched 시나리오 — 기대 status=unmapped/insufficient, 실제={final['status']}")
 
-    # ② 함정 — (verdict, token)별 집계 + maintenance_ts 보유 현황(P2 재료 유무)
+    # ② 함정 — (verdict, token)별 집계 + maintenance_ts 보유 현황(P2 재료 유무).
+    # trap_survivors는 traps 유무와 무관하게 항상 계산(빈 dict라도 반환값 키는 있어야 함).
+    trap_survivors = {
+        t: [h for h in ordered if h.get("equipment") == t and verdict_of(h) == "accepted"]
+        for t in traps
+    }
     if traps:
         for t in traps:
             trap_rows = [h for h in ordered if h.get("equipment") == t]
@@ -335,6 +365,31 @@ async def main() -> None:
     # ④ firewall
     print(f"   Hypothesis 단계 MCP 콜: {counts['hypothesis']}")
     print(f"   Critic 단계 MCP 콜(firewall — 0이어야): {counts['critic'] or '{} ✅ 재조회 0'}")
+
+    return {
+        "scenario_id": scenario_id,
+        "gt": gt,
+        "final": final,
+        "ordered": ordered,
+        "true_causes": true_causes,
+        "traps": traps,
+        "counts": counts,
+        "top_cluster": top_cluster,
+        "exact_top1": exact_top1,
+        "cluster_top1": cluster_top1,
+        "with_equip_count": len(with_equip),
+        "trap_survivors": trap_survivors,
+    }
+
+
+async def main() -> None:
+    """CLI 진입점 — run_scenario()를 부르고 진단 출력만 본다(반환값은 버림)."""
+    scenario_id = sys.argv[1] if len(sys.argv) > 1 else "SC-CENTER-01"
+    # §10 비교 실험 Arm B(단일경로 + fab 검증): KG 1위 후보 **하나만** ⑤⑥에 태운다.
+    # Arm A(검증 없이 1위 직행)와 달리 "검증은 하되 후보를 안 넓힌 경우"를 재서,
+    # 성능 향상이 '검증' 덕인지 '다중 후보 탐색' 덕인지를 분리한다.
+    single_path = len(sys.argv) > 2 and sys.argv[2].lower() in ("single", "--single", "b")
+    await run_scenario(scenario_id, single_path)
 
 
 if __name__ == "__main__":

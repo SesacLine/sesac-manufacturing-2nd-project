@@ -151,7 +151,7 @@ target_lot_ids 비었나? ─예→ 빈 결과 반환
 - **파이프라인 검증**: 실배치 완료 — 실판독으로 4그룹(Center/Edge-Ring/Unknown/Normal) 생성 확인.
   07-24 merge 통합 main(#55·#58·#60) 재검증 — 실배치 완료, 3그룹(Center/Edge-Ring/Unknown) 분화,
   Center 그룹 top-1이 GT 메커니즘(CLEAN flow_rate 저하)과 부합.
-- **자동화 E2E(07-24, PR #67)**: `backend/tests/test_e2e_wafer_reading_path.py` — GT 시나리오
+- **자동화 E2E(07-24, PR #67)**: `backend/tests/e2e/test_e2e_wafer_reading_path.py` — GT 시나리오
   11종으로 ①→③→④ 진입 경계를 파라미터라이즈 검증(`@pytest.mark.data`, fab.db 필요 — CI의
   `-m "not data"`에서는 제외). 정답 라벨 흉내(is_normal) 트랙과 별개로 `test_real_cnn_wiring`이
   실 CNN 판정 → ③ 배선을 게이트한다 — 공유 체크포인트 전제라 결정적이며, 모델 정확도는 단언하지
