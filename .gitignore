@@ -75,6 +75,11 @@ frontend/node_modules/
 frontend/dist/
 # Vite dev 서버 사전번들 캐시 — 실행마다 재생성됨, 커밋 금지
 frontend/.vite/
+# Playwright 산출물 — 실패 스크린샷·트레이스·HTML 리포트(재생성물이라 커밋 금지)
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/.playwright/
 
 # kg_rca 생성 캐시(18MB급) — 커밋 금지
 kg_rca/outputs/embedding_cache.json

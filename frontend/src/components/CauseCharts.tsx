@@ -85,7 +85,7 @@ function Pareto({ patterns }: { patterns: CauseStats["patterns"] }) {
             >
               <title>
                 {v.pattern} — {v.wafer_count.toLocaleString()}장 ·{" "}
-                {v.mapped ? "원인 매핑 완료" : "미매핑(판독까지)"}
+                {v.mapped ? "원인 분석 대상" : "판독만 지원"}
               </title>
             </rect>
             <text className="chart-vl" x={x(v.wafer_count) + 5} y={Y + bh / 2 + 4}>
