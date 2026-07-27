@@ -24,6 +24,7 @@ fab.db가 없거나(CI/팀원 환경) die_map을 못 읽으면 **패턴별 스�
 from __future__ import annotations
 
 import io
+import logging
 import os
 import sqlite3
 
@@ -32,6 +33,8 @@ import numpy as np
 from ..state import Observation, RCAState
 from wafer_reading.quantitative import compute_group_stats
 from wafer_reading.stacking import stack_wafer_maps
+
+logger = logging.getLogger(__name__)
 
 # 스택맵/quantitative 미연동 환경(fab.db 없음 등)의 폴백. 자연어는 doc_H(형상·모폴로지 목업)와
 # 같은 어휘로 써서, 의미 진입이 붙을 경우 올바른 시그니처에 닿게 한다. 값은 "그 패턴의 가장
@@ -235,6 +238,14 @@ def _observe_group_live(group: dict, state: RCAState) -> dict:
         "vlm_track": vlm["vlm_track"],
         "image_mode": vlm["image_mode"],
     }
+    # VLM이 이미지만 보고 읽은 패턴(#18) — CNN 라벨과 다르면 판독 불일치로 로그에 남긴다.
+    guess = vlm.get("vlm_pattern_guess")
+    if guess:
+        observation["vlm_pattern_guess"] = guess
+        if guess != group["pattern"]:
+            logger.info(
+                "판독 불일치 — CNN=%s VLM=%s (group=%s)", group["pattern"], guess, group["group_id"]
+            )
     return {**group, "observation": observation}
 
 
