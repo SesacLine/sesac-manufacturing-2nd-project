@@ -1,0 +1,77 @@
+# WAEFER 데모 서버(EC2) 배포 — 수동 트리거(workflow_dispatch)
+#
+# 왜 수동인가: 발표 전에는 "리허설 끝낸 서버가 merge 한 방에 예고 없이 바뀌는" 사고를 막기
+# 위해 사람이 버튼을 눌러야만 배포된다. 발표 후 자동화하려면 on: 에 push: {branches: [main]}
+# 를 추가하면 된다.
+#
+# 필요 Secrets (repo Settings → Secrets and variables → Actions):
+#   EC2_SSH_KEY : waefer.pem 파일 내용 전체 (-----BEGIN ... END----- 포함)
+#   EC2_HOST    : 54.180.5.85 (Elastic IP)
+# 전제: SG-WAEFER 인바운드 22가 GitHub 러너(유동 IP)에서 닿아야 한다 — 0.0.0.0/0 허용
+#   (Ubuntu AMI는 키 인증 전용이라 비밀번호 브루트포스는 원천 불가. 강화하려면 러너에서
+#    AWS CLI로 자기 IP를 SG에 임시 추가/제거하는 방식으로 교체 — 발표 후 과제).
+#
+# 배포 범위: 백엔드(git pull + uv sync + systemd 재시작) + 프론트(러너에서 빌드 → 업로드).
+# .env·fab.db·CNN 체크포인트는 건드리지 않는다(비밀/대형 파일은 수동 관리 유지).
+# ⚠️ 배치 실행 중에 누르면 그 배치는 죽는다 — 진행 중 배치가 없는지 확인하고 누를 것.
+
+name: Deploy to EC2
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-ec2          # 동시 배포 금지 — 늦게 온 쪽이 대기
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend (relative API base)
+        working-directory: frontend
+        run: |
+          echo "VITE_API_BASE_URL=/api/v1" > .env.production
+          npm ci
+          npm run build
+          # 상대경로 빌드 검증 — localhost가 박혔으면 즉시 실패
+          ! grep -r "localhost:8000" dist/assets/
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/waefer.pem
+          chmod 600 ~/.ssh/waefer.pem
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy backend (pull + sync + restart + health)
+        run: |
+          ssh -i ~/.ssh/waefer.pem ubuntu@"${{ secrets.EC2_HOST }}" '
+            set -e
+            cd ~/waefer
+            git pull origin main
+            ~/.local/bin/uv sync
+            sudo systemctl restart waefer
+            sleep 10
+            curl -sf localhost:8000/health
+            echo "backend OK: $(git log --oneline -1)"
+          '
+
+      - name: Deploy frontend (upload dist)
+        run: |
+          ssh -i ~/.ssh/waefer.pem ubuntu@"${{ secrets.EC2_HOST }}" 'rm -rf /tmp/web && mkdir -p /tmp/web'
+          scp -i ~/.ssh/waefer.pem -r frontend/dist/* ubuntu@"${{ secrets.EC2_HOST }}":/tmp/web/
+          ssh -i ~/.ssh/waefer.pem ubuntu@"${{ secrets.EC2_HOST }}" 'sudo cp -r /tmp/web/* /var/www/waefer/'
+
+      - name: Verify live site
+        run: |
+          curl -sf -o /dev/null -w "front: %{http_code}\n" https://waefer.site/
+          curl -sf -o /dev/null -w "api:   %{http_code}\n" https://waefer.site/api/v1/yield-summary
