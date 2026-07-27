@@ -104,15 +104,18 @@ class VLMReader:
         (구조화 필드는 전부 quantitative.compute_group_stats 소관)
         """
         image_mode, png_b64, n_shown = self._render_image(pattern, wafer_maps, wafer_keys)
-        if image_mode == "single":
-            query_text = SINGLE_QUERY_TEXT.format(pattern=pattern)
-        else:
-            query_text = STACKED_QUERY_TEXT.format(pattern=pattern, n=n_shown)
+        # 쿼리에 pattern(CNN 라벨)을 넘기지 않는다 — 라벨은 이미지 분기(Scratch 단일)에만 사용
+        query_text = (
+            SINGLE_QUERY_TEXT if image_mode == "single" else STACKED_QUERY_TEXT.format(n=n_shown)
+        )
 
         parsed = self._call_with_retry(build_messages(query_text, png_b64), pattern)
         return {
-            **parsed,  # location/morphology/total_description + pattern_candidate 에코
-            "pattern_candidate": pattern,  # CNN 라벨 강제 유지
+            **parsed,  # location/morphology/total_description + 모델이 이미지에서 읽은 pattern
+            # 계약상 pattern_candidate는 CNN 라벨이다(state.Observation) — 덮어쓴다.
+            # 모델이 이미지만 보고 판단한 패턴은 따로 남긴다: CNN과 다르면 판독 불일치 신호다.
+            "pattern_candidate": pattern,
+            "vlm_pattern_guess": parsed.get("pattern_candidate"),
             "vlm_track": self.track,
             "n_wafers": len(wafer_maps),
             "image_mode": image_mode,
