@@ -215,6 +215,10 @@ def _observe_group_live(group: dict, state: RCAState) -> dict:
     keys = _member_keys(group["pattern"], group["lot_ids"], state.get("cnn_results") or [])
     die_maps = _fetch_die_maps_by_keys(keys)
     if not die_maps:
+        logger.warning(
+            "die_map 로드 실패 — VLM 서술 없이 결정적 관측만 (group=%s, keys=%d)",
+            group["group_id"], len(keys),
+        )
         return {**group, "observation": _build_observation(group["pattern"], group["lot_ids"])}
 
     try:
@@ -224,10 +228,14 @@ def _observe_group_live(group: dict, state: RCAState) -> dict:
 
     try:
         vlm = _get_vlm_reader().describe_group(group["pattern"], die_maps)
-    except Exception:  # noqa: BLE001 — VLMCallError(재시도 소진)뿐 아니라 리더 생성 실패(모델
+    except Exception as exc:  # noqa: BLE001 — VLMCallError(재시도 소진)뿐 아니라 리더 생성 실패(모델
         # 로드·VLM_TRACK 오류 등)까지 전부 여기서 흡수한다. observe_groups(③)는 배치 그래프
         # 노드라 그룹별 격리(④~⑦ 전용) 밖이므로, 좁게 잡으면 그룹 하나의 VLM 실패가 배치
         # 전체를 죽인다(2026-07-27 발견) — 위 die-matrix 폴백과 동일한 원칙으로 통일한다.
+        # 삼키되 조용하진 않게 — 카드에 description이 없을 때 원인을 구분할 유일한 단서다(#127).
+        logger.warning(
+            "VLM 서술 실패 — 결정적 관측만 (group=%s): %r", group["group_id"], exc
+        )
         return {**group, "observation": observation}  # 자연어 없이 결정적 관측만
 
     observation = {
