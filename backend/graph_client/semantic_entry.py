@@ -15,7 +15,7 @@ import math
 import os
 from pathlib import Path
 
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+DEFAULT_EMBEDDING_MODEL = "text-embedding-3-large"
 
 # 인덱스 빌드와 런타임 질의는 반드시 같은 임베딩 모델을 써야 한다 —
 # 모델이 다르면 벡터 공간이 달라 코사인 비교가 무의미해진다. 양쪽 다 이 상수를 참조할 것
@@ -38,9 +38,25 @@ EMBEDDING_MODEL = os.getenv("KG_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL)
 # 표에 없는 모델은 DEFAULT를 쓰되 "미보정"임을 로그로 알린다(추측값을 조용히 쓰지 않는다).
 DEFAULT_MIN_MATCH_SCORE = 0.4
 
-# 실측 근거(07-23): text-embedding-3-small — 정답 매칭 0.53~0.71, 오답 상위 0.44~0.48.
-#   정답/오답 간격이 0.48↔0.53으로 얇다는 점에 유의(모델을 바꾸면 이 간격부터 다시 볼 것).
+# 문턱이 가르는 건 **정답 vs 무관**이지, 형제 시그니처끼리(ring@edge↔ring@mid,
+# blob@center↔cluster@center)가 아니다. 형제가 함께 후보로 올라오는 건 설계상 정상이고
+# 그건 top-k와 morphology_rank가 처리한다. 그래서 보정도 "정답 최소 vs 무관 최대"로 잰다.
+#
+# 실측 근거(07-28, `python kg_rca/tools/calibrate_semantic_threshold.py`):
+#   시그니처 8종 · 관측 프로브 16개 · 무관 프로브 4개. 프로브는 문헌 문장을 그대로 베끼지
+#   않고 바꿔 써서(표면 일치가 아니라 의미를 재도록) 07-23 실측보다 조건이 빡세다.
+#
+#   | 모델                   | 정답 최소 | 무관 최대 | 여유    | top-1 |
+#   |------------------------|----------|----------|--------|-------|
+#   | text-embedding-3-small |   0.335  |   0.339  | -0.004 |  69%  |
+#   | text-embedding-3-large |   0.457  |   0.338  | +0.119 |  75%  |
+#
+#   → small은 정답 최소가 무관 최대 **아래**로 내려와 안전한 문턱이 존재하지 않는다.
+#     large는 여유 +0.119로 갈리며 0.4가 두 분포 사이에 안정적으로 놓인다.
+#     (07-23 small 실측 "정답 0.53~0.71 / 오답 상위 0.44~0.48"은 더 쉬운 프로브 기준이었다.)
 MIN_MATCH_SCORE_BY_MODEL: dict[str, float] = {
+    "text-embedding-3-large": 0.4,
+    # small은 위 실측에서 분리 실패 — 되돌린다면 문턱부터 다시 재야 한다.
     "text-embedding-3-small": 0.4,
 }
 
