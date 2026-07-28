@@ -14,7 +14,11 @@ fab.db는 read-only (SELECT만 사용)
 
 from __future__ import annotations
 
+import io
+import os
 import sqlite3
+
+import numpy as np
 
 from .config import fab_db_path
 
@@ -86,3 +90,81 @@ def daily_equipment_yield(date_from: str, date_to: str) -> dict[str, dict[str, f
     for r in rows:
         by_eq.setdefault(r["eq"], {})[r["d"]] = r["ratio"]
     return by_eq
+
+
+# ── v1.1: die 단위 Y_S × Y_R 분해 ─────────────
+#
+# DY = Y_S × Y_R — die 수율(DY)을 무작위 결함 베이스라인(Y_R)과 체계적 손실 수율(Y_S)로 분해
+# Y_R은 논문의 windowing 계열: 최근 관측일 윈도우의 DY 최대치(라벨 불사용 — 정답 누출 차단 원칙 유지).
+# 웨이퍼 단위 수율(daily_line_yield)은 손실이 전부 패턴 웨이퍼라 분해가 퇴화하므로, 분해는 die 단위에서만.
+# die_map 값 규약(WM-811K): 0=die 없음 · 1=정상 die · 2=불량 die.
+
+# Y_R 추정 윈도우(최근 관측일 수). 윈도우 안에 정상일이 하나는 들어온다는 가정 —
+# 시나리오 불량은 이벤트성이라 14일 연속 지속되지 않음(fab_model 시나리오 구성 기준).
+# TODO(팀 결정 필요, D6): binomial-sigma 등 통계적 추정으로 올릴지, 윈도우 길이 조정.
+YR_WINDOW_DAYS = 14
+
+# die_map 파싱(보유 웨이퍼 ~2k장 — 시나리오 로트에만 존재, 실측 ~0.2초)은 요청마다 반복할 이유가 없음
+# (경로, mtime) 키로 1회 계산·캐시. fab.db는 배포 단위로 불변이라
+# mtime 키면 충분하고, 테스트의 tmp 경로 교체도 키가 갈라져 안전함.
+_die_cache: dict[tuple[str, float], list[dict]] = {}
+
+
+def _daily_die_yield() -> list[dict]:
+    """[{date, ratio}] — 일별 die 수율(그날 EDS를 끝낸 로트들의 정상 die 비율)."""
+    path = fab_db_path()
+    key = (path, os.path.getmtime(path))
+    if key not in _die_cache:
+        _die_cache.clear()  # 파일이 바뀌면 옛 캐시는 무의미 — 항상 1개만 유지
+        _die_cache[key] = _compute_daily_die_yield(path)
+    return _die_cache[key]
+
+
+def _compute_daily_die_yield(path: str) -> list[dict]:
+    con = sqlite3.connect(path)
+    con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute(
+            f"SELECT date(h.ts_out) AS d, w.die_map AS m {_EDS_JOIN}"
+            "WHERE w.die_map IS NOT NULL"
+        ).fetchall()
+    finally:
+        con.close()
+    acc: dict[str, tuple[int, int]] = {}
+    for r in rows:
+        m = np.load(io.BytesIO(r["m"]), allow_pickle=False)
+        g, b = acc.get(r["d"], (0, 0))
+        acc[r["d"]] = (g + int((m == 1).sum()), b + int((m == 2).sum()))
+    return [
+        {"date": d, "ratio": g / (g + b)}
+        for d, (g, b) in sorted(acc.items())
+        if g + b
+    ]
+
+
+def daily_yield_decomposition(upto: str | None = None) -> list[dict]:
+    """[{date, die_ratio, random_ratio, systematic_ratio}] 날짜 오름차순.
+
+    die_ratio(DY) = random_ratio(Y_R) × systematic_ratio(Y_S)가 항상 성립.
+    Y_R = 최근 YR_WINDOW_DAYS 관측일(당일 포함) DY 최대치 → Y_S = DY / Y_R (≤ 1.0).
+    당일이 윈도우에 포함되므로 정상일은 Y_S=1.0, 시나리오 주입일만 Y_S가 꺼짐.
+    """
+    try:
+        raw = _daily_die_yield()
+    except Exception:  # noqa: BLE001 — FAB_DB 미설정/부재 시 빈 값(곱게 무너짐)
+        return []
+    if upto is not None:
+        raw = [r for r in raw if r["date"] <= upto]
+    out = []
+    for i, r in enumerate(raw):
+        window = raw[max(0, i - YR_WINDOW_DAYS + 1): i + 1]
+        y_r = max(x["ratio"] for x in window)
+        out.append(
+            {
+                "date": r["date"],
+                "die_ratio": r["ratio"],
+                "random_ratio": y_r,
+                "systematic_ratio": r["ratio"] / y_r if y_r > 0 else None,
+            }
+        )
+    return out

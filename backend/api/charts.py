@@ -27,6 +27,9 @@ def get_yield_daily() -> dict:
     파이프라인 (nodes/lowyield.py)의 저수율 판단과 같은 축이라 차트 급락 지점과 분석 카드가 같은 수율 정의를 가리킴 (events: defect_date가 잡힌 분석 전부)
     reviewed 외 상태도 이상 이벤트로 내림.
 
+    (DY = Y_S × Y_R 분해, die 단위): die_yield(DY) · random(Y_R, 무작위 베이스라인) · systematic(Y_S, 체계적 손실 수율).
+    전부 0~100 소수 1자리, die 관측이 없는 날은 null — 기존 키 불변이라 프론트는 무시해도 됨.
+
     왜 커서로 자르나 — 대시보드는 "지금까지 분석된 것"을 보여주는 화면이다. fab.db에는 아직
     배치가 닿지 않은 미래 구간까지 들어 있어서, 전 구간을 그리면 분석 카드가 없는 급락 지점이
     차트에만 뜬다("이 급락은 왜 분석이 없지?"). 커서까지만 그리면 차트 끝과 대기열이 같은
@@ -42,13 +45,28 @@ def get_yield_daily() -> dict:
 
 
 def _daily_line_yield(cursor: str | None) -> list[dict]:
-    """웨이퍼 실집계 일별 라인 수율(커서 이하). fab.db 없으면 빈 배열(곱게 무너짐)."""
+    """웨이퍼 실집계 일별 라인 수율 + die 단위 Y_S×Y_R 분해(커서 이하).
+    fab.db 없으면 빈 배열(곱게 무너짐)."""
     if cursor is None:
         return []
-    return [
-        {"date": d["date"], "yield": round(d["ratio"] * 100, 1)}
-        for d in yield_calc.daily_line_yield(upto=cursor)
-    ]
+    decomp = {d["date"]: d for d in yield_calc.daily_yield_decomposition(upto=cursor)}
+
+    def _pct(v: float | None) -> float | None:
+        return round(v * 100, 1) if v is not None else None
+
+    days = []
+    for d in yield_calc.daily_line_yield(upto=cursor):
+        dc = decomp.get(d["date"], {})
+        days.append(
+            {
+                "date": d["date"],
+                "yield": round(d["ratio"] * 100, 1),
+                "die_yield": _pct(dc.get("die_ratio")),
+                "random": _pct(dc.get("random_ratio")),
+                "systematic": _pct(dc.get("systematic_ratio")),
+            }
+        )
+    return days
 
 
 @router.get("/stats/causes")
