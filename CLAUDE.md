@@ -15,8 +15,6 @@
 - 팀 프로젝트(SeSAC 2nd Project). **개인 작업 공간은 이 repo 안의 `personalspace_rca/`**(`.gitignore`
   등록, git 추적 밖). 날짜별 `MMDD work/` 폴더에 그날 노트를 둔다. Claude는 개인 작업/노트를
   항상 여기에 만들 것 — repo 상위의 옛 `Semiconductor/personalspace/`는 폐기된 위치다.
-- 진행 중인 미완 배선: grouper가 `normal_lots`를 수집하지만 **저장→API→프론트 노출은 미구현**
-  ("판독상 정상 N로트" 카드, status `normal_reading` 신설안 — 판독 담당).
 - 정본: `docs/semiconductor_proposal.md`(기획 전체) · `docs/API_명세서_v2.0.md`(API 계약).
 
 ### ⚠️ 낡은 문서 주의보 — 아래는 인용하지 말 것
@@ -41,7 +39,7 @@
 | 폴더 | 역할 | 상태 |
 |---|---|---|
 | `frontend/` | React + Vite 대시보드. 3화면 + 근거 모달 + 차트, dev 서버 `:5173` | API v2.0 정합 구현 |
-| `backend/` | FastAPI + LangGraph 오케스트레이션. 파이프라인 ⓪~⑦ + API 10종 | 구현됨, 계속 갱신 중 |
+| `backend/` | FastAPI + LangGraph 오케스트레이션. 파이프라인 ⓪~⑦ + API 12종 | 구현됨, 계속 갱신 중 |
 | `wafer_reading/` | 판독 모듈 — `classifier/`(ResNet-18 5클래스), `stacking`(그룹 스택맵), `quantitative`(die-matrix→KG 어휘), `vlm/` | 구현됨. **학습 체크포인트 커밋 금지**(재학습으로 재생성) |
 | `kg_rca/` | 지식그래프. 문헌 → Neo4j → LLM KG 추출 → 결정적 순회로 `hypotheses.json` 생성 | 완성, 계속 갱신 중 |
 | `secsgem-mcp/` | MCP 서버. 시뮬레이터가 만든 가상 fab 데이터(`fab.db`)를 9종 도구로 조회 | 완성 |
@@ -60,7 +58,7 @@ MCP 싱글턴 세션 제약으로 보류).
 ② group_by_pattern       nodes/grouper.py       패턴별 그룹화 (Normal은 그룹 미생성 → normal_lots로 수집)
 ③ observe_groups         nodes/vlm_describe.py  그룹 스택맵 관측(Observation) — die-matrix 실연동
                                                 (stacking+quantitative → signature/angular 등 KG 어휘),
-                                                VLM 자연어는 미연동
+                                                VLM 자연어는 VLM_LIVE=1일 때 실연동(pty 트랙)
 → run_groups             graph.py               그룹마다 아래 서브그래프 호출 (contextvars로 [패턴] 로그 태그)
 
 [그룹 서브그래프 — 노드 함수가 GroupState를 직접 받는다]
@@ -69,7 +67,7 @@ MCP 싱글턴 세션 제약으로 보류).
 ⑤ build_hypotheses       nodes/hypothesis.py    증거 수집·검증·fab 재랭킹 (자동 tier=LLM 에이전트)
 ⑥ review_hypotheses      nodes/critic.py        규칙 게이트 — 채택/기각/judge_unknown (결정론)
    ├─(채택 0건)──────────→ ⑦' respond_without_llm     ← route_on_verdicts (조건부 엣지)
-⑦ generate_response      nodes/response.py      응답 카드 (실제 LLM 미연동, 템플릿)
+⑦ generate_response      nodes/response.py      응답 카드 (결정적 템플릿, RESPONSE_LLM=1이면 영→한 번역 LLM)
 ```
 
 - **조건부 엣지 2종이 환각 억제를 구조로 보장한다**: 후보 0건(unmapped)·채택 0건(insufficient)이면
@@ -87,8 +85,10 @@ MCP 싱글턴 세션 제약으로 보류).
   나머지로 배치를 완료한다 — "한 패턴 실패 ≠ 배치 실패". 실패 그룹은 재시도하지 않는다.
   `run_batch` 최상단의 배치-레벨 `except`는 그룹 루프 밖(⓪~③·저장)만 담당한다. 정본 D18.
 - **실시간 모델/LLM 호출**: ①CNN(**비전 모델**, LLM 아님) · **⑤의 자동(Parameter) tier**
-  (`create_react_agent` — 반자동·근거없음은 결정론) · ⑦(LLM 예정, 현재 템플릿).
-  **⑥ Critic은 규칙 기반으로 LLM을 쓰지 않는다(확정).** ③VLM 자연어는 미연동.
+  (`create_react_agent` — 반자동·근거없음은 결정론) · ③VLM 자연어(`VLM_LIVE=1` opt-in) ·
+  ⑦ 영→한 번역(`RESPONSE_LLM=1` opt-in — 서술 골격은 결정적 템플릿 유지).
+  **⑥ Critic은 규칙 기반으로 LLM을 쓰지 않는다(확정).** 모델은 역할 1개 = env 변수 1개로 지정한다
+  (#118 `config.resolve_model` — `.env_example` LLM 절이 정본).
 - KG 검색 키: ①CNN 라벨(pattern) + ③관측(signature·angular·자연어)이 ④로 넘어가 진입(enum/의미)과
   판별자 재랭킹(morphology_rank)에 쓰인다. `KG_LIVE=1`이면 Neo4j 라이브 순회(`LiveKGClient` +
   semantic_entry), 기본은 `hypotheses.json` 파일 조회(`KGClient`).
@@ -106,7 +106,7 @@ MCP 싱글턴 세션 제약으로 보류).
 WM-811K의 나머지 패턴은 전부 `Unknown`(= "새로운 결함 패턴")이고 **`Normal`은 정상 웨이퍼라
 그룹을 만들지 않는다.** KG~응답생성 경로는 3종에만 연결된다.
 
-### API 10종 (정본 `docs/API_명세서_v2.0.md` §2)
+### API 12종 (정본 `docs/API_명세서_v2.0.md` §2)
 
 전부 `/api/v1` prefix, 라우터는 `backend/api/` 하위:
 
@@ -114,6 +114,8 @@ WM-811K의 나머지 패턴은 전부 `Unknown`(= "새로운 결함 패턴")이�
 GET  /api/v1/yield-summary                                    수율 현황 요약 (화면1)
 GET  /api/v1/analyses                                         분석 결과 대기열 (화면1)
 POST /api/v1/batches                                          배치 실행 (202 비동기 접수)
+GET  /api/v1/batches/today                                    서버 '오늘'·버튼 대상 구간 (화면1 배지, §2.3.1)
+POST /api/v1/batches/reset                                    마지막 배치 롤백 — 시연용 초기화 (§2.3.2)
 GET  /api/v1/batches/{batch_id}                               배치 진행 상태 (화면2)
 GET  /api/v1/analyses/{analysis_id}                           분석 결과 상세 (화면3)
 GET  /api/v1/analyses/{analysis_id}/evidence/{hypothesis_id}  근거 상세 (모달)
@@ -127,7 +129,10 @@ GET  /health                                                  (prefix 밖, main.
 v2.0 확장(전부 additive): `status`에 `novel`(CNN Unknown=미지 패턴 OSR, 구 unmapped에서 분리) ·
 `confidence`(medium|low — **high 없음**) · `yield_impact`(그룹 수율영향 %p) · `actions`(권장 조치
 {type, hold, text}) · 가설 카드 `cluster_id`/`is_primary`(원인군).
-**서버의 "오늘"은 `EVENT_DATE`**(기본 2026-04-01, env 오버라이드) — 날짜에 `now()` 금지.
+**서버의 "오늘"은 커서(직전 배치)+2일**이고, 커서가 없을 때만 `EVENT_DATE`(기본 2026-04-01,
+env 오버라이드)가 기준점이다 — 날짜에 `now()` 금지. `.env`에 `SEED_UNTIL`(YYYY-MM-DD)이 있으면
+기동 시 그 날짜까지 과거 배치를 하루 한 건씩 자동 적재한다(`backend/seed.py` 데모 시딩 —
+화면 '오늘'=SEED_UNTIL+2, 빈 DB 기준 약 35배치·2분·LLM 과금. 데모 합의값은 2026-02-04).
 
 ### MCP 연결 시 반드시 알아야 할 것
 
@@ -209,9 +214,9 @@ CORS는 `:5173`만 허용된다(`backend/main.py`, 프록시 미사용).
 
 - 새 키는 `.env_example`에 **한 줄 주석**(용도·기본값)과 함께 넣는다.
 - 비밀값(`*_KEY`·`*_SECRET`·`*_PASSWORD`·`*_TOKEN`)은 **값을 비워** `KEY=` 형태로만 — 채우면 그대로 커밋된다.
-- 선택 옵션은 기존 `#KG_LIVE=1`처럼 **주석 처리**해서 넣고, 안 쓰는 키는 지운다.
+- 선택 옵션은 주석 처리가 아니라 **0으로 명시**해서 넣는다(#127 정책 — 주석으로 두면 끄는 방법이
+  사라지는 키가 있다). 안 쓰는 키는 지우되 되살릴 근거 문서를 그 자리에 남긴다.
 - 셀프체크: diff에 `getenv`/`environ`이 있는데 `.env_example` diff가 없으면 리뷰에서 잡는다.
-- 현재 `.env`와 `.env_example`은 이미 어긋나 있다 — **건드리는 키만** 맞추고 전체 정리는 별도 이슈.
 
 테스트(fab.db 빌드 불필요 — CI와 동일 스코프):
 
@@ -242,7 +247,9 @@ sudo systemctl status waefer                      # 상태 확인
 sudo systemctl restart waefer                     # 재시작(.env 수정 후 필수)
 sudo journalctl -u waefer -f                      # 실시간 로그
 cd ~/waefer && git pull && sudo systemctl restart waefer   # 코드 반영(의존성 변경 시 uv sync 추가)
-rm -f ~/waefer/app_state.db                       # 배치 상태 리셋(+restart) — fab.db는 불변
+rm -f ~/waefer/app_state.db                       # 배치 상태 리셋(+restart) — fab.db는 불변.
+                                                  # SEED_UNTIL 설정 시 재기동에서 자동 재시딩(~2분)
+curl -X POST localhost:8000/api/v1/batches/reset  # 마지막 배치만 되돌리기(리허설 소진분 복구)
 ```
 
 - 서버 `.env`는 로컬과 다르다: **KG_LIVE 금지**(서버에 Neo4j 없음 — 넣으면 ④에서 배치 사망).
@@ -261,8 +268,8 @@ rm -f ~/waefer/app_state.db                       # 배치 상태 리셋(+restar
 | `lowyield.py` 저수율 임계값 | `LOW_YIELD_THRESHOLD = 0.8` 고정값 | 동적 임계값 미검토 |
 | `grouper.py` 최소 로트수 게이트 | `MIN_LOTS_PER_GROUP = 1`(게이트 없음) | 서브클러스터링 없음 |
 | `cnn.py` 체크포인트 부재 | `"Center"` 폴백(CI·미학습 환경 대비) | 폴백 중엔 그룹이 1개만 생긴다 |
-| `vlm_describe.py` VLM 자연어 | **미연동** — die-matrix 성분만 실연동, location/morphology_text는 빈 값 | **파인튜닝 없음** 확정, VLM API + few-shot 예정. signature가 있으면 자연어 없어도 KG enum 진입 가능 |
-| `response.py` | 실제 LLM 미연동, 결정적 템플릿 | 채택 0건 시 LLM 미호출은 조건부 엣지로 구조화됨 |
+| `vlm_describe.py` VLM 자연어 | 기본은 die-matrix 결정적 관측만, **`VLM_LIVE=1`이면 실연동**(pty 트랙, 그룹당 API 과금) | **파인튜닝 없음** 확정. signature가 있으면 자연어 없어도 KG enum 진입 가능. open 트랙(Qwen)은 GPU 미확보로 보류 |
+| `response.py` | 결정적 템플릿(+`RESPONSE_LLM=1`이면 description 영→한 번역) | 채택 0건 시 LLM 미호출은 조건부 엣지로 구조화됨 |
 | 검증 라운드 상한 | **배치당 에이전트 스텝 상한** `AGENT_RECURSION_LIMIT = 8` — 초과 시 그 배치 미조사 폴백 | 가설별 추적 ID 로깅 미반영. 후보 전량 순회는 유지(함축은 랭킹 담당) |
 
 컴포넌트별 상세 개선 목록(VLM/Hypothesis/Critic/응답생성/E2E평가 5개 표)은
@@ -272,11 +279,13 @@ rm -f ~/waefer/app_state.db                       # 배치 상태 리셋(+restar
 
 - 데이터 역할: **WM-811K**=결함을 본다(입력) · **KG**=원인 후보를 만든다(지식) ·
   **fab.db**=후보를 검증한다(사실) · **Ground Truth**=성능을 평가한다(평가).
-- E2E 정답 대조는 **11개 시나리오 중 1개 완료** — SC-CENTER-01에서 근본원인 top-1 달성
-  (정답 193위 rejected → 0위 accepted, 함정 P2 시간역전 44건 명시 기각).
+- E2E 정답 대조는 **11개 시나리오 전량 완료(07-26)** — cluster top-1 9/9 · 음성(unmatched) 2/2
+  "판단 불가" 반환 · ⑥ 인과 서명 게이트(P6)로 과채택 353→49건(정답 사멸 0).
   대조 키는 `matched_cause`(kg cause↔시뮬레이터 어휘 변환표) — **cause 문자열 직접 비교는 표기
-  차이로 0%가 나온다.** 스크립트·결과는 `personalspace_rca/0723 work/`(git 밖).
-- 미완: 나머지 10개 시나리오 · 단일경로 baseline 비교 · `secsgem-mcp/eval/metrics.py`(스텁) 수리.
+  차이로 0%가 나온다.** 하네스는 `backend/tests/e2e/eval_hypocritic_scenario.py`(회귀 게이트는
+  `HYPO_CRITIC_EVAL=1` opt-in·과금), 결과 정본은 `personalspace_rca/0727 work/hypo_critic_test_result.md`(git 밖).
+- 미완: 단일경로 baseline 비교 마무리(Arm A 스크립트 `0726 work/`) · `secsgem-mcp/eval/metrics.py`(스텁) 수리.
+  발표용 평가·점수화 설계는 `personalspace_rca/0728 work/hypo_critic_eval_kickoff.md`.
 - 지표 8종: Latency / 판독 정확도(P·R) / 설명 정확도(BLEU·ROUGE-L) / faithfulness / 경로 정합성 /
   **단일경로 vs 다중가설탐색 RCA 품질**(핵심 비교 실험) / 사용자 만족도 / KG-Fab 어휘 정합성.
 
@@ -310,7 +319,7 @@ rm -f ~/waefer/app_state.db                       # 배치 상태 리셋(+restar
 | 스켈레톤 구축 로그·팀 결정사항·컴포넌트별 개선목록 (가장 자주 갱신) | `docs/skeleton_kickoff.md` |
 | LangGraph 골격·노드별 설계(①CNN·③VLM관측·④KG조회·⑤Hypothesis·⑥Critic·⑦Response) | `docs/node_langraph_spec/` |
 | 백엔드 내부 정책 결정(D1~D18) | `docs/BACKEND_DECISIONS.md` |
-| 프론트↔백엔드 API 계약 10종(정본) | `docs/API_명세서_v2.0.md` |
+| 프론트↔백엔드 API 계약 12종(정본) | `docs/API_명세서_v2.0.md` |
 | KG 스키마 전체 명세 | `docs/KG_schema_v1.3.md` |
 | `hypotheses.json` 출력 필드별 상세 명세(정본) | `kg_rca/KG_output_명세.md` |
 | KG 진행상황·남은 문제·가설 수 | `kg_rca/STATUS.md` |
