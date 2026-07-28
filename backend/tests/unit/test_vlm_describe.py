@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 
 from backend.nodes import graphrag
@@ -152,3 +154,76 @@ def test_vlm_live_backend_failure_degrades_to_deterministic_observation(monkeypa
 
     assert "vlm_track" not in result["observation"]   # VLM 실생성 흔적 없음 — 결정적 관측만
     assert result["lot_ids"] == ["LOT1"]               # 기존 필드는 보존(예외 삼키다 상태 훼손 없음)
+
+
+# --- #127 실패 폴백이 조용하지 않아야 한다(caplog) ---
+
+class _StubVLMReader:
+    def describe_group(self, pattern, die_maps):
+        return {
+            "location_text": "center",
+            "morphology_text": "blob",
+            "total_description": "center blob",
+            "vlm_track": "pty",
+            "image_mode": "stack",
+            "vlm_pattern_guess": pattern,
+        }
+
+
+def _live_warnings(caplog):
+    return [r for r in caplog.records if r.levelno == logging.WARNING]
+
+
+def test_vlm_failure_logs_warning_with_group_id(monkeypatch, caplog):
+    """VLM이 죽으면 폴백은 그대로 두되 원인이 로그에 남아야 한다 — 카드에 description이
+    없을 때 'VLM 실패'와 '이미지 없음'과 'VLM_LIVE 미설정'을 구분할 수단이 이것뿐이다."""
+    monkeypatch.setattr(vlm_describe_module, "_member_keys", lambda *a, **k: [("LOT1", "1")])
+    monkeypatch.setattr(
+        vlm_describe_module, "_fetch_die_maps_by_keys",
+        lambda keys: [np.ones((8, 8), dtype=np.uint8)],
+    )
+    monkeypatch.setattr(vlm_describe_module, "_get_vlm_reader", lambda: _RaisingVLMReader())
+
+    group = {"group_id": "g1", "pattern": "Center", "lot_ids": ["LOT1"], "status": "ok"}
+    with caplog.at_level(logging.WARNING, logger="backend.nodes.vlm_describe"):
+        result = _observe_group_live(group, {"cnn_results": []})
+
+    warnings = _live_warnings(caplog)
+    assert len(warnings) == 1
+    assert "g1" in warnings[0].getMessage()
+    assert "401 Unauthorized" in warnings[0].getMessage()   # 어떤 예외였는지까지 남아야 함
+    assert "vlm_track" not in result["observation"]         # 폴백 동작은 그대로
+
+
+def test_missing_die_maps_logs_distinct_warning(monkeypatch, caplog):
+    """이미지를 못 읽은 경우도 조용히 넘어가면 안 되고, VLM 실패와 구분돼야 한다."""
+    monkeypatch.delenv("FAB_DB", raising=False)
+    monkeypatch.setattr(vlm_describe_module, "_member_keys", lambda *a, **k: [("LOT1", "1")])
+    monkeypatch.setattr(vlm_describe_module, "_fetch_die_maps_by_keys", lambda keys: [])
+
+    group = {"group_id": "g2", "pattern": "Center", "lot_ids": ["LOT1"], "status": "ok"}
+    with caplog.at_level(logging.WARNING, logger="backend.nodes.vlm_describe"):
+        result = _observe_group_live(group, {"cnn_results": []})
+
+    warnings = _live_warnings(caplog)
+    assert len(warnings) == 1
+    assert "g2" in warnings[0].getMessage()
+    assert "die_map" in warnings[0].getMessage()            # VLM 실패 메시지와 구분되는 키워드
+    assert "vlm_track" not in result["observation"]
+
+
+def test_vlm_success_logs_no_warning(monkeypatch, caplog):
+    """회귀 방지 — 정상 경로에서 경고가 뜨면 로그가 늑대소년이 된다."""
+    monkeypatch.setattr(vlm_describe_module, "_member_keys", lambda *a, **k: [("LOT1", "1")])
+    monkeypatch.setattr(
+        vlm_describe_module, "_fetch_die_maps_by_keys",
+        lambda keys: [np.ones((8, 8), dtype=np.uint8)],
+    )
+    monkeypatch.setattr(vlm_describe_module, "_get_vlm_reader", lambda: _StubVLMReader())
+
+    group = {"group_id": "g3", "pattern": "Center", "lot_ids": ["LOT1"], "status": "ok"}
+    with caplog.at_level(logging.WARNING, logger="backend.nodes.vlm_describe"):
+        result = _observe_group_live(group, {"cnn_results": []})
+
+    assert _live_warnings(caplog) == []
+    assert result["observation"]["vlm_track"] == "pty"

@@ -20,50 +20,59 @@ export const TODAY = {
   batch_id: null,
 };
 
-/** 대기열 — reviewed / insufficient / novel / normal_reading 4종을 한 번에 태운다.
- *  yield_impact가 null인 행(구 저장분)도 하나 둬 정렬·표시 폴백을 함께 본다. */
+/** 대기열 — reviewed / novel / normal_reading을 한 번에 태운다.
+ *  yield_impact가 null인 행(구 저장분)도 하나 둬 정렬·표시 폴백을 함께 본다.
+ *
+ *  ⚠️ 값 배치가 의도적이다 — **날짜 순서와 수율영향 순서를 일부러 어긋나게** 뒀다.
+ *  둘이 같으면 "정렬이 실제로 동작하는지"와 "서버가 준 순서 그대로인지"를 구분할 수 없다.
+ *  배열 순서 = 분석일 내림차순(서버 sort=latest와 정합)이고, 같은 배치에서 나온 두 행은
+ *  analyzed_date가 같다(그 값은 배치 started_at에서 파생되므로 배치가 같으면 같다). */
 export const ANALYSES = {
   count: 4,
   items: [
     {
       analysis_id: "grp_center_20260208_01",
-      batch_id: "batch_20260209_01",
-      analyzed_date: "2026-02-09",
+      batch_id: "batch_20260208_01",
+      analyzed_date: "2026-02-08",
       pattern: "Center",
       lot_count: 7,
+      cohort_count: 2, // 분석 참조 로트 — 소속과 별개 층(§2.2)
       top_cause: "center_polishing_too_fast",
       status: "reviewed",
       confidence: "medium",
-      yield_impact: -3.4,
+      yield_impact: -1.2, // 최신이지만 피해는 가장 작다
     },
     {
-      analysis_id: "grp_edgering_20260208_01",
-      batch_id: "batch_20260209_01",
-      analyzed_date: "2026-02-09",
-      pattern: "Edge-Ring",
-      lot_count: 3,
-      top_cause: "nonuniform_etch_process",
-      status: "reviewed",
+      analysis_id: "grp_unknown_20260208_01",
+      batch_id: "batch_20260208_01",
+      analyzed_date: "2026-02-08", // 위와 같은 배치 → 같은 날짜(정상)
+      pattern: "Unknown",
+      lot_count: 2,
+      cohort_count: 0,
+      top_cause: null,
+      status: "novel",
       confidence: "low",
       yield_impact: -2.1,
     },
     {
-      analysis_id: "grp_unknown_20260208_01",
-      batch_id: "batch_20260209_01",
-      analyzed_date: "2026-02-09",
-      pattern: "Unknown",
-      lot_count: 2,
-      top_cause: null,
-      status: "novel",
+      analysis_id: "grp_edgering_20260207_01",
+      batch_id: "batch_20260207_01",
+      analyzed_date: "2026-02-07",
+      pattern: "Edge-Ring",
+      lot_count: 3,
+      cohort_count: 1,
+      top_cause: "nonuniform_etch_process",
+      status: "reviewed",
       confidence: "low",
-      yield_impact: -1.2,
+      yield_impact: -3.4, // 가장 오래됐지만 피해는 가장 크다
     },
     {
-      analysis_id: "grp_normal_20260208_01",
-      batch_id: "batch_20260209_01",
-      analyzed_date: "2026-02-09",
+      analysis_id: "grp_normal_20260205_01",
+      batch_id: "batch_20260205_01",
+      analyzed_date: "2026-02-05",
       pattern: "Normal",
       lot_count: 5,
+      cohort_count: 0,
       top_cause: null,
       status: "normal_reading",
       confidence: "low",
@@ -121,6 +130,8 @@ export const ANALYSIS_REVIEWED = {
   ],
   lot_count: 2,
   lot_ids: ["lot00042", "lot00043"],
+  // 분석 참조 로트(그룹 소속 아님) — "분석 참조 로트" 카드 렌더 재료.
+  cohort_lot_ids: ["lot00031", "lot00028"],
   hypotheses: [
     {
       hypothesis_id: "h0",
@@ -193,6 +204,8 @@ export const ANALYSIS_NOVEL = {
   actions: [{ type: "investigation", hold: true, text: "로트 격리 후 전문가 재판독" }],
   lot_count: 1,
   lot_ids: ["lot00099"],
+  // 후보 0건 그룹이라 ⑤가 돌지 않았다 → 참조 없음. "분석 참조 로트" 카드가 숨는 경로.
+  cohort_lot_ids: [],
   hypotheses: [],
 };
 
@@ -219,6 +232,7 @@ export const EVIDENCE = {
         },
       ],
       normal_ratio: { value: 0.05, caption: "정상 로트 중 5%만 이 장비를 지났습니다." },
+      cohort_note: "최근 7일 동일 패턴 2로트를 분석 참조로 함께 비교했습니다.",
     },
     telemetry: {
       available: true,

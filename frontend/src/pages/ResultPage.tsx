@@ -174,6 +174,34 @@ export default function ResultPage() {
           ))}
         </div>
 
+        {/* 분석 참조 로트(§2.5 cohort_lot_ids) — 소속 로트가 아니라 **참조 대상**이다.
+            하루 단위 그룹은 로트가 1~2개뿐이라 "그 로트가 지난 장비" 전부가 공통으로 잡힌다.
+            그래서 ⑤가 공통 장비를 찾을 때만 같은 패턴 최근 7일 로트를 함께 넣는데, 그 사실이
+            화면에 없으면 "로트 1개로 어떻게 장비를 특정했나"에 답할 수 없다.
+            **소속 로트에 합치지 않는 이유**(cohort_front_proposal.md): 소속 로트는 처분 대상
+            (Hold 권고·수율영향 계산 기준)이라 과거 로트를 섞으면 ① 한 로트가 여러 카드에
+            중복 소속 ② 수율영향 이중 계산 ③ "저것도 재처분해야 하나?" 혼란이 생긴다.
+            클릭 동작(loadWafers)은 소속 로트와 같은 것을 쓴다. 참조가 없으면 카드를 숨긴다. */}
+        {analysis.cohort_lot_ids.length > 0 && (
+          <div className="box">
+            <div className="box-title">
+              <span>분석 참조 로트 {analysis.cohort_lot_ids.length}개</span>
+              <span style={{ fontWeight: 400, color: "var(--text-dim)" }}>
+                최근 7일 같은 패턴 로트 — 공통 장비를 찾기 위해 참조만 했습니다(처분 대상 아님)
+              </span>
+            </div>
+            {analysis.cohort_lot_ids.map((lotId) => (
+              <span
+                key={lotId}
+                className={selectedLot === lotId ? "lot-chip sel" : "lot-chip"}
+                onClick={() => loadWafers(lotId)}
+              >
+                {lotId}
+              </span>
+            ))}
+          </div>
+        )}
+
         {selectedLot && waferError && <div className="notice error">{waferError}</div>}
         {selectedLot && wafers && (
           <WaferStrip

@@ -48,6 +48,19 @@ th, td { border-bottom: 1px solid var(--line); padding: 9px 8px; text-align: lef
 th { color: var(--text-dim); font-weight: 600; font-size: 12.5px; }
 tr.clickable:hover { background: #f2f3f4; cursor: pointer; }
 
+/* 정렬 가능한 열 머리 — th 안의 버튼으로 만든다(키보드 접근·스크린리더 위해 button 유지).
+   화살표 자리(.arr)는 정렬 중이 아닐 때도 폭을 차지해, 클릭할 때마다 열 너비가 흔들리지 않게 한다. */
+th.sortable { padding: 0; }
+th.sortable > button {
+  width: 100%; display: flex; align-items: center; gap: 4px;
+  background: none; border: none; padding: 9px 8px; cursor: pointer;
+  font: inherit; color: inherit; text-align: left;
+}
+th.sortable > button:hover { background: #f2f3f4; color: var(--text); }
+th.sortable > button .arr { font-size: 10px; min-width: 8px; color: var(--text-dim); }
+th.sortable[aria-sort]:not([aria-sort="none"]) > button { color: var(--text); }
+th.sortable[aria-sort]:not([aria-sort="none"]) > button .arr { color: var(--accent-dark); }
+
 .badge { display: inline-block; padding: 3px 10px; border: 1px solid var(--line-strong); font-size: 12px; border-radius: 2px; }
 .badge.dark { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); }
 .badge.warn { border-color: var(--bad); color: var(--bad); }
