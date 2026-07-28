@@ -207,7 +207,7 @@ build_hypotheses(candidates, lot_ids, mcp)
 | 무엇 | 어디 | 결정적인가 | 없으면 |
 |---|---|---|---|
 | KG 후보(`hypotheses.json`) | ④가 이미 조회해 `candidates`로 넘김 | 결정적 | 후보 없음 → 이 노드 미도달 |
-| LLM (`create_react_agent`) | `자동` tier 조사 | **비결정적** (temp=0으로 완화) | 폴백: 미조사로 남김 |
+| LLM (`create_react_agent`) | `자동` tier 조사 | **비결정적** (temp=0으로 완화) | 폴백: 미조사로 남김 — 단 **호출 실패**에 한한다. 모델 env 미설정(`RCA_AGENT_MODEL`·`OPENAI_MODEL` 둘 다 없음)은 폴백 없이 **fail-fast**(#118, `config.resolve_model`) |
 | MCP `run_commonality_analysis` / `get_normal_lot_ratio` | pre-pass(모든 후보 공통) | 결정적 | suspect 못 정함 → 미조사 |
 | MCP `query_telemetry` | `자동` tier | 결정적 | drift 판정 불가 |
 | MCP `get_maintenance_history` | `반자동`(Maintenance) | 결정적 | 정황 미수집 |
@@ -228,6 +228,7 @@ build_hypotheses(candidates, lot_ids, mcp)
 | `MAINT_LOOKAHEAD_DAYS` | 14 | `hypothesis.py` | 결함 이후 정비(시간역전 반박 재료) 수집 창 (D13) |
 | `max_points` | 500 × param 수 | `_build_group_prompt` | 서버 다운샘플에서 특정 param이 통째로 빠지는 것 방지 |
 | `temperature` | 0 | `_make_model` | 재현성(같은 입력 → 같은 결과) |
+| 모델 지정 | `RCA_AGENT_MODEL` → `OPENAI_MODEL` 폴백 → 둘 다 없으면 fail-fast | `_make_model` · `config.resolve_model` | #118 역할별 변수 분리(기본 배정 gpt-5.4 티어). ⚠️ temp=0을 거부하는 계열(gpt-5.5·5.6 — temp 1 고정·top_p 거부)은 이 역할에 배정 금지: 400으로 죽거나, 우회하면 재현성 상실 |
 
 ---
 
