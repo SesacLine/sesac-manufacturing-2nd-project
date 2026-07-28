@@ -12,7 +12,7 @@
  */
 
 import type { BatchLogEntry } from "../api/types";
-import { TOOL_LABELS } from "../labels";
+import { TOOL_LABELS, batchLogPatternLabel } from "../labels";
 
 const COMMON = "공통";
 
@@ -55,7 +55,7 @@ export default function BatchLogByPattern({ logs }: { logs: BatchLogEntry[] }) {
         return (
           <details key={pattern} className="acc">
             <summary>
-              <span className="pat-name">{pattern}</span>
+              <span className="pat-name">{batchLogPatternLabel(pattern)}</span>
               {errors > 0 && <span className="badge warn">오류 {errors}건</span>}
               <span className="tw">
                 도구 {byTool.size}종 · {total}건
