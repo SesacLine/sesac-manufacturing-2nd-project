@@ -318,11 +318,13 @@ export default function ResultPage() {
             <div className="box-title" style={{ margin: "20px 0 6px" }}>
               <span>권장 조치</span>
               <span style={{ fontWeight: 400, color: "var(--text-dim)" }}>
-                제안일 뿐이며 실행 여부는 엔지니어가 판단합니다 · 항목을 누르면 완료 체크
+                제안일 뿐이며 실행 여부는 엔지니어가 판단합니다 · 항목을 누르면 완료 체크(이
+                브라우저에 저장됩니다)
               </span>
             </div>
             <div className="box">
-              <ActionList actions={analysis.actions} />
+              {/* analysisId를 넘겨야 체크 상태를 분석별로 저장·복원한다(ActionList 주석). */}
+              <ActionList actions={analysis.actions} analysisId={analysis.analysis_id} />
             </div>
           </>
         )}
