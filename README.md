@@ -178,8 +178,9 @@ NEO4J_PASSWORD=<콘솔 발급값>
 NEO4J_DATABASE=neo4j
 ```
 
-⚠️ **루트 `.env`와 `kg_rca/.env` 둘 다** 같은 값으로 맞춰야 한다 — kg_rca 스크립트는 인자 없는
-`load_dotenv()`라 실행 위치에 따라 읽는 파일이 갈린다.
+⚠️ env 파일은 **저장소 루트의 `.env` 하나뿐**이다(0728 통합). `kg_rca/.env`를 만들지 말 것 —
+`find_dotenv()`는 cwd가 아니라 **호출한 `.py` 파일의 디렉터리**부터 위로 걷기 때문에, 그 파일이
+있으면 kg_rca 스크립트가 실행 위치와 무관하게 그쪽을 집어 루트 `.env`가 통째로 무시된다.
 
 접속 확인(`python kg_rca/1_test_connection.py`) 후, `kg_rca/` 안에서 `1_test_connection.py`부터
 `6_ask_graphrag.py`(여기서 `hypotheses.json` 재생성)까지 번호 순서로 실행한다.

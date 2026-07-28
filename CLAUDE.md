@@ -252,7 +252,10 @@ rm -f ~/waefer/app_state.db                       # 배치 상태 리셋(+restar
 curl -X POST localhost:8000/api/v1/batches/reset  # 마지막 배치만 되돌리기(리허설 소진분 복구)
 ```
 
-- 서버 `.env`는 로컬과 다르다: **KG_LIVE 금지**(서버에 Neo4j 없음 — 넣으면 ④에서 배치 사망).
+- 서버 `.env`는 로컬과 다르다. `KG_LIVE`는 **0728부터 서버에서도 1로 둘 수 있다** — Neo4j가
+  Aura(관리형)로 옮겨가 EC2도 같은 인스턴스를 바라보기 때문(구 "서버엔 Neo4j 없으니 금지"
+  지침 폐기). 다만 Aura에 못 붙으면 ④에서 배치가 죽으므로 켜기 전 `1_test_connection.py`로
+  확인하고, 그래프 리빌드 중에는 0으로 내려둘 것.
   fab.db·CNN 체크포인트는 git 밖이라 갱신 시 scp로 올리고 MD5 대조.
 - 프론트 반영: 로컬 `frontend/`에서 `npm run build`(`.env.production`의
   `VITE_API_BASE_URL=/api/v1` 유지) → `dist/*`를 `/tmp/web/` scp → 서버에서
