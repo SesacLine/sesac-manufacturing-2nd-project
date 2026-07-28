@@ -12,7 +12,7 @@ import sqlite3
 from ..state import RCAState
 
 # TODO(팀 결정 필요, jiun_work_0710.md 참고): 고정값 대신 mean - k*std 같은 동적 임계값도 검토.
-LOW_YIELD_THRESHOLD = 0.8
+LOW_YIELD_THRESHOLD = 0.9
 
 
 def select_low_yield_lots(state: RCAState) -> dict:
