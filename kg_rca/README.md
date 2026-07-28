@@ -124,7 +124,9 @@ cp .env_example .env
 | 변수 | 예시 | 설명 |
 |---|---|---|
 | `OPENAI_API_KEY` | `sk-...` | 추출·문장 합성용. langchain이 자동으로 읽는다 |
-| `OPENAI_MODEL` | `gpt-5.4-mini` | 5번(추출)·6번(합성)이 쓰는 모델 |
+| `KG_EXTRACT_MODEL` | `gpt-5.4-mini` | 5번(추출). **미설정이 기본** — 코드 기본값이 곧 정본 |
+| `KG_SYNTH_MODEL` | `gpt-5.4-mini` | 6번(합성). 동상 |
+| `ANCHOR_MODEL` | (미설정) | 앵커 보강 패스만 상위 모델. 미설정이면 `KG_EXTRACT_MODEL`과 동일 |
 | `NEO4J_URI` | `bolt://localhost:7687` | Neo4j Bolt 주소 |
 | `NEO4J_USERNAME` | `neo4j` | 기본 계정명 |
 | `NEO4J_PASSWORD` | `password` | **Neo4j 설치 시 정한 비밀번호로 바꿀 것** |

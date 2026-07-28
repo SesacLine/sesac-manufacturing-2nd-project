@@ -56,6 +56,28 @@ def compact(date_str: str) -> str:
     return date_str.replace("-", "")
 
 
+# --- 모듈별 모델 지정 ---------------------------
+# 규약: 역할 1개 = 변수 1개
+# 구 `OPENAI_MODEL`은 **deprecated 공통 폴백**으로만 남긴다(기존 .env 무중단).
+#
+# kg_rca(KG 추출·문장 합성)는 이 체인에 넣지 않음.
+# KG 산출물(hypotheses.json 772건)은 고정 대상이라, OPENAI_MODEL을 올렸을 때 다음 재빌드에서 상위 모델로 바뀌면 안 됨(kg_rca는 자기 변수 + 리터럴 기본값을 사용)
+
+def resolve_model(role_env: str, *, purpose: str) -> str:
+    """역할 변수 → OPENAI_MODEL(구 폴백) 순으로 모델명 지정.
+
+    둘 다 없으면 즉시 실패. 
+    기본값 대신 예외를 내는 이유: 의도하지 않은 모델로 배치가 끝까지 돌아버리면 결과 수치의 출처를 잃기 때문.
+    """
+    model = os.environ.get(role_env) or os.environ.get("OPENAI_MODEL")
+    if not model:
+        raise RuntimeError(
+            f"{purpose} model is not specified. Please set `{role_env}` in .env"
+            f"(deprecated common fallback `OPENAI_MODEL` is also recognized)."
+        )
+    return model
+
+
 def app_state_db_path() -> str:
     return os.environ.get("APP_STATE_DB", "./app_state.db")
 

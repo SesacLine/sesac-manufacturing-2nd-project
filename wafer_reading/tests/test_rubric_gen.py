@@ -27,6 +27,7 @@ from wafer_reading.rubric_gen.models import (
     ModelSeparationError,
     assert_distinct,
     base_model,
+    model_family,
 )
 from wafer_reading.rubric_gen.judge import (
     JudgeCallError,
@@ -474,7 +475,7 @@ def test_parse_judgement_rejects_missing_axis():
 
 def test_role_models_are_distinct_by_default():
     models = assert_distinct("pty")
-    assert len({base_model(m) for m in models.values()}) == 3  # 서술/변환/판정 전부 다름
+    assert len({model_family(m) for m in models.values()}) == 3  # 서술/변환/판정 전부 다른 계열
 
 
 def test_same_model_in_two_roles_fails_fast(monkeypatch):
@@ -492,9 +493,45 @@ def test_date_pinned_variant_counts_as_same_model(monkeypatch):
         assert_distinct("pty")
 
 
+def test_size_variants_are_different_models_but_same_family():
+    # 동일성
+    assert base_model("gpt-5.4-mini") != base_model("gpt-5.4")
+    assert base_model("gpt-5.4-pro") != base_model("gpt-5.4-nano")
+    # 독립성
+    assert model_family("gpt-5.4-mini") == model_family("gpt-5.4")
+    assert model_family("gpt-5.4-nano") == model_family("gpt-5.4")
+    assert model_family("gpt-5.4-pro") == model_family("gpt-5.4")
+
+    assert model_family("gpt-5.4-mini-2026-03-17") == model_family("gpt-5.4-2026-03-05")
+
+
+def test_same_generation_variant_fails_separation(monkeypatch):
+    monkeypatch.setattr(rg_models, "RUBRIC_GEN_MODEL", "gpt-5.4-mini")
+    with pytest.raises(ModelSeparationError, match="독립성 부족"):
+        assert_distinct("pty")
+
+
+def test_identical_model_reports_same_model_not_family(monkeypatch):
+    monkeypatch.setattr(rg_models, "RUBRIC_GEN_MODEL", "gpt-5.4")  # 서술의 날짜핀 없는 별칭
+    with pytest.raises(ModelSeparationError, match="같은 모델"):
+        assert_distinct("pty")
+
+
+def test_different_generations_stay_distinct():
+    assert model_family("gpt-5.4") != model_family("gpt-5.5")
+    assert model_family("gpt-5.2-2025-12-11") != model_family("gpt-5.4-2026-03-05")
+
+
+def test_current_role_assignment_passes_separation():
+    models = assert_distinct("pty")
+    assert model_family(models["description_vlm"]) == "gpt-5.4"
+    assert model_family(models["rubric_generator"]) == "gpt-5.5"
+    assert model_family(models["judge"]) == "gpt-5.2"
+
+
 def test_judge_free_run_only_checks_two_roles(monkeypatch):
     monkeypatch.setattr(rg_models, "JUDGE_MODEL", rg_models.RUBRIC_GEN_MODEL)
-    models = assert_distinct("pty", judge_used=False)  # judge 미실행이면 검사 대상 아님
+    models = assert_distinct("pty", judge_used=False)
     assert models["rubric_generator"] == rg_models.RUBRIC_GEN_MODEL
 
 

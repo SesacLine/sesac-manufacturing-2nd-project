@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import os
 
-MODEL = os.environ.get("VLM_PTY_MODEL", "gpt-5.4-mini-2026-03-17")
+# VLM 서술(pty) 모델
+MODEL = os.environ.get("VLM_PTY_MODEL", "gpt-5.4-2026-03-05")
 
 
 class OpenAIBackend:
@@ -30,6 +31,7 @@ class OpenAIBackend:
         temperature: float | None = 0,
         base_url: str | None = None,
         api_key: str | None = None,
+        seed: int | None = None,
     ):
         from dotenv import load_dotenv
         from openai import OpenAI
@@ -46,6 +48,7 @@ class OpenAIBackend:
         self._client = OpenAI(**kwargs)
         self._model = model
         self._temperature = temperature
+        self._seed = seed
 
     def generate(self, messages: list[dict]) -> str:
         payload = [_to_openai(m) for m in messages]
@@ -60,6 +63,8 @@ class OpenAIBackend:
 
     def _create(self, payload: list[dict]) -> str:
         kwargs = {} if self._temperature is None else {"temperature": self._temperature}
+        if self._seed is not None:
+            kwargs["seed"] = self._seed
         resp = self._client.chat.completions.create(
             model=self._model,
             response_format={"type": "json_object"},
