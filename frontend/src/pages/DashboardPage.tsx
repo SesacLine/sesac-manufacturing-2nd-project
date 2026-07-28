@@ -3,12 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError, formatDetail } from "../api/client";
-import type { AnalysisList, BatchToday, CauseStats, YieldDaily } from "../api/types";
+import type { AnalysisList, AnalysisSummary, BatchToday, CauseStats, YieldDaily } from "../api/types";
 import CauseCharts from "../components/CauseCharts";
 import TrendChart from "../components/TrendChart";
 import {
   causeLabel,
-  CONFIDENCE_LABELS,
   impactClass,
   QUEUE_CAUSE_FALLBACK,
   QUEUE_STATUS_PILL,
@@ -16,6 +15,53 @@ import {
 } from "../labels";
 
 const PAGE_SIZE = 10;
+
+// 대기열은 서버에서 **한 번에 다 받아** 정렬·페이징을 프론트가 한다(§2.2 각주 "정렬 자체는
+// 프론트 몫 — 서버 정렬 키는 여전히 배치 시각"). 페이지 단위로 받으면 정렬이 그 페이지
+// 안에서만 일어나 "가장 위험한 그룹"이 2페이지에 숨는다. 규모가 작아 가능한 선택이다 —
+// 배치는 하루 1회고 하루 분석은 보통 1~3건이라, 데이터축 90일을 다 돌려도 수백 건이다.
+const FETCH_LIMIT = 500;
+
+/** 정렬 가능한 열. 값은 AnalysisSummary의 키 — 비교 함수가 이 키로 값을 꺼낸다. */
+type SortKey = "analyzed_date" | "pattern" | "yield_impact" | "lot_count" | "top_cause" | "status";
+type SortDir = "asc" | "desc";
+
+/** 열별 기본 방향 — 처음 눌렀을 때 "보통 보고 싶은 순서"가 나오게 한다.
+ *  수율영향은 가장 음수(=가장 나쁨)가 위, 날짜는 최신이 위. */
+const DEFAULT_DIR: Record<SortKey, SortDir> = {
+  analyzed_date: "desc",
+  pattern: "asc",
+  yield_impact: "asc", // -3.8 < -1.2 → 오름차순이 곧 "피해 큰 순"
+  lot_count: "desc",
+  top_cause: "asc",
+  status: "asc",
+};
+
+const SORT_LABEL: Record<SortKey, string> = {
+  analyzed_date: "분석일",
+  pattern: "결함 패턴 그룹",
+  yield_impact: "수율영향",
+  // 한 열에 두 값을 "소속/참조"로 나란히 보여준다. 정렬 키는 **소속 로트 수**다 —
+  // 참조는 이 카드의 처분 대상이 아니라 근거 계산에 참조만 한 로트라, 그걸로 줄을
+  // 세우면 "일이 많은 순"이 아니라 "이력이 많았던 순"이 된다.
+  lot_count: "소속/참조 로트",
+  top_cause: "유력 원인 후보",
+  status: "상태",
+};
+
+/** null은 방향과 무관하게 **항상 맨 뒤**로 보낸다.
+ *  값이 없는 건 "작은 값"이 아니라 "모르는 값"이라, 오름차순에서 맨 위로 올라오면
+ *  구 저장분(yield_impact/analyzed_date가 null)이 가장 위험한 그룹처럼 보인다. */
+function compareRows(a: AnalysisSummary, b: AnalysisSummary, key: SortKey, dir: SortDir): number {
+  const av = a[key];
+  const bv = b[key];
+  if (av === null && bv === null) return 0;
+  if (av === null) return 1;
+  if (bv === null) return -1;
+  const sign = dir === "asc" ? 1 : -1;
+  if (typeof av === "number" && typeof bv === "number") return (av - bv) * sign;
+  return String(av).localeCompare(String(bv), "ko") * sign;
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -26,6 +72,12 @@ export default function DashboardPage() {
   const [list, setList] = useState<AnalysisList | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  // 대기열 정렬 — 기본은 **분석일 최신순**. 이 화면은 "매일 아침 눌러 쌓인 이력"을 보는
+  // 곳이라 방금 돌린 배치 결과가 맨 위에 있어야 한다. 위험도로 보고 싶으면 수율영향
+  // 머리글을 누른다(예전엔 수율영향순이 강제였고 머리글은 "↓ 날짜순"으로 하드코딩돼 있어
+  // 표시와 동작이 어긋나 있었다).
+  const [sortKey, setSortKey] = useState<SortKey>("analyzed_date");
+  const [sortDir, setSortDir] = useState<SortDir>(DEFAULT_DIR.analyzed_date);
   const [runNotice, setRunNotice] = useState<string | null>(null);
   const [runBlocked, setRunBlocked] = useState(false);
 
@@ -47,12 +99,14 @@ export default function DashboardPage() {
   }, []);
   useEffect(loadHeader, [loadHeader]);
 
+  // 전량 조회(정렬·페이징은 아래에서 프론트가 한다). sort=latest는 유지 — lastBatchId가
+  // items[0]을 "가장 최근 배치"로 읽기 때문이고, 표시 순서는 sortKey가 따로 정한다.
   const loadList = useCallback(() => {
     api
-      .analyses("latest", PAGE_SIZE, page * PAGE_SIZE)
+      .analyses("latest", FETCH_LIMIT, 0)
       .then(setList)
       .catch((e: ApiError) => setListError(formatDetail(e.detail)));
-  }, [page]);
+  }, []);
   useEffect(loadList, [loadList]);
 
   const runBatch = async () => {
@@ -89,7 +143,13 @@ export default function DashboardPage() {
     }
   };
 
-  const totalPages = list ? Math.max(1, Math.ceil(list.count / PAGE_SIZE)) : 1;
+  /** 열 머리 클릭 — 같은 열이면 방향만 뒤집고, 다른 열이면 그 열의 기본 방향으로 간다.
+   *  정렬이 바뀌면 1페이지로 돌아간다(3페이지를 보던 중 정렬만 바뀌면 엉뚱한 구간이 보인다). */
+  const toggleSort = (key: SortKey) => {
+    setSortDir((prev) => (key === sortKey ? (prev === "asc" ? "desc" : "asc") : DEFAULT_DIR[key]));
+    setSortKey(key);
+    setPage(0);
+  };
 
   // "로그 확인"이 걸 배치 — 대기열 최신 행(sort=latest라 items[0]이 가장 최근 배치)의 batch_id.
   // 예전엔 실행 응답을 localStorage에 담아 썼는데, 그러면 이 브라우저에서 버튼을 눌러본 적이
@@ -97,11 +157,14 @@ export default function DashboardPage() {
   // 가져오면 누가 언제 돌렸든 항상 최신 로그로 이어진다.
   const lastBatchId = list?.items[0]?.batch_id ?? null;
 
-  // 화면 표시 정렬: 이 페이지의 행을 수율영향 큰 순(가장 음수 먼저)으로 재배열한다(v8 "↓ 수율영향순").
-  // 서버 정렬은 latest 고정이라 페이지 내에서만 재정렬 — null(구 저장분)은 맨 뒤로 민다.
-  const rows = list
-    ? [...list.items].sort((a, b) => (a.yield_impact ?? Infinity) - (b.yield_impact ?? Infinity))
-    : [];
+  // 전체를 정렬한 뒤 잘라야 "가장 위험한 그룹"이 1페이지에 온다 — 페이지를 먼저 자르고
+  // 정렬하면 그 페이지 안에서만 순서가 바뀐다(예전 동작).
+  const sorted = list ? [...list.items].sort((a, b) => compareRows(a, b, sortKey, sortDir)) : [];
+  const rows = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  // 페이지 수는 **실제로 받아 온 행 수** 기준이다. list.count는 서버의 전체 건수라, 혹시
+  // FETCH_LIMIT를 넘어 잘렸다면 있지도 않은 페이지가 생겨 빈 화면이 나온다.
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
 
   return (
     <section className="panel">
@@ -164,7 +227,11 @@ export default function DashboardPage() {
             <span>
               ◆ 분석 결과 — 누적 {list?.count ?? 0}건 (행 클릭 시 결과 열람 가능)
             </span>
-            <span style={{ fontWeight: 400 }}>↓ 날짜순</span>
+            {/* 예전엔 "↓ 날짜순"이 하드코딩돼 있었는데 실제 정렬은 수율영향순이라 표시와
+                동작이 어긋나 있었다. 지금은 현재 정렬 상태를 그대로 읽어 쓴다. */}
+            <span style={{ fontWeight: 400 }}>
+              {sortDir === "asc" ? "↑" : "↓"} {SORT_LABEL[sortKey]}순 (머리글 클릭)
+            </span>
           </div>
           {list && list.items.length > 0 && (
             <div className="caption" style={{ marginBottom: 6 }}>
@@ -175,13 +242,25 @@ export default function DashboardPage() {
             <table>
               <thead>
                 <tr>
-                  <th>분석일</th>
-                  <th>결함 패턴 그룹</th>
-                  <th>수율영향</th>
-                  <th>소속 로트</th>
-                  <th>유력 원인 후보</th>
-                  <th>확신 수준</th>
-                  <th>상태</th>
+                  {/* 머리글 = 정렬 버튼. aria-sort로 현재 정렬 열·방향을 노출하고(스크린리더),
+                      CSS도 그 속성으로 강조한다 — 상태의 단일 소스가 되어 어긋날 수 없다.
+                      정렬 중이 아닌 열은 화살표 자리를 빈 칸으로 남겨 열 너비를 고정한다. */}
+                  {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => (
+                    <th
+                      key={key}
+                      className="sortable"
+                      aria-sort={
+                        sortKey !== key ? "none" : sortDir === "asc" ? "ascending" : "descending"
+                      }
+                    >
+                      <button type="button" onClick={() => toggleSort(key)}>
+                        {SORT_LABEL[key]}
+                        <span className="arr">
+                          {sortKey !== key ? "" : sortDir === "asc" ? "▲" : "▼"}
+                        </span>
+                      </button>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -200,7 +279,13 @@ export default function DashboardPage() {
                     <td className={impactClass(item.yield_impact)}>
                       {item.yield_impact === null ? "—" : `${item.yield_impact}%p`}
                     </td>
-                    <td>{item.lot_count}개</td>
+                    {/* 소속/참조 — 참조 로트(§2.2 cohort_count)는 공통 장비를 찾을 때만
+                        참조한 최근 7일 동일 패턴 로트라 처분 대상이 아니다. 합산하지 않고
+                        슬래시로 나란히 둬서 "1개로 판단한 게 아니다"가 목록에서도 읽히게 한다. */}
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      {item.lot_count}개
+                      <span style={{ color: "var(--text-dim)" }}>/{item.cohort_count}개</span>
+                    </td>
                     {/* reviewed면 top_cause를 한국어 gloss로(원문 id는 tooltip에 남긴다 —
                         KG·평가 대조는 원문 문자열로 하므로 화면에서 사라지면 안 된다).
                         그 외 상태는 top_cause가 null이라 상태별 판단불가 사유로 대체. */}
@@ -209,8 +294,10 @@ export default function DashboardPage() {
                         ? causeLabel(item.top_cause)
                         : (QUEUE_CAUSE_FALLBACK[item.status] ?? "판단 불가")}
                     </td>
-                    {/* R1 확신 수준(§2.5) — "확정"은 없음 */}
-                    <td>{CONFIDENCE_LABELS[item.confidence] ?? "불확실"}</td>
+                    {/* 확신 수준(§2.5 confidence) 열은 뺐다 — 백엔드 _confidence()가 사실상 상수
+                        "low"라(채택 "클러스터"가 아니라 행 수를 세는 문제) 전 행이 "불확실"로 같아
+                        정보량이 0이었다. 응답 필드·store 컬럼은 그대로라 로직 수리 후 열만 되살리면
+                        된다. "확정 아님" 고지 자체는 화면3 배너(ResultPage)가 계속 말한다. */}
                     {/* v9: 상태 열은 "조치 필요 여부"만 — 세부 사유는 왼쪽 원인 열이 말한다 */}
                     <td>
                       {(() => {
@@ -233,7 +320,7 @@ export default function DashboardPage() {
               원인 후보 검증까지 한 번에 실행되고, 결과가 이 목록에 쌓입니다.
             </div>
           )}
-          {list && list.count > PAGE_SIZE && (
+          {sorted.length > PAGE_SIZE && (
             <div className="pager">
               <button className="ghost-btn" disabled={page === 0} onClick={() => setPage(page - 1)}>
                 ◀ 이전

@@ -75,6 +75,8 @@ EXPECTED_UNMAPPED = {
         # 테스트 state에 observation이 없어 영어 서술 소스가 없음 → 한국어 description도 None
         "description": None,
         "confidence": "low",  # R1: 채택 원인 없음(unmapped) → 불확실
+        # §2.5 코호트 — 후보 0건이라 ⑤가 안 돌았다 → 함께 본 로트 없음
+        "cohort_lot_ids": [],
         # v1.1 권장 조치 — unmapped(지식 공백)는 온톨로지 확충 조사만
         "actions": [
             {"type": "investigation", "hold": False,
@@ -104,6 +106,8 @@ EXPECTED_INSUFFICIENT = {
         # 테스트 state에 observation이 없어 영어 서술 소스가 없음 → 한국어 description도 None
         "description": None,
         "confidence": "low",  # R1: 채택 0건(insufficient) → 불확실
+        # §2.5 코호트 — 이 테스트 state의 evidence에 cohort_lot_ids가 없다 → 빈 배열
+        "cohort_lot_ids": [],
         # v1.1 권장 조치 — insufficient(NFF)는 격리 + 수동 조사
         "actions": [
             {"type": "containment", "hold": True,
@@ -159,6 +163,7 @@ EXPECTED_REVIEWED = {
         ),
         "description": None,                  # observation 없음 → None
         "confidence": "low",                  # R1: evidence 없음 → 불확실
+        "cohort_lot_ids": [],                 # §2.5 코호트 — evidence에 없음 → 빈 배열
         # v1.1 권장 조치 — reviewed는 격리 + 대표 가설 기반 시정 + 예방
         "actions": [
             {"type": "containment", "hold": True,
@@ -384,3 +389,46 @@ def test_confidence_never_high():
     strong = [{"evidence": {"normal_ratio": 0.1}}]
     assert _confidence(strong) in ("medium", "low")
     assert _confidence([]) == "low"
+
+
+# ── §2.5 cohort_lot_ids: 분석 참조 로트 노출 ─────────────────────────────────────────────
+def _state_with_cohort(cohort: list[str]) -> dict:
+    accepted = [{
+        "cause": "cX", "tier": "자동", "equipment": "EQ-9", "sentence": "s",
+        "evidence": {"cohort_lot_ids": cohort},
+    }]
+    return {
+        "group_id": GROUP_ID, "pattern": PATTERN, "lot_ids": LOT_IDS,
+        "candidates": [{"cause": "cX"}],
+        "hypotheses": accepted,
+        "critic_result": {"status": "accepted", "accepted": accepted, "rejected": []},
+    }
+
+
+def test_cohort_carried_to_card():
+    """⑤가 스탬프한 이력 로트가 그대로 카드에 실린다(정상 경로)."""
+    from backend.nodes.response import generate_response
+
+    fr = generate_response(_state_with_cohort(["lot-old-1", "lot-old-2"]))["final_response"]
+    assert fr["cohort_lot_ids"] == ["lot-old-1", "lot-old-2"]
+
+
+def test_cohort_never_leaks_group_lots():
+    """방어 필터 — 소속 로트가 참조 목록에 섞여 들어와도 카드에는 안 실린다.
+
+    ⑤는 이미 이력 로트만 담아 주지만(hypothesis.py), "§2.5 cohort_lot_ids는 lot_ids와
+    겹치지 않는다"가 API 계약이라 상류가 바뀌어도 이 지점에서 지켜져야 한다. 섞이면
+    화면3에서 한 로트가 "소속"과 "참조"에 동시에 뜨고 수율영향이 이중 계산된 것처럼 보인다.
+    """
+    from backend.nodes.response import generate_response
+
+    fr = generate_response(_state_with_cohort(LOT_IDS + ["lot-old-1"]))["final_response"]
+    assert fr["cohort_lot_ids"] == ["lot-old-1"]
+    assert not set(fr["cohort_lot_ids"]) & set(LOT_IDS)
+
+
+def test_cohort_empty_when_no_history():
+    """이력 없음(첫 배치·캐치업·7일 창에 동일 패턴 없음) → 빈 배열 = 카드 숨김."""
+    from backend.nodes.response import generate_response
+
+    assert generate_response(_state_with_cohort([]))["final_response"]["cohort_lot_ids"] == []

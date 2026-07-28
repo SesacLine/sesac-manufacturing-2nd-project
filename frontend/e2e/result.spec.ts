@@ -132,3 +132,54 @@ test("로트를 누르면 판독 웨이퍼맵 영역이 열린다", async ({ pag
   await expect(page.locator(".wafer-depth")).toBeVisible();
   await expect(page.locator(".wf-item")).toHaveCount(2);
 });
+
+test("분석 참조 로트를 소속 로트와 분리해 보여주고, 눌러도 웨이퍼맵이 열린다", async ({ page }) => {
+  // 하루 그룹은 로트가 1~2개뿐이라 ⑤가 공통 장비를 찾을 때 최근 7일 같은 패턴 로트를 참조로
+  // 함께 본다(§2.5 cohort_lot_ids). 소속 로트는 처분 대상(Hold·수율영향 기준)이라 참조 로트가
+  // 섞이면 중복 소속·수율영향 이중 계산이 되므로, 카드가 분리돼 있고 소속 로트 칩이
+  // 오염되지 않았는지까지 확인한다.
+  await page.route("**/api/v1/lots/*/wafers", (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        lot_id: "lot00031",
+        wafer_count: 1,
+        defect_count: 1,
+        normal_count: 0,
+        wafers: [
+          { wafer_id: "1", defect_pattern: "Center", die_map_url: "/lots/lot00031/wafers/1/die-map" },
+        ],
+      }),
+    }),
+  );
+  await page.goto(REVIEWED);
+
+  const cohortBox = page.locator(".box", { hasText: "분석 참조 로트" });
+  await expect(cohortBox).toContainText(
+    `분석 참조 로트 ${ANALYSIS_REVIEWED.cohort_lot_ids.length}개`,
+  );
+  await expect(cohortBox).toContainText("처분 대상 아님");
+
+  // 소속 로트 카드는 그룹 로트만 — 코호트 로트가 섞이면 실패
+  const ownBox = page.locator(".box", { hasText: `소속 로트 ${ANALYSIS_REVIEWED.lot_count}개` });
+  await expect(ownBox.locator(".lot-chip")).toHaveCount(ANALYSIS_REVIEWED.lot_ids.length);
+
+  // 코호트 칩도 같은 웨이퍼맵 동작을 쓴다
+  await cohortBox.locator(".lot-chip").first().click();
+  await expect(page.locator(".wafer-depth")).toBeVisible();
+});
+
+test("참조 로트가 없는 그룹은 '분석 참조 로트' 카드를 아예 그리지 않는다", async ({ page }) => {
+  // 후보 0건(novel/unmapped)은 ⑤가 안 돌아 코호트가 빈 배열 — 빈 카드가 남으면 안 된다.
+  await page.goto(NOVEL);
+  await expect(page.locator("body")).not.toContainText("분석 참조 로트");
+});
+
+test("근거 모달이 commonality 로트 수가 소속보다 큰 이유를 설명한다", async ({ page }) => {
+  // 표의 total_lots(7)가 카드 소속 로트(2)보다 큰 건 참조 로트를 함께 넣었기 때문이다.
+  // 설명이 없으면 "왜 7로트지?"가 되므로 §2.7 commonality 섹션에 캡션이 있어야 한다.
+  await page.goto(REVIEWED);
+  await page.locator(".hcard").first().getByRole("button", { name: /근거/ }).click();
+  await expect(page.locator(".modal")).toContainText("분석 참조로 함께 비교했습니다");
+});

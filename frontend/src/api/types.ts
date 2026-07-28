@@ -43,6 +43,10 @@ export interface AnalysisSummary {
   top_cause: string | null;
   status: AnalysisStatus;
   confidence: Confidence; // 구 저장분은 서버가 "low" 폴백
+  /** 분석 참조 로트 **수**(§2.5 cohort_lot_ids의 길이). 대기열은 "소속/참조"를 한 열에
+   *  나란히 보여주므로 목록에는 개수만 내려온다 — 로트 id는 화면3에서 본다.
+   *  참조가 없었거나 구 저장분이면 0(서버 COALESCE). */
+  cohort_count: number;
   yield_impact: number | null; // %p (음수 = 라인 평균을 끌어내림). 구 저장분 null
   /** 분석 실행일(YYYY-MM-DD) — 그 분석을 만든 배치의 시작일. 결함 발생일이 아니다.
    *  배치 row가 없는 구 저장분은 null → 대기열에서 "—"로 표시. */
@@ -122,6 +126,12 @@ export interface Analysis {
   actions: RecommendedAction[]; // v1.1 권장 조치 (구 저장분 [])
   lot_count: number;
   lot_ids: string[];
+  /** 분석 참조 로트 — ⑤가 공통 장비를 찾을 때 **참조만 한** 최근 7일 동일 패턴 로트
+   *  (그룹 로트 제외). 하루 그룹은 1~2로트라 그대로 두면 통과 장비가 전부 "공통"으로 잡힌다.
+   *  **소속 로트(lot_ids)에 합치지 말 것** — 소속 로트는 처분 대상(Hold·수율영향 기준)이라
+   *  섞으면 로트 중복 소속·수율영향 이중 계산·재처분 혼란이 생긴다. 별도 행으로 그린다.
+   *  참조가 없거나(이력 없음) 구 저장분이면 빈 배열 → 행 자체를 숨긴다. */
+  cohort_lot_ids: string[];
   hypotheses: Hypothesis[]; // 받은 순서 신뢰 — index 0이 대표(§2.5 정렬 불변식)
 }
 
@@ -181,6 +191,9 @@ export interface CommonalitySection {
   reason?: UnavailableReason;
   rows: CommonalityRow[];
   normal_ratio: { value: number; caption: string } | null;
+  /** 위 rows의 로트 수가 카드 소속 로트 수보다 큰 이유(분석 참조 로트 포함) — 완성 문장.
+   *  참조가 없었으면 null. 구 저장분에도 없으므로 널 방어 필수. */
+  cohort_note: string | null;
 }
 export interface TelemetrySection {
   available: boolean;

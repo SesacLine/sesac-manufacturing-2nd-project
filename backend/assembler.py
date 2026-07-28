@@ -63,6 +63,11 @@ def build_analysis_payload(analysis_id: str, final: dict) -> dict:
         "actions": final.get("actions", []),
         "lot_count": final["lot_count"],
         "lot_ids": final["lot_ids"],
+        # ⑤ commonality가 **함께 본** 로트(그룹 로트 제외) — 하루 그룹(#97)이 1~2로트라
+        # 공통 장비 탐색 입력만 "같은 패턴 최근 7일"로 넓힌 것(hypothesis._commonality_cohort).
+        # 소속 로트가 아니므로 lot_ids/lot_count에 합치지 않는다 — 화면3도 별도 카드로 그린다.
+        # 코호트가 없거나(콜드 스타트) 후보 0건 그룹이면 빈 배열. 구 저장분에도 없어 [] 폴백.
+        "cohort_lot_ids": final.get("cohort_lot_ids", []),
         "hypotheses": hypotheses_out,
         "evidence": evidence_map,
     }
@@ -125,10 +130,25 @@ def _build_hypothesis(analysis_id: str, h: dict) -> tuple[dict, dict]:
     return card, evidence
 
 
+def _cohort_note(ev: dict) -> str | None:
+    """commonality 로트 수가 소속 로트 수보다 큰 이유를 한 줄로 설명한다(§2.7).
+
+    ⑤가 공통 장비를 찾을 때만 "같은 패턴 최근 K일" 이력 로트를 함께 넣기 때문인데
+    (hypothesis._commonality_cohort), 그 사실을 모르면 아래 rows의 로트 수가 카드의
+    `lot_count`와 안 맞아 보인다. 코호트가 안 잡힌 배치(이력 없음)면 None — 설명할 게 없다.
+    """
+    extra = ev.get("cohort_lot_ids") or []
+    days = ev.get("cohort_days")
+    if not extra or not days:
+        return None
+    return f"최근 {days}일 동일 패턴 {len(extra)}로트를 분석 참조로 함께 비교했습니다."
+
+
 def _commonality_section(ev: dict, suspect_eq: str | None) -> dict:
     rows = ev.get("commonality_rows") or []
     if not rows:
-        return {"available": False, "reason": "no_data_found", "rows": [], "normal_ratio": None}
+        return {"available": False, "reason": "no_data_found", "rows": [],
+                "normal_ratio": None, "cohort_note": None}
     normal_ratio = None
     value = ev.get("normal_ratio")
     if value is not None and suspect_eq:
@@ -142,7 +162,8 @@ def _commonality_section(ev: dict, suspect_eq: str | None) -> dict:
             "value": value,
             "caption": f"{suspect_eq} 통과 로트 중 정상 {pct}% → {judgement}",
         }
-    return {"available": True, "rows": rows, "normal_ratio": normal_ratio}
+    return {"available": True, "rows": rows, "normal_ratio": normal_ratio,
+            "cohort_note": _cohort_note(ev)}
 
 
 def _telemetry_section(ev: dict, tier: str, suspect_eq: str | None) -> dict:
