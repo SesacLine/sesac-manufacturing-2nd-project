@@ -61,7 +61,8 @@ def init_db() -> None:
                 defect_date TEXT,
                 top_equipment TEXT,
                 top_stage TEXT,
-                top_tier TEXT
+                top_tier TEXT,
+                cohort_count INTEGER
             );
             CREATE TABLE IF NOT EXISTS wafer_reading (
                 lot_id TEXT NOT NULL,
@@ -76,6 +77,7 @@ def init_db() -> None:
         for col, decl in (
             ("confidence", "TEXT"), ("yield_impact", "REAL"), ("defect_date", "TEXT"),
             ("top_equipment", "TEXT"), ("top_stage", "TEXT"), ("top_tier", "TEXT"),
+            ("cohort_count", "INTEGER"),
         ):
             try:
                 con.execute(f"ALTER TABLE analysis ADD COLUMN {col} {decl}")
@@ -270,13 +272,20 @@ def save_analysis(
     top_tier: str | None = None,
 ) -> None:
     """v1.1 확장 컬럼(confidence~top_tier)은 목록(§2.2)·차트(§2.8/§2.9) 조회용 비정규화 —
-    정본은 여전히 payload_json이며, 확장 컬럼은 payload를 다시 파싱하지 않기 위한 캐시다."""
+    정본은 여전히 payload_json이며, 확장 컬럼은 payload를 다시 파싱하지 않기 위한 캐시다.
+
+    cohort_count(분석 참조 로트 수)만 인자가 아니라 **payload에서 세어** 넣는다 — 정본
+    (payload.cohort_lot_ids)과 캐시가 따로 전달되면 어긋날 수 있는데, 여기서 파생시키면
+    구조적으로 어긋날 수 없다. 호출부(batch_runner 2곳)도 손댈 필요가 없다.
+    """
+    cohort_count = len(payload.get("cohort_lot_ids") or [])
     with _lock, _connect() as con:
         con.execute(
             "INSERT OR REPLACE INTO analysis "
             "(analysis_id, batch_id, seq, pattern, status, lot_count, top_cause, payload_json, "
-            " confidence, yield_impact, defect_date, top_equipment, top_stage, top_tier) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " confidence, yield_impact, defect_date, top_equipment, top_stage, top_tier, "
+            " cohort_count) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 analysis_id,
                 batch_id,
@@ -292,6 +301,7 @@ def save_analysis(
                 top_equipment,
                 top_stage,
                 top_tier,
+                cohort_count,
             ),
         )
 
@@ -313,6 +323,7 @@ def list_analyses(sort: str, limit: int, offset: int) -> tuple[int, list[dict]]:
         rows = con.execute(
             f"SELECT a.analysis_id, a.batch_id, a.pattern, a.lot_count, a.top_cause, a.status, "
             f"       COALESCE(a.confidence, 'low') AS confidence, a.yield_impact, "
+            f"       COALESCE(a.cohort_count, 0) AS cohort_count, "
             f"       substr(b.started_at, 1, 10) AS analyzed_date "
             f"FROM analysis a LEFT JOIN batch b ON b.batch_id = a.batch_id "
             f"ORDER BY a.seq {order}, a.analysis_id {order} LIMIT ? OFFSET ?",

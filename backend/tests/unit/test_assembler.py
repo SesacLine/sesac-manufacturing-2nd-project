@@ -239,3 +239,45 @@ def test_event_date_env_override(monkeypatch):
         monkeypatch.delenv("EVENT_DATE")
         importlib.reload(config)  # 기본값 복원 — 다른 테스트 오염 방지
     assert config.EVENT_DATE == "2026-04-01"
+
+
+# ── §2.7 commonality.cohort_note: 로트 수 불일치 설명 ────────────────────────────────────
+def _ev_with_cohort(**over) -> dict:
+    ev = {
+        "commonality_rows": [{"equipment_id": "CMP-02", "chamber_id": None,
+                              "matched_lots": 3, "total_lots": 3, "ratio": 1.0, "note": None}],
+        "cohort_lot_ids": ["lot-old-1", "lot-old-2"],
+        "cohort_days": 7,
+    }
+    ev.update(over)
+    return ev
+
+
+def test_cohort_note_explains_lot_count_gap():
+    """표의 total_lots가 카드 lot_count보다 큰 이유를 완성 문장으로 설명한다."""
+    from backend.assembler import _commonality_section
+
+    note = _commonality_section(_ev_with_cohort(), "CMP-02")["cohort_note"]
+    assert note is not None
+    assert "7일" in note and "2로트" in note, note
+
+
+def test_cohort_note_none_without_history():
+    """참조 로트가 없으면 설명할 게 없다 → None(프론트가 캡션 자체를 안 그림)."""
+    from backend.assembler import _commonality_section
+
+    assert _commonality_section(_ev_with_cohort(cohort_lot_ids=[]), "CMP-02")["cohort_note"] is None
+    # 구 저장분(코호트 키 자체가 없음)도 안전하게 None
+    assert _commonality_section(
+        {"commonality_rows": [{"equipment_id": "E", "chamber_id": None, "matched_lots": 1,
+                               "total_lots": 1, "ratio": 1.0, "note": None}]}, "E",
+    )["cohort_note"] is None
+
+
+def test_cohort_note_key_exists_even_when_section_unavailable():
+    """§2.7 필드 존재 계약 — available:false에서도 키는 있어야 한다(프론트 널 방어 전제)."""
+    from backend.assembler import _commonality_section
+
+    section = _commonality_section({}, None)
+    assert section["available"] is False
+    assert "cohort_note" in section and section["cohort_note"] is None

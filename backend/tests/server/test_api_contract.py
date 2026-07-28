@@ -108,7 +108,8 @@ def test_stats_and_events_after_save(client):
     store.save_analysis(
         analysis_id="grp_center_20260401_01", batch_id="b1", seq=1,
         pattern="Center", status="reviewed", lot_count=2, top_cause="clean_nozzle_clog",
-        payload={"analysis_id": "grp_center_20260401_01"},
+        payload={"analysis_id": "grp_center_20260401_01",
+                 "cohort_lot_ids": ["lot-ref-1", "lot-ref-2"]},
         confidence="medium", yield_impact=-3.1, defect_date="2026-03-11",
         top_equipment="CLEAN-01", top_stage="CLEAN", top_tier="auto",
     )
@@ -129,10 +130,25 @@ def test_stats_and_events_after_save(client):
         "Center": True, "Unknown": False,
     }
 
-    # §2.2 목록에도 confidence·yield_impact가 실린다
+    # §2.2 목록에도 confidence·yield_impact·cohort_count가 실린다
     items = client.get("/api/v1/analyses?sort=latest&limit=10&offset=0").json()["items"]
     assert items[0]["confidence"] == "medium"
     assert items[0]["yield_impact"] == -3.1
+    # cohort_count는 인자가 아니라 payload.cohort_lot_ids에서 파생된다(정본↔캐시 불일치 방지)
+    assert items[0]["cohort_count"] == 2
+
+
+def test_cohort_count_defaults_to_zero_without_cohort(client):
+    """참조 로트가 없거나 구 저장분(키 자체 없음)이면 0 — 대기열이 "N개/0개"로 그린다."""
+    from backend import store
+
+    store.save_analysis(
+        analysis_id="grp_center_20260401_02", batch_id="b1", seq=1,
+        pattern="Center", status="reviewed", lot_count=1, top_cause="c",
+        payload={"analysis_id": "grp_center_20260401_02"},   # cohort_lot_ids 없음(구 저장분)
+    )
+    items = client.get("/api/v1/analyses?sort=latest&limit=10&offset=0").json()["items"]
+    assert items[0]["cohort_count"] == 0
 
 
 # ── #69: 판독상 정상 로트 전용 카드(normal_reading) ───────────────────────────────────

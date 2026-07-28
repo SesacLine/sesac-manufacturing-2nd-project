@@ -144,6 +144,44 @@ def _group_description(state: GroupState, translate=None) -> str | None:
         return english
 
 
+# ── 분석 참조 로트 노출(§2.5 cohort_lot_ids) ────────────────────────────────────────────
+# ⑤는 commonality(공통 장비 탐색)의 **입력만** "같은 패턴 최근 7일 로트"로 넓힌다
+# (hypothesis._commonality_cohort, COHORT_LOOKBACK_DAYS). 하루 그룹(#97)이 1~2로트라
+# 그대로 두면 통과 장비 전부가 "공통"으로 잡혀 판별력이 없기 때문이다.
+#
+# 그 확장은 지금까지 화면에서 확인할 방법이 없었다 — evidence에 개수(cohort_size)만 남았다.
+# "이 카드는 로트 1개인데 공통 장비를 어떻게 특정했나"에 답하려면 **무엇을 참조했는지**가
+# 보여야 하므로 로트 id를 그룹 카드에 싣는다(cohort_front_proposal.md).
+#
+# ⚠️ **소속 로트에 합치지 않는다.** 소속 로트는 처분 대상(Hold 권고·yield_impact 계산 기준)
+# 이라 과거 로트를 섞으면 ① 한 로트가 여러 카드에 중복 소속 ② 수율영향 이중 계산
+# ③ "저것도 재처분해야 하나?" 혼란이 생긴다. 프론트도 별도 행으로 분리해 그린다.
+#
+# ※ 제안서 백엔드 2("assembler가 evidence를 통째 보존하니 프론트가 hypotheses[].evidence로
+#   읽으면 된다")는 현재 코드와 다르다 — assembler._build_hypothesis는 evidence를 보존하지
+#   않고 3섹션(commonality/telemetry/events)으로 **재구성**하며, §2.5 가설 카드에는 evidence
+#   키 자체가 없다(§2.7 모달 전용 별도 맵). 그래서 그룹 레벨 §2.5 필드로 올린다.
+
+
+def _cohort_lot_ids(state: GroupState) -> list[str]:
+    """§2.5 cohort_lot_ids — 분석 참조 로트(그룹 로트 제외, 없으면 빈 배열).
+
+    코호트는 그룹당 한 번 계산돼 모든 가설의 evidence에 같은 값으로 스탬프되므로
+    (hypothesis.build_hypotheses 말미), 값이 있는 첫 가설에서 읽으면 충분하다.
+    후보 0건(unmapped/novel)이면 가설 자체가 없어 빈 배열 — 정상이다.
+
+    ⑤가 이미 이력 로트만 담아 주지만 그룹 로트를 한 번 더 걸러낸다 — "§2.5
+    cohort_lot_ids는 lot_ids와 겹치지 않는다"가 API 계약이라, 상류가 바뀌어도
+    그 계약은 이 지점에서 지켜지게 둔다(구 저장분 재조립 시에도 안전).
+    """
+    group = set(state["lot_ids"])
+    for hypothesis in state.get("hypotheses") or []:
+        cohort = (hypothesis.get("evidence") or {}).get("cohort_lot_ids")
+        if cohort:
+            return [lot_id for lot_id in cohort if lot_id not in group]
+    return []
+
+
 def _ordered_hypotheses(critic: dict | None) -> list[dict]:
     """critic_result를 §2.5 정렬 불변식대로 배열화한다 — 대표(accepted[0])를 index 0에,
     각 원소에 verdict/verdict_reason, 정렬 확정 뒤 h{n} 부여.
@@ -195,6 +233,7 @@ def generate_response(state: GroupState, translate=None) -> dict:
         status="reviewed", reason=None, hypotheses=ordered, summary=summary,
         description=_group_description(state, translate), confidence=confidence,
         actions=group_actions("reviewed", pattern, len(lot_ids), accepted[0] if accepted else None),
+        cohort_lot_ids=_cohort_lot_ids(state),
     )
 
 
@@ -231,6 +270,7 @@ def respond_without_llm(state: GroupState, translate=None) -> dict:
                 description=description,
                 confidence="low",  # R1: 채택 원인 없음 → 불확실
                 actions=group_actions("novel", pattern, len(lot_ids), None),
+                cohort_lot_ids=_cohort_lot_ids(state),
             )
         return _final(
             group_id,
@@ -243,6 +283,7 @@ def respond_without_llm(state: GroupState, translate=None) -> dict:
             description=description,
             confidence="low",  # R1: 채택 원인 없음 → 불확실
             actions=group_actions("unmapped", pattern, len(lot_ids), None),
+            cohort_lot_ids=_cohort_lot_ids(state),
         )
 
     # UC-2: 후보는 있었지만 Critic이 하나도 채택 못 한 경우 — 판단 불가(근거부족).
@@ -262,6 +303,7 @@ def respond_without_llm(state: GroupState, translate=None) -> dict:
         description=description,
         confidence="low",  # R1: 채택 0건 → 불확실(판단 불가)
         actions=group_actions("insufficient", pattern, len(lot_ids), None),
+        cohort_lot_ids=_cohort_lot_ids(state),
     )
 
 
@@ -277,6 +319,7 @@ def _final(
     description: str | None,
     confidence: str,
     actions: list[dict],
+    cohort_lot_ids: list[str] | None = None,
 ) -> dict:
     return {
         "final_response": {
@@ -290,6 +333,8 @@ def _final(
             "summary": summary,        # 결정론적 템플릿(내부용, LLM 아님)
             "description": description,  # ③VLM(영어) → 한국어 번역, §2.5 (없으면 None → 프론트 summary_line)
             "confidence": confidence,  # R1: medium|low — 확정("high") 없음. 표현 층 불확실 표시
+            # ⑤ commonality가 함께 본 로트(그룹 제외, §2.5 additive) — 없으면 빈 배열
+            "cohort_lot_ids": cohort_lot_ids or [],
             # 그룹 단위 권장 조치 [{type, hold, text}] — 결정론적 템플릿(API v1.1, 와이어프레임 v8 정합)
             "actions": actions,
         }

@@ -78,3 +78,93 @@ test("대기열 행을 누르면 그 분석 상세로 간다", async ({ page }) 
   await page.locator("table tbody tr").first().click();
   await expect(page).toHaveURL(/\/analyses\/grp_/);
 });
+
+// ── 대기열 정렬 ────────────────────────────────────────────────────────────────────────
+// 예전엔 머리글이 "↓ 날짜순"으로 하드코딩돼 있었는데 실제 정렬은 수율영향순이었고, 그마저도
+// 서버가 잘라 보낸 **현재 페이지 안에서만** 일어났다(= 가장 위험한 그룹이 2페이지에 숨음).
+
+test("기본 정렬은 분석일 최신순이고, 머리글 표시가 실제 정렬과 일치한다", async ({ page }) => {
+  // 픽스처는 날짜 순서와 수율영향 순서를 일부러 어긋나게 뒀다 — 기본이 날짜순이면
+  // 수율영향 열은 정렬돼 보이지 않아야 한다(-1.2 / -2.1 / -3.4 / null).
+  // (allInnerTexts는 자동 대기가 없어 렌더 전에 읽으면 빈 배열이다 — 먼저 행 수로 기다린다)
+  await expect(page.locator("table tbody tr")).toHaveCount(ANALYSES.items.length);
+  expect(await page.locator("table tbody tr td:nth-child(1)").allInnerTexts()).toEqual(
+    ["2026-02-08", "2026-02-08", "2026-02-07", "2026-02-05"],
+  );
+  expect(await page.locator("table tbody tr td:nth-child(3)").allInnerTexts()).toEqual(
+    ["-1.2%p", "-2.1%p", "-3.4%p", "—"],
+  );
+
+  await expect(page.locator(".box-title", { hasText: "분석 결과" })).toContainText("분석일순");
+  await expect(page.locator("th[aria-sort='descending']")).toContainText("분석일");
+});
+
+test("수율영향 머리글을 누르면 피해 큰 순으로 바뀌고 null은 맨 뒤로 간다", async ({ page }) => {
+  await page.getByRole("button", { name: /수율영향/ }).click();
+  await expect(page.locator("th[aria-sort='ascending']")).toContainText("수율영향");
+  expect(await page.locator("table tbody tr td:nth-child(3)").allInnerTexts()).toEqual(
+    ["-3.4%p", "-2.1%p", "-1.2%p", "—"],
+  );
+
+  // 방향을 뒤집어도 null(모르는 값)은 여전히 맨 뒤 — "가장 작은 값"으로 취급하면
+  // 구 저장분이 가장 위험한 그룹처럼 맨 위에 올라온다.
+  await page.getByRole("button", { name: /수율영향/ }).click();
+  expect(await page.locator("table tbody tr td:nth-child(3)").allInnerTexts()).toEqual(
+    ["-1.2%p", "-2.1%p", "-3.4%p", "—"],
+  );
+});
+
+test("소속 로트 열이 참조 로트 수를 슬래시로 함께 보여준다", async ({ page }) => {
+  // 참조 로트는 처분 대상이 아니라 공통 장비 탐색에 참조만 한 로트라 합산하지 않는다.
+  await expect(page.locator("thead")).toContainText("소속/참조 로트");
+  expect(await page.locator("table tbody tr td:nth-child(4)").allInnerTexts()).toEqual(
+    ["7개/2개", "2개/0개", "3개/1개", "5개/0개"],
+  );
+});
+
+test("머리글을 누르면 그 열로 정렬되고, 다시 누르면 방향이 뒤집힌다", async ({ page }) => {
+  const header = page.getByRole("button", { name: /소속\/참조 로트/ });
+
+  // 정렬 키는 **소속 로트 수**다 — 참조 수로 줄을 세우면 "이력이 많았던 순"이 된다.
+  await header.click(); // 기본 방향 = 내림차순(많은 순)
+  await expect(page.locator("th[aria-sort='descending']")).toContainText("소속/참조 로트");
+  expect(await page.locator("table tbody tr td:nth-child(4)").allInnerTexts()).toEqual(
+    ["7개/2개", "5개/0개", "3개/1개", "2개/0개"],
+  );
+
+  await header.click(); // 같은 열 재클릭 → 방향만 반전
+  await expect(page.locator("th[aria-sort='ascending']")).toContainText("소속/참조 로트");
+  expect(await page.locator("table tbody tr td:nth-child(4)").allInnerTexts()).toEqual(
+    ["2개/0개", "3개/1개", "5개/0개", "7개/2개"],
+  );
+});
+
+test("정렬은 현재 페이지가 아니라 전체 기준이다", async ({ page }) => {
+  // 12건(=PAGE_SIZE 초과) 중 **가장 위험한 행을 맨 끝**에 둔다. 페이지를 먼저 자르고
+  // 정렬하면 이 행은 2페이지에 남아 1페이지 첫 행이 되지 못한다.
+  const items = Array.from({ length: 12 }, (_, i) => ({
+    analysis_id: `grp_center_2026020${i % 9}_${i}`,
+    batch_id: "batch_20260209_01",
+    analyzed_date: "2026-02-09",
+    pattern: "Center",
+    lot_count: 1,
+    top_cause: "center_polishing_too_fast",
+    status: "reviewed",
+    confidence: "low",
+    cohort_count: 0,
+    yield_impact: i === 11 ? -9.9 : -(i % 5) - 0.1,
+  }));
+  await page.route("**/api/v1/analyses?**", (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ count: items.length, items }),
+    }),
+  );
+  await page.goto("/");
+
+  await expect(page.locator("table tbody tr")).toHaveCount(10); // PAGE_SIZE
+  await page.getByRole("button", { name: /수율영향/ }).click();
+  await expect(page.locator("table tbody tr td:nth-child(3)").first()).toHaveText("-9.9%p");
+  await expect(page.locator(".pager")).toContainText("1 / 2");
+});

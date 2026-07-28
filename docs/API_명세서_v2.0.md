@@ -14,6 +14,7 @@
 > 5. 2.5 가설 카드에 **`cluster_id`·`is_primary`**(원인군 묶기, R2) 추가.
 > 6. 차트 엔드포인트 2종 신설 — **2.8 `GET /yield-daily`**(일별 수율+이벤트 오버레이) · **2.9 `GET /stats/causes`**(장비·원인·패턴 집계). 계약 라우트 8종 → **10종**.
 > 7. §1 고정 기준일(`EVENT_DATE`)을 **env로 오버라이드 가능**하게(서버시간 테스트 장치).
+> 8. (2026-07-28) 2.2 items에 **`cohort_count`**(분석 참조 로트 수) · 2.5 응답에 **`cohort_lot_ids`**(분석 참조 로트 — ⑤ commonality가 참조한 최근 7일 동일 패턴 로트, 그룹 로트 제외) · 2.7 commonality 섹션에 **`cohort_note`** 추가.
 
 ---
 
@@ -115,10 +116,10 @@
 {
   "count": 4,
   "items": [
-    { "analysis_id": "grp_edgering_20260706_01", "batch_id": "batch_20260706_01", "analyzed_date": "2026-07-06", "pattern": "Edge-Ring", "lot_count": 8, "top_cause": "etch_nonuniformity",  "status": "reviewed",     "confidence": "medium", "yield_impact": -3.8 },
-    { "analysis_id": "grp_scratch_20260706_01",  "batch_id": "batch_20260706_01", "analyzed_date": "2026-07-06", "pattern": "Scratch",   "lot_count": 8, "top_cause": "handling_mechanical", "status": "reviewed",     "confidence": "medium", "yield_impact": -2.4 },
-    { "analysis_id": "grp_center_20260706_01",   "batch_id": "batch_20260706_01", "analyzed_date": "2026-07-06", "pattern": "Center",    "lot_count": 8, "top_cause": null,                  "status": "insufficient", "confidence": "low",    "yield_impact": -1.2 },
-    { "analysis_id": "grp_unknown_20260706_01",  "batch_id": "batch_20260706_01", "analyzed_date": "2026-07-06", "pattern": "Unknown",   "lot_count": 6, "top_cause": null,                  "status": "novel",        "confidence": "low",    "yield_impact": -1.5 }
+    { "analysis_id": "grp_edgering_20260706_01", "batch_id": "batch_20260706_01", "analyzed_date": "2026-07-06", "pattern": "Edge-Ring", "lot_count": 8, "cohort_count": 2, "top_cause": "etch_nonuniformity",  "status": "reviewed",     "confidence": "medium", "yield_impact": -3.8 },
+    { "analysis_id": "grp_scratch_20260706_01",  "batch_id": "batch_20260706_01", "analyzed_date": "2026-07-06", "pattern": "Scratch",   "lot_count": 8, "cohort_count": 2, "top_cause": "handling_mechanical", "status": "reviewed",     "confidence": "medium", "yield_impact": -2.4 },
+    { "analysis_id": "grp_center_20260706_01",   "batch_id": "batch_20260706_01", "analyzed_date": "2026-07-06", "pattern": "Center",    "lot_count": 8, "cohort_count": 2, "top_cause": null,                  "status": "insufficient", "confidence": "low",    "yield_impact": -1.2 },
+    { "analysis_id": "grp_unknown_20260706_01",  "batch_id": "batch_20260706_01", "analyzed_date": "2026-07-06", "pattern": "Unknown",   "lot_count": 6, "cohort_count": 0, "top_cause": null,                  "status": "novel",        "confidence": "low",    "yield_impact": -1.5 }
   ]
 }
 ```
@@ -135,7 +136,8 @@
 - **`yield_impact` (v2.0 신설 · number|null, %p)**: 그룹 수율영향. 계산식은 2.5 참조. 구 저장분·창 데이터 없음이면 `null`(키는 항상 존재). 대기열의 위험도순 정렬은 이 값 기준(정렬 자체는 프론트 몫 — 서버 정렬 키는 여전히 배치 시각).
 - **`pattern` (enum 5종, KG 표준 엔티티)**: `Center` | `Edge-Ring` | `Scratch` | `Unknown` | `Normal`. 원인 매핑 대상 3종(`Center`/`Edge-Ring`/`Scratch`) + 비매핑 결함 통합값 `Unknown`(기획안 v1.5 §6.1의 "새로운 결함 패턴" — WM-811K 원 9종 중 `Edge-Loc`·`Loc`·`Donut`·`Near-Full`·`Random`을 단일화) + 정상 `Normal`. CNN/DB가 어떤 표기로 내보내든 FastAPI가 이 5종으로 정규화해 내려준다(비매핑 결함은 고유명 대신 `Unknown`으로 접어 내려줌 — CNN 내부 출력 형식은 계약 밖·FastAPI↔LangGraph 구현 영역). `Unknown`은 `status:"novel"`(v2.0). (3장 enum·3.2 형상 gloss 표와 동일 집합.)
 - **`count`**: 필터·페이지네이션 **적용 전 전체 결과 수**(현재 페이지의 `items.length`가 아님). 프론트는 이 값으로 총 페이지 수를 계산한다.
-- **필드 존재 계약(v2.0: 9키)**: `items[]`의 9개 키(`analysis_id`·`batch_id`·`analyzed_date`·`pattern`·`lot_count`·`top_cause`·`status`·`confidence`·`yield_impact`)는 **항상 존재**한다. Nullable은 `top_cause`(reviewed 아니면 `null`)·`yield_impact`(구 저장분/창 데이터 없음이면 `null`)·`analyzed_date`(배치 row 없는 구 저장분이면 `null`) 셋뿐, 나머지는 값이 채워진다.
+- **`cohort_count` (2026-07-28 신설 · number, non-null)**: 분석 참조 로트 **수**(= 2.5 `cohort_lot_ids`의 길이). 대기열은 소속/참조를 `7개/2개`처럼 한 열에 나란히 보여주므로 목록에는 개수만 내린다(로트 id는 2.5에서). 참조 없음·구 저장분은 `0`. **`lot_count`에 합산하지 말 것** — 참조 로트는 처분 대상이 아니다.
+- **필드 존재 계약(v2.0: 10키)**: `items[]`의 10개 키(`analysis_id`·`batch_id`·`analyzed_date`·`pattern`·`lot_count`·`cohort_count`·`top_cause`·`status`·`confidence`·`yield_impact`)는 **항상 존재**한다. Nullable은 `top_cause`(reviewed 아니면 `null`)·`yield_impact`(구 저장분/창 데이터 없음이면 `null`)·`analyzed_date`(배치 row 없는 구 저장분이면 `null`) 셋뿐, 나머지는 값이 채워진다.
 
 
 **응답 200 (결과 없음)** — 에러가 아니라 빈 목록으로 반환한다. 프론트는 "아직 분석된 결과가 없습니다" 안내를 띄운다.
@@ -357,6 +359,7 @@
   ],
   "lot_count": 8,
   "lot_ids": ["lot23844", "lot44793", "lot6092", "lot11527", "lot38210", "lot50974", "lot7365", "lot42088"],
+  "cohort_lot_ids": ["lot21077", "lot19420"],
   "hypotheses": [
     {
       "hypothesis_id": "h0",
@@ -400,6 +403,12 @@
 - **`confidence` (v2.0 신설 · R1 확신 수준 · 그룹 단위)**: `medium`(잠정 지지) | `low`(불확실). **`high`(확정)는 내지 않는다** — 표현 층 환각 완화(R1). 판정 기준(서버 결정론): 채택 ≤3건이고 그중 fab 증거로 적극 지지되는 가설(방향일치 drift 또는 정상비율<0.5)이 있으면 `medium`, 아니면 `low`. `reviewed`가 아니면 항상 `low`. 프론트는 `low`+`reviewed`일 때 "확정 아님" 경고 배너를 띄운다(와이어프레임 v8).
 - **`yield_impact` (v2.0 신설 · number|null, %p)**: 그룹 수율영향. **계산식(확정)** — `impact = Σ_{lot∈group}(y_lot − ȳ_window) / N_window × 100` (소수 1자리). ȳ_window = 배치 커서 창 전체 로트(정상 포함) 수율 단순평균, N_window = 창 전체 로트 수. 의미: "그룹 로트들을 평균 수율로 치환했을 때 대비 라인 평균이 몇 %p 낮아졌나" — 저수율 그룹은 음수(예: `-3.8`). 그룹별 합이 전체 하락분으로 분해되어 그룹 간 정렬·비교에 정합. 원천은 ⓪ 선별 시 보존한 창 전체 로트 수율(`lot_yields`)이며 배치 시점에 계산·저장된다(§2.7 원칙 — 조회 시 재계산 없음).
 - **`actions` (v2.0 신설 · 그룹 단위 권장 조치 · 항상 존재하는 배열)**: 원소 `{type, hold, text}`. `type` enum(영문 키 — 한국어 라벨은 프론트 소유): `containment`(격리 — 확산 차단) | `corrective`(시정 — 원인 제거) | `preventive`(예방 — 재발 방지) | `investigation`(추가 조사). `hold: true`는 로트 Hold·격리 성격의 즉시 조치 표시. ⑦ 응답생성의 **결정론적 템플릿**(LLM 아님)으로 status·대표 채택 가설(장비/원인)에서 생성된다 — AI 제안일 뿐 실행은 엔지니어 판단. 가설 카드의 `next_actions`(가설 단위 문자열 배열, v1.0 계약)와는 별개 층이며 둘 다 유지된다.
+- **`cohort_lot_ids` (2026-07-28 신설 · 문자열 배열 · 항상 존재)** — 화면 용어 **"분석 참조 로트"**: ⑤ Hypothesis가 **공통 장비를 찾을 때 참조한** 최근 7일 동일 패턴 로트. **`lot_ids`(소속 로트)와 겹치지 않는 이력 로트만** 담는다.
+  - **왜 있나** — 그룹은 결함 확정일(EDS 날짜) 단위라 로트가 보통 1~2개다(`grouper.split_by_day`). 로트가 1개면 그 로트가 지난 장비가 **전부** 공통률 1.0이 되어 `run_commonality_analysis`의 판별력이 사라진다. 그래서 ⑤는 **commonality 입력만** "같은 패턴으로 판독됐던 최근 `COHORT_LOOKBACK_DAYS`(=7)일 로트"로 넓힌다(최대 `COHORT_MAX_LOTS`=8건, EDS 최신순). 그 확장 사실이 화면에 없으면 "로트 1개로 어떻게 장비를 특정했나"에 답할 수 없어 노출한다.
+  - **⚠️ 소속 로트에 합치지 말 것** — 소속 로트는 **처분 대상**(Hold 권고·`yield_impact` 계산 기준)이다. 참조 로트를 섞으면 ① 한 로트가 여러 카드에 중복 소속 ② 수율영향 이중 계산 ③ "저것도 재처분해야 하나?" 혼란이 생긴다. 프론트는 **별도 행/카드**로 분리해 그린다(`cohort_front_proposal.md`).
+  - **그룹 단위와 다른 층이다** — `lot_count`·`yield_impact`·`defect_ts`(⑥ P2 시간정합)·telemetry `time_range`는 **전부 그룹 로트만** 쓴다. 코호트는 공통 장비 탐색 입력에만 쓰이며 P2를 오염시키지 않는다(정본 `docs/node_langraph_spec/node_spec_05_hypothesis.md` 부록 C).
+  - **어디서 읽나** — **그룹 레벨 §2.5 필드**다. 가설 카드(`hypotheses[]`)에는 없다: assembler가 `evidence`를 통째 보존하지 않고 §2.7 3섹션(commonality/telemetry/events)으로 재구성하며, §2.5 가설 카드에는 `evidence` 키 자체가 없기 때문이다.
+  - **빈 배열이 되는 경우**: 후보 0건 그룹(`unmapped`/`novel` — ⑤가 돌지 않음) · 이력 없음(첫 배치·캐치업 배치 — 판독 이력 저장이 배치 종료 시점이라 배치 내 날짜끼리는 서로 못 본다) · 7일 창에 동일 패턴 이력 없음 · 조회 실패(곱게 무너짐) · 구 저장분. 키는 항상 존재한다.
 - **`tier` (검증등급)**: `auto`(자동·즉시 채택/기각까지) | `semi_auto`(반자동·사람 판정 필요) | `none`(근거없음·문헌 서술만, MCP 증거 없음)
   - 🔲 **`semi_auto` 판정 처리(잠정·결정 필요)**: 반자동 등급은 fab 증거로 아직 조사되지 않아, **현재는 Critic이 판단 보류(`judge_unknown`, 미조사)** 처리한다(기각 아님). 추후 investigate_group 에이전트가 반자동을 fab 증거로 조사해 `verdict`를 `accepted`/`rejected`로 판정하면 이 잠정 처리를 걷어낸다(hypo_critic_py.md §13). ⤷ 4장 미결정 "`semi_auto` 사람 판정 결과 API 수신 경로"와도 연동.
     - **미조사 판정은 tier가 아니라 `investigated` 마커 기반**(S2-6): Critic은 `investigated=False`인 행을 `judge_unknown`으로 보류한다. 반자동은 조사 경로가 없어 항상 여기 해당(`SEMI_AUTO_PENDING`)하고, `auto` 행도 조사에 실패하면(공통 장비 미특정 / 에이전트 폭주 폴백) `NOT_INVESTIGATED`로 같은 보류 버킷에 들어간다. 즉 `verdict:"judge_unknown"`은 `semi_auto` 전용이 아니다.
@@ -456,7 +465,7 @@
 
 **응답 200 (원인 매핑 없음 · `status: "unmapped"`)** — **기지 패턴인데 KG 후보가 없는** 경우(지식 공백 — novel과 달리 판독은 정상이나 원인 지식이 없음). 형태는 novel과 동일한 superset이며 `reason`("이 결함 패턴은 원인 매핑 데이터가 없어 판독까지만 지원됩니다.")과 `actions`(온톨로지 확충 조사 1건)만 다르다. 현 파이프라인에선 매핑 3종의 KG 후보가 항상 존재해 사실상 드물게 발생한다. **판단 불가·신규 패턴·매핑 없음 모두 에러가 아니라 정상 200이다.**
 
-> **필드 존재 계약(2.5 네 응답 공통, v2.0)** — 네 status는 **키 집합이 동일한 superset**이며 해당 없는 값은 `null`이다(discriminated union 아님, Pydantic 모델 1개로 수렴). ⓐ `description`(VLM 자연어 서술)은 **네 status 모두 키가 존재**하되 **Nullable**이다 — 판독(①~③)은 네 status 모두에서 끝났으므로 값이 담기며, VLM 미연동·생성 실패 시에만 `null`이다(그때 프론트는 부록 3.2 `summary_line`으로 fallback). ⓑ `reason`은 결과 없음(`insufficient`/`unmapped`/`novel`)일 때만 값이 있고 `reviewed`는 `null`이다. ⓒ `lot_count`/`lot_ids`는 **네 status 모두 존재**한다 — unmapped/novel도 패턴으로 묶인 형성된 그룹이라 로트를 가진다(2.2 대기열과 정합). ⓓ `hypotheses[]`는 `reviewed`/`insufficient`엔 후보가 담기고(채택/기각·근거부족), `unmapped`/`novel`은 `[]`다. `top_cause`(2.2)는 `reviewed`만 값, 나머지는 `null`. ⓔ **v2.0 신설 3필드도 네 status 모두 키가 존재** — `confidence`(non-null, reviewed 아니면 `low`), `yield_impact`(Nullable), `actions`(비어도 `[]` — 구 저장분 폴백).
+> **필드 존재 계약(2.5 네 응답 공통, v2.0)** — 네 status는 **키 집합이 동일한 superset**이며 해당 없는 값은 `null`이다(discriminated union 아님, Pydantic 모델 1개로 수렴). ⓐ `description`(VLM 자연어 서술)은 **네 status 모두 키가 존재**하되 **Nullable**이다 — 판독(①~③)은 네 status 모두에서 끝났으므로 값이 담기며, VLM 미연동·생성 실패 시에만 `null`이다(그때 프론트는 부록 3.2 `summary_line`으로 fallback). ⓑ `reason`은 결과 없음(`insufficient`/`unmapped`/`novel`)일 때만 값이 있고 `reviewed`는 `null`이다. ⓒ `lot_count`/`lot_ids`는 **네 status 모두 존재**한다 — unmapped/novel도 패턴으로 묶인 형성된 그룹이라 로트를 가진다(2.2 대기열과 정합). ⓓ `hypotheses[]`는 `reviewed`/`insufficient`엔 후보가 담기고(채택/기각·근거부족), `unmapped`/`novel`은 `[]`다. `top_cause`(2.2)는 `reviewed`만 값, 나머지는 `null`. ⓔ **v2.0 신설 3필드도 네 status 모두 키가 존재** — `confidence`(non-null, reviewed 아니면 `low`), `yield_impact`(Nullable), `actions`(비어도 `[]` — 구 저장분 폴백). ⓕ `cohort_lot_ids`(2026-07-28)도 **네 status 모두 키가 존재**하며 non-null 배열이다 — 후보 0건(`unmapped`/`novel`)·콜드 스타트·구 저장분은 `[]`. `lot_ids`와 원소가 겹치지 않는 것이 계약이다.
 
 > **`hypotheses[]` 배열 정렬 불변식** — `reviewed`면 **`hypotheses[0]`은 ⑦응답생성이 선정한 대표 accepted 후보**다. 배열은 ⑦이 **대표 우선으로 정렬해** 내려주며, 프론트는 **받은 순서를 신뢰**하고 재정렬하지 않는다. 2.2 `top_cause`(= `hypotheses[0].cause`)와 부록 3.2 한 줄 요약이 이 원소를 대표로 소비하므로, 이 불변식이 곧 두 파생값의 재현성 근거다. 여러 accepted 중 **무엇을 대표로 뽑는지(선정 규칙)는 ⑦ 소관**이며 API 계약이 규정하지 않는다(4장 미결정 "대표 원인 지정 로직" 연동) — 계약이 보장하는 것은 "index 0에 대표가 온다"까지다. `hypothesis_id`의 `h{n}` 부여도 이 정렬이 확정된 **뒤** 이뤄진다.
 
@@ -729,6 +738,7 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
 | `rows[]` | array | 장비별 집계. `{equipment_id, chamber_id, matched_lots, total_lots, ratio(0~1), note}`. 용의 장비 하이라이트는 최상위 `suspect`와 대조해 프론트가 파생 |
 | `rows[].note` | string\|null | 함정/부가 설명(선택적 표시 힌트) |
 | `normal_ratio` | object\|null | 반대근거(대상 장비 = `suspect`). `{value(0~1), caption}` — 지지/약화 판단은 `caption` 문장으로만 전달(원값/표시 분리) |
+| `cohort_note` | string\|null | (2026-07-28) `rows[].total_lots`가 카드의 `lot_count`보다 큰 이유를 설명하는 **완성 문장** — ⑤가 분석 참조 로트(§2.5 `cohort_lot_ids`)를 commonality 입력에 함께 넣기 때문이다. 참조가 없었으면 `null`(설명할 게 없음). 그대로 출력한다(가공 금지) |
 
 **필드 사전 — `sections.telemetry`**
 
@@ -791,7 +801,7 @@ Commonality / Telemetry / Events(Alarm·Maintenance) 3섹션 + 검증등급·판
 >
 > **③ 섹션 상세 필드 — `available:true`일 때만 존재(Optional).**
 >  - `telemetry`(true): `param`·`unit`은 non-null, `series[]`는 항상. `normal_range`·`drift_detected`·`t0`·`caption`은 **Nullable**. 이 스칼라들은 `available:false`면 **키 자체가 없다**(②의 빈 형태 참조).
->  - `commonality`: `rows[]`는 `available:true`에서 채워지고, `normal_ratio`는 **섹션 내내 항상 존재하되 Nullable**(반대근거 없으면 `null` — `none` 등급처럼 `available:true`+`normal_ratio:null`도 정상).
+>  - `commonality`: `rows[]`는 `available:true`에서 채워지고, `normal_ratio`·`cohort_note`는 **섹션 내내 항상 존재하되 Nullable**(반대근거 없으면 `normal_ratio:null` — `none` 등급처럼 `available:true`+`normal_ratio:null`도 정상. 참조 로트가 없었으면 `cohort_note:null`).
 >  - `commonality.rows[]` 원소: `equipment_id`·`matched_lots`·`total_lots`·`ratio`는 non-null, `chamber_id`·`note`는 Nullable(키는 항상 존재).
 >  - `events.rows[]` 원소: `{ts, type, equipment_id, detail}`는 항상. **`kind`는 `type:"maintenance"`, `code`는 `type:"alarm"`일 때만 존재(Optional·상호배타)** — 반대 키는 없다.
 >

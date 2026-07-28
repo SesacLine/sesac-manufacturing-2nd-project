@@ -111,6 +111,11 @@ async def build_hypotheses(state: GroupState, mcp: MCPClient) -> dict:
         # ⑥ 규칙은 이 키를 읽지 않는다(additive) — 근거 모달/디버깅용.
         hyp["evidence"]["cohort_size"] = len(comm_lot_ids)
         hyp["evidence"]["cohort_days"] = COHORT_LOOKBACK_DAYS
+        # 로트 id까지 남긴다(개수만으로는 "무엇을 함께 봤나"를 화면에서 확인할 수 없다).
+        # 담는 것은 **그룹 로트를 뺀 이력 로트만** — 화면3의 "분석 참조 로트"가 곧 이 목록이다
+        # (cohort_front_proposal.md 백엔드 1). _commonality_cohort의 반환은 "그룹 로트 + 이력
+        # 로트" 순서가 계약이라 뒤쪽 슬라이스가 곧 이력 로트다.
+        hyp["evidence"]["cohort_lot_ids"] = list(comm_lot_ids[len(lot_ids):])
 
     return {"hypotheses": hypotheses}
 

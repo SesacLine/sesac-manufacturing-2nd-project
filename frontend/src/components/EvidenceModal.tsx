@@ -132,6 +132,12 @@ export default function EvidenceModal({
                           ))}
                         </tbody>
                       </table>
+                      {/* 위 표의 로트 수가 카드의 소속 로트 수보다 큰 이유 — ⑤가 공통 장비를
+                          찾을 때만 최근 K일 동일 패턴 로트를 참조로 함께 넣기 때문이다.
+                          설명이 없으면 "왜 8로트지?"가 되므로 표 바로 밑에 붙인다. */}
+                      {sections.commonality.cohort_note && (
+                        <div className="caption">{sections.commonality.cohort_note}</div>
+                      )}
                       {sections.commonality.normal_ratio && (
                         <div className="caption">
                           반대 증거: {sections.commonality.normal_ratio.caption}
