@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -21,15 +22,31 @@ from .api import api_router
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """기동 시 데모 시딩(SEED_UNTIL)을 백그라운드로 띄운다 — 설정이 없으면 아무 일도 안 한다.
+    """기동 시 ① 고아 배치 정리 → ② 데모 시딩(SEED_UNTIL) 순으로 처리한다.
 
-    시연은 "이미 며칠치가 쌓인 화면에서 오늘치를 눌러 누적"하는 흐름인데, 새로 올린 서버엔
-    그 이전 내역이 없다. 사람이 배치를 여러 번 눌러 만들던 준비를 서버가 대신한다(backend/seed.py).
-    기동을 막지 않으므로 헬스체크·프론트는 즉시 뜨고, 대기열이 실시간으로 채워진다.
+    ① 이전 프로세스가 배치 도중 죽으면 DB에 `running` 행이 남는다. 태스크는 프로세스와 함께
+       사라졌는데 상태만 남아, 배치 시작 가드가 "이미 진행 중인 배치가 있습니다"로 영구히
+       409를 낸다(실측 0728 — DB를 손으로 고쳐야 풀렸다). 새 프로세스에는 진행 중인 배치가
+       있을 수 없으므로 여기서 정리한다.
+    ② 시연은 "이미 며칠치가 쌓인 화면에서 오늘치를 눌러 누적"하는 흐름인데, 새로 올린 서버엔
+       그 이전 내역이 없다. 사람이 배치를 여러 번 눌러 만들던 준비를 서버가 대신한다.
+       기동을 막지 않으므로 헬스체크·프론트는 즉시 뜨고, 대기열이 실시간으로 채워진다.
+
+    순서가 중요하다 — 시딩도 `running` 배치를 보면 건너뛰므로(seed.catch_up_to) ①이 먼저
+    돌아야 고아 상태에서 시딩까지 함께 막히는 일이 없다.
     """
+    reaped = store.reap_orphaned_batches()
+    if reaped:
+        logger.warning(
+            "[startup] 중단된 배치 %d건을 failed로 정리했습니다: %s",
+            len(reaped), ", ".join(reaped),
+        )
+
     task = seed.launch_if_configured()
     yield
     if task is not None and not task.done():
