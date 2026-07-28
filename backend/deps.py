@@ -17,8 +17,10 @@ from .graph_client import KGClient, LiveKGClient
 from .graph_client.semantic_entry import (
     EMBEDDING_MODEL,
     MIN_MATCH_SCORE,
+    MIN_MATCH_SCORE_BY_MODEL,
     SemanticSignatureIndex,
     load_index,
+    load_index_meta,
 )
 from .mcp_client import MCPClient
 
@@ -72,8 +74,42 @@ def _semantic_index() -> SemanticSignatureIndex | None:
         print(f"[deps] signature index 없음({path}) — 의미 진입 비활성. "
               f"생성: semantic_entry.build_signature_index (그래프 재빌드 후 갱신 필요)")
         return None
+    # 인덱스를 만든 모델과 지금 질의에 쓸 모델이 다르면 벡터 공간이 달라 코사인이 무의미하다.
+    # 모델 교체는 다른 사람이 할 수 있고 인덱스 재빌드(7_build_signature_index.py)는 잊히기
+    # 쉬우므로, API를 부르기 **전에** 메타만 보고 먼저 걸러낸다(비용 0).
+    # 낡았으면 죽이지 않고 의미 진입만 끈다 — 파일이 아예 없을 때와 같은, 이미 정의된 경로다.
     try:
-        # 인덱스를 만든 모델과 반드시 동일해야 한다 (semantic_entry.EMBEDDING_MODEL).
+        meta = load_index_meta(path)
+    except Exception as exc:   # noqa: BLE001 — 깨진 파일도 기동은 살린다
+        print(f"[deps] signature index를 읽지 못함({exc!r}) — 의미 진입 비활성")
+        return None
+
+    built_with = meta.get("model")
+    if built_with and built_with != EMBEDDING_MODEL:
+        print(
+            f"[deps] signature index가 낡았습니다 — 빌드 모델 '{built_with}' ≠ 현재 모델 "
+            f"'{EMBEDDING_MODEL}'. 의미 진입을 끄고 enum/패턴 진입만 사용합니다. "
+            f"재빌드: python kg_rca/7_build_signature_index.py"
+        )
+        return None
+    if not built_with:
+        # 포맷 1(메타 없는 구 인덱스) — 어떤 모델로 만들었는지 알 수 없다. 막지는 않되,
+        # 차원이 어긋나면 SemanticSignatureIndex가 런타임에 잡아 스스로 꺼진다.
+        print(
+            f"[deps] signature index에 빌드 모델 정보가 없습니다(구 포맷) — "
+            f"'{EMBEDDING_MODEL}'로 만들어졌다고 가정합니다. 재빌드하면 이 경고가 사라집니다."
+        )
+
+    # 하한은 모델마다 다시 재야 하는 값이다(§semantic_entry). 실측표에 없는 모델이면
+    # 기본값을 쓰되 보정되지 않았음을 알린다 — 조용히 추측값을 쓰지 않는다.
+    if EMBEDDING_MODEL not in MIN_MATCH_SCORE_BY_MODEL and not os.getenv("KG_SEMANTIC_MIN_SCORE"):
+        print(
+            f"[deps] '{EMBEDDING_MODEL}'의 매칭 하한은 실측된 값이 없습니다 — 기본값 "
+            f"{MIN_MATCH_SCORE}을 씁니다. 정답/오답 점수 분포를 재측정해 "
+            f"KG_SEMANTIC_MIN_SCORE로 조정하거나 MIN_MATCH_SCORE_BY_MODEL에 등록하세요."
+        )
+
+    try:
         from langchain_openai import OpenAIEmbeddings
         embedder = OpenAIEmbeddings(model=EMBEDDING_MODEL)
         min_score = float(os.getenv("KG_SEMANTIC_MIN_SCORE", MIN_MATCH_SCORE))
