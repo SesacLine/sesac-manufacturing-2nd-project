@@ -10,12 +10,9 @@ fab.db가 없으면 days만 빈 배열로 내려간다(이벤트·집계는 app_
 
 from __future__ import annotations
 
-import sqlite3
-
 from fastapi import APIRouter, HTTPException
 
-from .. import store
-from ..config import fab_db_path
+from .. import store, yield_calc
 from ..schemas import MAPPED_PATTERNS
 
 router = APIRouter()
@@ -26,9 +23,12 @@ def get_yield_daily() -> dict:
     """§2.8 — { days: [{date, yield}], events: [{date, analysis_id, pattern, status,
     cause, equipment, stage, tier, confidence}] }.
 
-    days: metric_series(metric='yield')의 날짜별 장비 단순평균(0~100, 소수 1자리) —
-    **배치 커서(분석 완료 지점)까지만** 내린다. events: defect_date가 잡힌 분석 전부
-    (§2.7 저장분 조회) — reviewed 외 상태도 이상 이벤트로 내림.
+    days: 웨이퍼 실집계 일일 라인 수율(yield_calc — EDS 종료일 귀속, 정상 웨이퍼 비율, 0~100 소수 1자리)을 배치 커서(분석 완료 지점)까지만 내림.
+    파이프라인 (nodes/lowyield.py)의 저수율 판단과 같은 축이라 차트 급락 지점과 분석 카드가 같은 수율 정의를 가리킴 (events: defect_date가 잡힌 분석 전부)
+    reviewed 외 상태도 이상 이벤트로 내림.
+
+    (DY = Y_S × Y_R 분해, die 단위): die_yield(DY) · random(Y_R, 무작위 베이스라인) · systematic(Y_S, 체계적 손실 수율).
+    전부 0~100 소수 1자리, die 관측이 없는 날은 null — 기존 키 불변이라 프론트는 무시해도 됨.
 
     왜 커서로 자르나 — 대시보드는 "지금까지 분석된 것"을 보여주는 화면이다. fab.db에는 아직
     배치가 닿지 않은 미래 구간까지 들어 있어서, 전 구간을 그리면 분석 카드가 없는 급락 지점이
@@ -45,28 +45,28 @@ def get_yield_daily() -> dict:
 
 
 def _daily_line_yield(cursor: str | None) -> list[dict]:
-    """metric_series 일별 라인 평균 수율(커서 이하). fab.db 없으면 빈 배열(곱게 무너짐)."""
+    """웨이퍼 실집계 일별 라인 수율 + die 단위 Y_S×Y_R 분해(커서 이하).
+    fab.db 없으면 빈 배열(곱게 무너짐)."""
     if cursor is None:
         return []
-    try:
-        con = sqlite3.connect(fab_db_path())
-        con.row_factory = sqlite3.Row
-        try:
-            rows = con.execute(
-                """
-                SELECT date(ts) AS d, AVG(value) AS v
-                FROM metric_series
-                WHERE metric = 'yield' AND date(ts) <= date(?)
-                GROUP BY date(ts)
-                ORDER BY d ASC
-                """,
-                (cursor,),
-            ).fetchall()
-        finally:
-            con.close()
-    except Exception:  # noqa: BLE001 — FAB_DB 미설정/부재 시 차트 라인만 비운다
-        return []
-    return [{"date": r["d"], "yield": round(r["v"] * 100, 1)} for r in rows]
+    decomp = {d["date"]: d for d in yield_calc.daily_yield_decomposition(upto=cursor)}
+
+    def _pct(v: float | None) -> float | None:
+        return round(v * 100, 1) if v is not None else None
+
+    days = []
+    for d in yield_calc.daily_line_yield(upto=cursor):
+        dc = decomp.get(d["date"], {})
+        days.append(
+            {
+                "date": d["date"],
+                "yield": round(d["ratio"] * 100, 1),
+                "die_yield": _pct(dc.get("die_ratio")),
+                "random": _pct(dc.get("random_ratio")),
+                "systematic": _pct(dc.get("systematic_ratio")),
+            }
+        )
+    return days
 
 
 @router.get("/stats/causes")
