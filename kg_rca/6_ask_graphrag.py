@@ -48,6 +48,13 @@ NEO4J_DATABASE = os.getenv("NEO4J_DATABASE")
 # 현행 hypotheses.json 772건은 gpt-5.4-mini 산출물(meta.model에 기록됨)
 OPENAI_MODEL = os.getenv("KG_SYNTH_MODEL", "gpt-5.4-mini")
 
+# KG 가설 문장 영→한 번역 모델 (0728 — 생성/번역 분리).
+# 합성 LLM은 영어만 쓰고 번역은 이 패스가 전담한다. 한 LLM에 생성과 번역을 겹쳐 시키면
+# 두 작업의 실패가 구분되지 않는다(③ VLM에서 같은 이유로 분리한 규약을 KG에도 적용).
+# 번역은 빌드타임 1회로 끝난다 — 산출물에 구워두므로 런타임 비용은 0이다.
+# 미설정이면 합성 모델을 그대로 쓴다(역할 변수는 따로, 기본값은 합성과 동일 세대).
+KG_TRANSLATE_MODEL = os.getenv("KG_TRANSLATE_MODEL", OPENAI_MODEL)
+
 # 기본값은 "탐색된 모든 가설을 다 낸다".
 # 굳이 잘라 보고 싶으면 환경변수로: TOP_K=3 python 6_ask_graphrag.py
 _top_k = os.getenv("TOP_K")
@@ -244,7 +251,16 @@ TIER_OF_LABEL = {
     "Recipe": TIER_SEMI,
 }
 
+# ⚠️ 출력값 고정 — 이 한글 문자열은 표시용 라벨이 **아니라 제어값**이다. backend가
+#    `state.py:13 Tier = Literal["자동","반자동","근거없음"]`으로 받고 hypothesis.py·critic.py가
+#    이 값을 직접 비교해 분기한다(hypothesis.py:76,385 / critic.py:90,156,163).
+#    영어로 바꾸면 예외 없이 조용히 오분기하고, schemas.py:20-27이 영어 키도 받아들여
+#    API는 정상처럼 보이므로 발견이 늦어진다. **KG 영어화 대상에서 제외(0728).**
 TIER_TAG = {TIER_AUTO: "자동", TIER_SEMI: "반자동", TIER_NONE: "근거없음"}
+
+# 프롬프트에 넣는 영어 라벨 — 위 제어값과 분리한다. LLM에 보이는 문자열만 영어로 바꾸고
+# 출력 JSON의 tier 값은 TIER_TAG 그대로 나간다.
+TIER_TAG_EN = {TIER_AUTO: "auto", TIER_SEMI: "semi-auto", TIER_NONE: "no-evidence"}
 
 # =========================
 # 1.1b 시나리오 힌트 (MCP 문서 3.1의 검증 체인 라우팅)
@@ -587,68 +603,79 @@ def _rank_and_sort(rows: list[dict], pattern: str | None) -> list[dict]:
 
 class Hypotheses(BaseModel):
     hypotheses: list[str] = Field(
-        description="가설 문장 리스트. 입력으로 준 경로 순서를 그대로 유지한다. 번호는 붙이지 않는다."
+        description="List of hypothesis sentences in English. Keep exactly the order of the "
+                    "paths given as input. Do not prefix them with numbers."
     )
 
 
 SYNTHESIS_PROMPT = """
-반도체 웨이퍼 결함 근본원인 분석(RCA) 결과를 보고합니다.
+You are reporting the result of a root cause analysis (RCA) of semiconductor wafer defects.
 
-관측된 불량 패턴: {pattern}
+Observed defect pattern: {pattern}
 
-지식그래프에서 아래 {n}개의 인과 경로를 찾았습니다.
-각 경로를 한국어 가설 문장 하나로 옮기세요.
+The following {n} causal paths were found in the knowledge graph.
+Turn each path into one hypothesis sentence **in English**.
 
-경로:
+Paths:
 {paths}
 
-작성 규칙:
-- 경로 하나당 문장 하나. 입력 순서를 그대로 유지하세요.
-- 주어진 사실만 쓰고 새로운 원인이나 검증 신호를 지어내지 마세요.
-- 각 문장에 공정, 고장 모드, 근본 원인, 검증 방법을 모두 담으세요.
-- "{pattern} 패턴은 ... 로 보이며, ...를 확인해야 합니다" 같은 가설 어투로 쓰세요.
-- 검증 신호가 [자동]이면 direction이 high일 때 "값이 높은지", low면 "값이 낮은지" 확인하라고 쓰세요.
-- 검증 신호가 [반자동] Maintenance면 "정비 이력을 확인해야 합니다",
-  [반자동] Recipe면 "사용된 레시피를 확인해야 합니다"로 쓰세요.
-- 검증 신호가 [근거없음]이면 "fab 데이터로는 확인할 수 없어 문헌 근거로만 남습니다"라고 덧붙이세요.
-- 경로가 "문헌 직결"이면 공정을 언급하지 말고, 문헌이 이 패턴의 원인으로 지목했다고 쓰세요.
-- 경로가 "형상 경유"이면 "이 패턴의 형상(예: 가장자리 링)이 주로 X 공정에서 생긴다는 문헌 근거"임을 밝히세요.
-- 문장 앞에 번호를 붙이지 마세요.
+Writing rules:
+- One sentence per path. Keep exactly the input order.
+- Use only the facts given. Never invent a new cause or verification signal.
+- Each sentence must carry the process step, the failure mode, the root cause and how to verify it.
+- Write in a hypothesis register, e.g. "The {pattern} pattern appears to ..., so ... should be checked".
+- When the verification signal is [auto], say to check whether the value is high when
+  direction is high, and whether it is low when direction is low.
+- When the verification signal is [semi-auto] Maintenance, say "the maintenance history should be checked";
+  for [semi-auto] Recipe, say "the recipe used should be checked".
+- When the verification signal is [no-evidence], add that it cannot be confirmed with fab data
+  and remains supported by the literature only.
+- When the path is "direct from literature", do not mention any process step; say that the
+  literature attributes this pattern directly to the cause.
+- When the path is "via signature", make clear that it is literature evidence that this
+  pattern's shape (e.g. a ring at the edge) mostly forms in process X.
+- Do not prefix the sentences with numbers.
+- Write in English only. Do not translate into Korean — translation is a separate pass.
 """
 
 
 def describe_path(row: dict) -> str:
+    """경로 1건을 합성 프롬프트에 넣을 영어 블록으로 적는다.
+
+    tier 라벨은 TIER_TAG_EN(프롬프트 전용)을 쓴다 — 출력 JSON의 tier(TIER_TAG, 한글)는
+    backend가 분기하는 제어값이라 별개다.
+    """
     label = row["evidence_label"]
-    tag = TIER_TAG[row["tier"]]
+    tag = TIER_TAG_EN[row["tier"]]
     if label == "Parameter":
-        direction = {"high": "높음", "low": "낮음"}.get(row["direction"], "이상 여부")
-        verify = f"[{tag}] 계측 변수 {row['evidence']} (예상 방향: {direction})"
+        direction = {"high": "high", "low": "low"}.get(row["direction"], "deviation (direction unknown)")
+        verify = f"[{tag}] measured variable {row['evidence']} (expected direction: {direction})"
     elif label == "Maintenance":
-        verify = f"[{tag}] 정비 이력 조회: {row['evidence_name']} — 판정은 사람이"
+        verify = f"[{tag}] look up maintenance history: {row['evidence_name']} — judgement is up to a human"
     elif label == "Recipe":
-        verify = f"[{tag}] 레시피 조회: {row['evidence_name']} — 기대값이 없어 판정은 사람이"
+        verify = f"[{tag}] look up recipe: {row['evidence_name']} — no expected value, judgement is up to a human"
     else:
-        verify = f"[{tag}] 문헌 서술만 있음. fab 데이터로 확인 불가"
+        verify = f"[{tag}] literature description only. Cannot be confirmed with fab data"
 
     if row["route"] == "direct":
-        head = "- 경로: 문헌이 패턴에서 원인을 바로 지목 (공정 미상)\n"
+        head = "- Path: the literature attributes the cause directly to the pattern (process unknown)\n"
     elif row["route"] == "signature":
         head = (
-            f"- 경로: 형상 경유 — 문헌이 형상({row['signature']})으로 공정을 지목\n"
-            f"  공정: {row['step']}\n"
-            f"  고장 모드: {row['failure_mode_name']} ({row['failure_mode']})\n"
+            f"- Path: via signature — the literature points at the process through the shape ({row['signature']})\n"
+            f"  Process step: {row['step']}\n"
+            f"  Failure mode: {row['failure_mode_name']} ({row['failure_mode']})\n"
         )
     else:
         head = (
-            f"- 공정: {row['step']}\n"
-            f"  고장 모드: {row['failure_mode_name']} ({row['failure_mode']})\n"
+            f"- Process step: {row['step']}\n"
+            f"  Failure mode: {row['failure_mode_name']} ({row['failure_mode']})\n"
         )
 
     return (
         f"{head}"
-        f"  근본 원인: {row['cause_name']} ({row['cause']})\n"
-        f"  원인 설명: {row['cause_description']}\n"
-        f"  검증 신호: [{label}] {verify}"
+        f"  Root cause: {row['cause_name']} ({row['cause']})\n"
+        f"  Cause description: {row['cause_description']}\n"
+        f"  Verification signal: [{label}] {verify}"
     )
 
 
@@ -672,13 +699,15 @@ def _fallback_sentence(pattern: str, row: dict) -> str:
     return f"{pattern} 패턴 — 추정 원인: {row['cause_name']} ({where}). 확인 방법: {check}"
 
 
-def synthesize(llm, pattern: str, rows: list[dict]) -> list[str]:
-    """
-    경로가 수십 개일 수 있으므로 배치로 나눠 부른다.
-    LLM이 배치 크기와 다른 개수를 돌려줘도 가설이 유실되지 않도록 길이를 맞춘다.
+def synthesize(llm, pattern: str, rows: list[dict]) -> list[str | None]:
+    """경로별 **영어** 가설 문장. 경로가 수십 개일 수 있으므로 배치로 나눠 부른다.
+
+    LLM이 배치 크기와 다른 개수를 돌려줘도 가설이 유실되지 않도록 길이를 맞춘다 —
+    못 채운 자리는 None으로 두고, 호출부가 결정적 폴백(_fallback_sentence, 한국어)으로 메운다.
+    폴백은 이미 한국어 완성문이라 번역 패스를 타지 않는다.
     """
     structured = llm.with_structured_output(Hypotheses, method="json_schema")
-    sentences: list[str] = []
+    sentences: list[str | None] = []
 
     for start in range(0, len(rows), SYNTHESIS_BATCH):
         batch = rows[start:start + SYNTHESIS_BATCH]
@@ -693,11 +722,66 @@ def synthesize(llm, pattern: str, rows: list[dict]) -> list[str]:
 
         if len(got) != len(batch):
             print(f"  (경고: 문장 {len(got)}개 / 경로 {len(batch)}개 — 부족분은 자동 생성)")
-        got = got[:len(batch)]
-        got += [_fallback_sentence(pattern, r) for r in batch[len(got):]]
+        got = list(got[:len(batch)])
+        got += [None] * (len(batch) - len(got))
         sentences.extend(got)
 
     return sentences
+
+
+class Translations(BaseModel):
+    sentences: list[str] = Field(
+        description="번역된 한국어 문장 리스트. 입력 순서를 그대로 유지한다. 번호는 붙이지 않는다."
+    )
+
+
+TRANSLATION_PROMPT = """다음은 반도체 웨이퍼 결함 근본원인분석(RCA) 가설 문장 {n}개입니다.
+각 문장을 한국어로 번역하세요.
+
+문장:
+{sentences}
+
+번역 규칙:
+- 문장 하나당 번역 하나. 입력 순서를 그대로 유지하세요.
+- 원문에 없는 내용을 더하거나, 있는 내용을 빼지 마세요. 번역만 합니다.
+- **공정명(LITHO/ETCH/DEPO/CMP/CLEAN/EDS), 패턴명(Center/Edge-Ring/Scratch), 계측 변수명
+  (rf_power, down_force 등), 고장 모드·원인의 영문 기술용어는 영문 그대로 두세요.**
+  현장에서 영문 표기로 통용되는 값이고, 백엔드가 같은 문자열로 fab 데이터와 대조합니다.
+- 영문 용어에 한국어 조사를 붙이면 비문이 되기 쉽습니다. 조사가 어색해지면 용어를 괄호로
+  끊거나 서술을 바꿔 자연스럽게 만드세요.
+- "~로 보이며, ~를 확인해야 합니다" 같은 가설 어투를 유지하세요. 단정하지 마세요.
+- 문장 앞에 번호를 붙이지 마세요.
+"""
+
+
+def translate_to_korean(llm, sentences: list[str | None]) -> list[str | None]:
+    """영어 가설 문장 → 한국어. None 자리는 건너뛰고 그대로 None으로 돌려준다.
+
+    실패해도 빌드를 멈추지 않는다 — 그 배치는 영어 원문을 그대로 돌려주고(곱게 무너짐),
+    호출부가 그걸 sentence로 쓴다. 내용을 잃느니 언어가 섞이는 편이 낫다.
+    """
+    structured = llm.with_structured_output(Translations, method="json_schema")
+    out: list[str | None] = list(sentences)
+
+    todo = [i for i, s in enumerate(sentences) if s]
+    for start in range(0, len(todo), SYNTHESIS_BATCH):
+        idx = todo[start:start + SYNTHESIS_BATCH]
+        joined = "\n".join(f"{n}. {sentences[i]}" for n, i in enumerate(idx, start=1))
+        prompt = TRANSLATION_PROMPT.format(n=len(idx), sentences=joined)
+
+        try:
+            got = structured.invoke(prompt).sentences
+        except Exception as exc:                      # noqa: BLE001
+            print(f"  (경고: 번역 실패, 이 배치는 영어 원문으로 남깁니다 — {type(exc).__name__})")
+            continue
+
+        if len(got) != len(idx):
+            print(f"  (경고: 번역 {len(got)}개 / 문장 {len(idx)}개 — 부족분은 영어 원문으로 남깁니다)")
+        for i, ko in zip(idx, got):
+            if ko and ko.strip():
+                out[i] = ko.strip()
+
+    return out
 
 
 # =========================
@@ -717,6 +801,10 @@ def main() -> None:
         database=NEO4J_DATABASE,
     )
     llm = ChatOpenAI(model=OPENAI_MODEL, temperature=0)
+    # 번역 전담 인스턴스. 같은 모델이면 새로 만들 이유가 없으므로 합성 LLM을 재사용한다
+    # (역할은 분리하되 객체까지 늘리지는 않는다).
+    translate_llm = llm if KG_TRANSLATE_MODEL == OPENAI_MODEL else \
+        ChatOpenAI(model=KG_TRANSLATE_MODEL, temperature=0)
 
     print(LEGEND)
     print()
@@ -725,6 +813,10 @@ def main() -> None:
         "meta": {
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "model": OPENAI_MODEL,
+            "translate_model": KG_TRANSLATE_MODEL,
+            # 0728: KG 산출 언어 규약 — 합성은 영어(sentence_en), 표시용 한국어(sentence)는
+            # 별도 번역 패스. 생성과 번역을 한 LLM에 섞지 않는다(③ VLM과 같은 경계).
+            "language": {"synthesis": "en", "display": "ko"},
             "neo4j_database": NEO4J_DATABASE,
             "top_k": TOP_K,
             "tier_legend": {
@@ -772,7 +864,16 @@ def main() -> None:
             print(f"  (TOP_K={TOP_K} 환경변수가 설정돼 상위 {TOP_K}건만 출력합니다)")
         print()
 
-        for i, (sentence, row) in enumerate(zip(synthesize(llm, pattern, rows), rows), start=1):
+        # 2패스: ① 영어 합성 → ② 한국어 번역 (0728, 생성/번역 분리).
+        # 번역이 실패한 자리는 영어 원문이 그대로 남고, ①이 못 채운 자리(None)는
+        # 결정적 폴백(_fallback_sentence, 한국어)이 메운다 — 어느 쪽도 가설을 잃지 않는다.
+        english = synthesize(llm, pattern, rows)
+        korean = translate_to_korean(translate_llm, english)
+
+        for i, (sentence_en, sentence_ko, row) in enumerate(
+            zip(english, korean, rows), start=1
+        ):
+            sentence = sentence_ko if sentence_ko else _fallback_sentence(pattern, row)
             print(f"{i}. {sentence}")
 
             if row["route"] == "direct":
@@ -829,7 +930,11 @@ def main() -> None:
             # signature가 있으면 형상 경유, 둘 다 null이면 문헌 직결.
             entry["hypotheses"].append({
                 "rank": i,
+                # sentence = 화면에 나가는 한국어(backend가 그대로 narrative로 운반).
+                # sentence_en = 합성 원문(영어). 번역 드리프트 추적·faithfulness 평가용이며
+                #   합성이 실패해 결정적 폴백으로 메운 자리에서는 None이다.
                 "sentence": sentence,
+                "sentence_en": sentence_en,
                 "tier": TIER_TAG[row["tier"]],
                 # MCP 검증 체인 라우팅: A3(텔레메트리)/A5(레시피)/A2(일반 정비)/A6(소모품)/null(체인 없음)
                 "scenario_hint": scenario_hint(row),
