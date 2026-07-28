@@ -43,7 +43,10 @@ NEO4J_USERNAME = os.getenv("NEO4J_USERNAME")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 NEO4J_DATABASE = os.getenv("NEO4J_DATABASE")
 
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.5")
+# KG 문장 합성 모델
+# 전용 변수 + 리터럴 기본값(구: OPENAI_MODEL, 폴백 gpt-5.5).
+# 현행 hypotheses.json 772건은 gpt-5.4-mini 산출물(meta.model에 기록됨)
+OPENAI_MODEL = os.getenv("KG_SYNTH_MODEL", "gpt-5.4-mini")
 
 # 기본값은 "탐색된 모든 가설을 다 낸다".
 # 굳이 잘라 보고 싶으면 환경변수로: TOP_K=3 python 6_ask_graphrag.py

@@ -68,8 +68,10 @@ def parse_rubric(text: str) -> dict:
 class RubricGenerator:
     """VLM output 1건 → 인스턴스 루브릭 1건.
 
-    기본 모델은 `models.RUBRIC_GEN_MODEL` — 서술 VLM과 반드시 다른 모델.
+    기본 모델은 `models.RUBRIC_GEN_MODEL` — 서술 VLM과 반드시 다른 모델
     """
+
+    RUBRIC_SEED = 20260726  # 최초 루브릭 생성일
 
     def __init__(self, backend=None, model: str = RUBRIC_GEN_MODEL, timeout_s: float = 120.0):
         self.model = model
@@ -78,7 +80,8 @@ class RubricGenerator:
         else:
             from ..vlm.backends.openai_api import OpenAIBackend
 
-            self._backend = OpenAIBackend(model=model, timeout_s=timeout_s)
+            self._backend = OpenAIBackend(
+                model=model, timeout_s=timeout_s, seed=self.RUBRIC_SEED)
 
     def convert(self, vlm_output: dict) -> dict:
         query = CONVERSION_QUERY_TEMPLATE.format(

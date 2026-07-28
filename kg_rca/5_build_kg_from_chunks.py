@@ -32,7 +32,14 @@ NEO4J_USERNAME = os.getenv("NEO4J_USERNAME")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 NEO4J_DATABASE = os.getenv("NEO4J_DATABASE")
 
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.5")
+# KG 추출 모델 — 모델지정_규약_설계서 v2.0 §1·§6-S1.
+# ⚠️ 구 코드는 `os.getenv("OPENAI_MODEL", "gpt-5.5")`였다. 두 가지 문제가 있었다:
+#   ① 코드 폴백(gpt-5.5)이 .env_example(gpt-5.4-mini)과 달라, .env 없는 환경에서 조용히
+#      상위 모델로 올라갔다. 게다가 gpt-5.5는 temperature=0을 거부해 아래 호출이 400으로 죽는다.
+#   ② 공통 변수 OPENAI_MODEL을 읽어, 런타임 역할을 티어업하면 KG 재빌드까지 따라 올라갔다.
+# KG 산출물(hypotheses.json)은 **고정 대상**이므로 전용 변수 + 리터럴 기본값으로 못박는다.
+# 재빌드 모델을 정말 바꿀 때만 KG_EXTRACT_MODEL을 명시할 것(산출물이 통째로 바뀐다).
+OPENAI_MODEL = os.getenv("KG_EXTRACT_MODEL", "gpt-5.4-mini")
 
 
 # =========================

@@ -16,7 +16,12 @@ from pathlib import Path
 
 # 인덱스 빌드와 런타임 질의는 반드시 같은 임베딩 모델을 써야 한다 —
 # 모델이 다르면 벡터 공간이 달라 코사인 비교가 무의미해진다. 양쪽 다 이 상수를 참조할 것.
-EMBEDDING_MODEL = "text-embedding-3-small"
+# ⚠️ 이 값을 바꾸면 **기존 signature_index.json은 즉시 무효**다. 불일치는 예외를 내지 않고
+# 조용히 엉뚱한 진입 시그니처를 고르므로, 바꿀 때는 7_build_signature_index.py를 반드시
+# 다시 돌릴 것(인덱스를 보유한 팀원이 있으면 동시에).
+# 07-27 3-small → 3-large 승격: 동의어 매칭("rim"↔"periphery" 등)이 문자 유사도로 불가능해 임베딩 품질이 직접 병목인 항목이라,
+# 무효화할 인덱스가 없는 지금(파일 미생성 상태)이 교체 비용이 가장 낮다.
+EMBEDDING_MODEL = "text-embedding-3-large"
 
 # 매칭 하한 — 이보다 덜 닮으면 진입 시그니처로 인정하지 않는다.
 # top-k는 "안 닮아도 무조건 k개"를 돌려주므로, 하한 없이는 어떤 형상과도 무관한 관측이
@@ -24,6 +29,10 @@ EMBEDDING_MODEL = "text-embedding-3-small"
 # 호출부(LiveKGClient)는 기지 패턴이면 패턴 레벨 원인만, Unknown이면 candidates=[]
 # (→ insufficient_evidence 흐름)로 처리한다.
 # 실측 근거(text-embedding-3-small, 07-23): 정답 매칭 0.53~0.71, 오답 상위 0.44~0.48.
+# ⚠️ 07-27 미보정 — 위 실측치는 **3-small 기준**이다. EMBEDDING_MODEL을 3-large로 올리면
+# 코사인 분포가 달라져 이 하한의 근거가 사라진다(정답/오답 구간이 함께 이동할 수 있다).
+# 인덱스를 처음 빌드할 때 정답·오답 점수 분포를 다시 재서 0.4를 재보정할 것 —
+# 그전까지 이 값은 "이월된 임시값"이다.
 MIN_MATCH_SCORE = 0.4
 
 # 각 시그니처의 매칭용 서술 재료를 그래프에서 모은다.
