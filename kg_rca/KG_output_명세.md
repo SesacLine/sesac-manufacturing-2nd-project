@@ -1,6 +1,6 @@
 # KG Output (`outputs/hypotheses.json`) 구조 명세
 
-> 생성: `6_ask_graphrag.py` · 스키마 정본: `../docs/KG_schema_v1.4.md` · hypothesis agent 입력용
+> 생성: `6_ask_graphrag.py` · 스키마 정본: `../docs/KG_schema_v1.3.md` · hypothesis agent 입력용
 
 ## 대표 키 역할
 
@@ -42,7 +42,10 @@
 | `questions[].pattern` | `Edge-Ring` | VLM 클래스 출력과 조인하는 키 (A0 진입점) |
 | `questions[].counts` | `{total, by_tier}` | agent가 루프 예산·커버리지를 계획하는 요약 |
 | `hypotheses[].rank` | `1` | 검증 착수 순서 (문헌 근거 빈도순) |
-| `hypotheses[].sentence` | 한국어 가설 문장 | 사람 보고용 · Critic의 faithfulness 대조 대상 |
+| `hypotheses[].sentence` | 한국어 가설 문장 | 사람 보고용 · Critic의 faithfulness 대조 대상. backend가 그대로 `narrative`로 운반(assembler.py) |
+| `hypotheses[].sentence_en` | 영어 원문 \| `null` | **0728 신설.** 합성 LLM이 만든 영어 원문. 번역 드리프트 추적·faithfulness 평가용. 합성이 실패해 결정적 폴백(`_fallback_sentence`, 한국어)으로 메운 자리는 `null` |
+| `meta.translate_model` | `gpt-5.4-mini` | 번역 패스 모델 (`KG_TRANSLATE_MODEL`, 미설정 시 `meta.model`과 동일) |
+| `meta.language` | `{synthesis: "en", display: "ko"}` | 산출 언어 규약. 합성은 영어, 표시용 한국어는 별도 번역 패스 |
 | `hypotheses[].tier` | `자동` \| `반자동` \| `근거없음` | 검증 시나리오 분기 (agent 판정 / 조회 후 사람 / 검증 불가). **순위와 무관** |
 | `hypotheses[].scenario_hint` | `A3` \| `A5` \| `A2` \| `A6` \| `null` | MCP 검증 체인 배정: Parameter→A3, Recipe→A5, Maintenance→consumable이면 A6·아니면 A2, 근거없음→null. 소급 노드(consumable 미저장)는 키워드 휴리스틱 임시 판정 — 재추출 시 노드 속성으로 대체 |
 | `path.signature` | `ring@edge` \| `null` | 형상 경유 여부와 통과 시그니처 (경로 종류는 path의 null 패턴으로 판별) |

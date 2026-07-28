@@ -240,6 +240,34 @@ def fail_batch(batch_id: str, error: str) -> None:
         )
 
 
+# 기동 시 정리 문구 — 사용자가 화면2에서 이 사유를 읽는다.
+ORPHANED_BATCH_ERROR = "서버가 재시작되어 중단되었습니다. 다시 실행해 주세요."
+
+
+def reap_orphaned_batches() -> list[str]:
+    """기동 시 남아 있는 `running` 배치를 `failed`로 내린다. 정리한 batch_id 목록 반환.
+
+    배치는 프로세스 안의 asyncio 태스크로 돈다 — 서버가 죽으면 태스크도 같이 사라지지만
+    DB의 `running` 행은 아무도 안 고친다. 그 행이 남으면 `POST /api/v1/batches`의 가드
+    (api/batches.py:23)가 "이미 진행 중인 배치가 있습니다"로 **영구히** 409를 내고, 시딩도
+    같은 이유로 건너뛴다(seed.catch_up_to). 실측(0728): 4단계 진행 중 서버를 내렸더니
+    재기동 후 버튼이 먹지 않았고 DB를 손으로 고쳐야 풀렸다.
+
+    "새로 뜬 프로세스에는 진행 중인 배치가 있을 수 없다"는 가정 위에 있다 —
+    uvicorn을 `--workers 1`로 고정(MCP 싱글턴 제약)했으므로 다른 워커가 같은 DB를 보며
+    배치를 돌리는 상황이 없다. 워커를 늘리면 이 가정이 깨지니 그때 함께 재검토할 것.
+    """
+    with _lock, _connect() as con:
+        rows = con.execute("SELECT batch_id FROM batch WHERE status = 'running'").fetchall()
+        if not rows:
+            return []
+        con.execute(
+            "UPDATE batch SET status = 'failed', error = ? WHERE status = 'running'",
+            (ORPHANED_BATCH_ERROR,),
+        )
+        return [r["batch_id"] for r in rows]
+
+
 def _batch_row_to_dict(row: sqlite3.Row) -> dict:
     return {
         "batch_id": row["batch_id"],

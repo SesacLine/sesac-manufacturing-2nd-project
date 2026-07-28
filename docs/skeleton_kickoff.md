@@ -275,7 +275,7 @@ kg_rca가 07-13에 schema v2.4로 갱신되면서 출력에서 `route`(경로 �
 
 | 궁금한 것 | 어디를 보면 되는가 |
 |---|---|
-| KG 스키마 전체 명세 (정본) | `docs/KG_schema_v1.4.md` |
+| KG 스키마 전체 명세 (정본) | `docs/KG_schema_v1.3.md` |
 | KG 진행 상황·남은 문제·다음 액션 (정본, KG팀원 작성) | `kg_rca/STATUS.md` |
 | KG가 실제로 뽑은 가설 원본(건수는 계속 바뀜) | `kg_rca/outputs/hypotheses.json` |
 | MCP 9개 함수 상세 계약 | `SesacLine_SemiRCA/secsgem-mcp/README.md` |

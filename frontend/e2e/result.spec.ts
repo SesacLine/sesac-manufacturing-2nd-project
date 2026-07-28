@@ -183,3 +183,44 @@ test("근거 모달이 commonality 로트 수가 소속보다 큰 이유를 설�
   await page.locator(".hcard").first().getByRole("button", { name: /근거/ }).click();
   await expect(page.locator(".modal")).toContainText("분석 참조로 함께 비교했습니다");
 });
+
+/** 권장 조치 완료 체크는 화면을 벗어났다 돌아와도 남아야 한다.
+ *
+ *  예전엔 useState뿐이라 언마운트되는 순간 사라졌다 — 조치를 확인하고 대기열로 갔다가 다시
+ *  들어오면 전부 초기화됐다. 체크 상태는 브라우저(localStorage)에 분석별로 저장한다.
+ */
+test("권장 조치 체크가 재방문·새로고침 후에도 유지된다", async ({ page }) => {
+  await page.goto(REVIEWED);
+  const items = page.locator(".action-item");
+  await expect(items).toHaveCount(2);
+  await expect(items.first()).not.toHaveClass(/checked/);
+
+  await items.first().click();
+  await expect(items.first()).toHaveClass(/checked/);
+  await expect(items.nth(1)).not.toHaveClass(/checked/); // 누른 항목만
+
+  // ① 다른 화면에 갔다가 되돌아오기 (요청받은 시나리오)
+  await page.goto("/");
+  await page.goto(REVIEWED);
+  await expect(page.locator(".action-item").first()).toHaveClass(/checked/);
+  await expect(page.locator(".action-item").nth(1)).not.toHaveClass(/checked/);
+
+  // ② 새로고침에도 살아남는다(localStorage라 세션 밖에서도 유지)
+  await page.reload();
+  await expect(page.locator(".action-item").first()).toHaveClass(/checked/);
+
+  // ③ 해제도 저장된다 — 켜는 것만 남고 끄는 게 안 남으면 되돌릴 수 없다
+  await page.locator(".action-item").first().click();
+  await page.reload();
+  await expect(page.locator(".action-item").first()).not.toHaveClass(/checked/);
+});
+
+test("조치 체크는 분석별로 분리된다", async ({ page }) => {
+  await page.goto(REVIEWED);
+  await page.locator(".action-item").first().click();
+  await expect(page.locator(".action-item").first()).toHaveClass(/checked/);
+
+  // 다른 분석(novel)에는 새어 들어가면 안 된다 — 인덱스 공유 시 생기던 실패 모드.
+  await page.goto(NOVEL);
+  await expect(page.locator(".action-item").first()).not.toHaveClass(/checked/);
+});

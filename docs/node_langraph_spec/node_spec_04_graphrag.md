@@ -292,7 +292,7 @@ VLM이 쓴 설명("가장자리를 따라 끊김 없이 도는 진한 띠")을 �
 | 어느 클라이언트를 쓸지 정하는 곳 | `backend/deps.py::kg_client()` |
 | 후보 0건일 때의 분기 | `backend/graph.py::route_on_candidates` |
 | 후보 필드 상세 명세(정본) | `kg_rca/KG_output_명세.md` |
-| 그래프 구조 명세(정본) | `docs/KG_schema_v1.4.md` |
+| 그래프 구조 명세(정본) | `docs/KG_schema_v1.3.md` |
 
 ## 부록 B. 용어
 

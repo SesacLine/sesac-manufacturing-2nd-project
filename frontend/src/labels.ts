@@ -46,7 +46,18 @@ export const TOOL_LABELS: Record<string, string> = {
   get_lot_timeline: "로트 타임라인",
   critic: "검증 노드",
   pipeline: "파이프라인",
+  // MCP 도구가 아니라 batch_runner가 직접 남기는 안내(#69) — Normal 로트는 그룹을 만들지
+  // 않아 ④~⑦ 로그가 없으므로, 이 한 줄이 화면2에서 그 로트들의 유일한 흔적이다.
+  normal_reading: "판독상 정상 처리",
 };
+
+/** 배치 로그의 "[패턴]" 태그를 화면 문구로. 태그는 backend가 그래프 어휘(Center/Normal…)로
+ *  붙이는데, 화면 다른 곳은 전부 한국어 라벨을 쓴다 — 여기만 raw로 두면 같은 대상이 두 이름으로
+ *  보인다. 매핑에 없는 태그("공통" 등)는 그대로 통과시킨다(열린 문자열). */
+export function batchLogPatternLabel(tag: string): string {
+  if (tag === "Normal") return "판독상 정상";
+  return tag;
+}
 
 /** 상태 라벨 — 와이어프레임 v9 문구. 화면3 헤더처럼 "이 카드가 무엇인지"를 말해야 하는
  *  자리에서는 4종을 구분해 쓴다(대기열 배지는 아래 QUEUE_STATUS_PILL이 2종으로 접는다). */

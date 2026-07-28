@@ -228,7 +228,17 @@ def test_group_actions_normal_reading_template():
 # ── v1.1: 서버시간(EVENT_DATE) env 오버라이드 ──────────────────────────────────────────
 def test_event_date_env_override(monkeypatch):
     """EVENT_DATE env로 서버 '오늘'을 바꿀 수 있다(기본 2026-04-01) — 재로드로 검증."""
+    import dotenv
+
     from backend import config
+
+    # config.py는 import(=reload)마다 load_dotenv()를 부른다. 그대로 두면 아래 delenv 직후의
+    # reload에서 개발자 .env의 EVENT_DATE(데모용 날짜)가 되살아나 "코드 기본값" 단언이 깨진다
+    # — CI(.env 없음)에서는 통과하고 로컬에서만 실패하는 형태라 더 헷갈린다.
+    # 여기서 검증하려는 건 "env → 상수" 파생이지 .env 로딩이 아니므로, 그 부수효과만 끈다.
+    # config 안의 `from dotenv import load_dotenv`가 reload 시점에 이 속성을 다시 읽으므로
+    # 원본 모듈(dotenv)을 패치해야 효과가 있다.
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **k: None)
 
     monkeypatch.setenv("EVENT_DATE", "2026-05-15")
     importlib.reload(config)

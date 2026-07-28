@@ -1,15 +1,33 @@
-# Wafer Defect RCA — Knowledge Graph Schema (v2.5)
+# Wafer Defect RCA — Knowledge Graph Schema (v1.3, 구 내부표기 v2.5)
 
 반도체 웨이퍼 결함 근본원인 분석(RCA)용 지식 그래프 스키마 명세.
 문헌 기반 **원인 가설 생성용** 그래프. 가설 검증은 별도 fab 데이터(SQL)가 담당하며,
 KG는 **evidence 노드**로 그 SQL과 연결된다.
 
-> ⚠ **이 문서는 기록용이다 — 정본은 `KG_schema_v1.4.md`로 대체됐다.** `KG_schema_v1.2.md`·`kg_rca/backup/schema.md`는 더 옛 기록.
+> ✅ **이 문서가 정본이다(0728 확인).** 파일명(v1.3)과 본문 내부표기(v2.5)가 달랐고 헤더가
+> `KG_schema_v1.4.md`를 정본으로 가리켰는데, **v1.4는 저장소에 존재한 적이 없다** —
+> `docs/`에는 v1.2와 v1.3뿐이다. 없는 파일을 좇지 않도록 이 줄을 바로잡았다.
+> 이후 버전 표기는 **파일명(v1.x) 기준**으로 통일한다.
+> `KG_schema_v1.2.md`·`kg_rca/backup/schema.md`는 옛 기록.
+>
+> **스키마 본체는 실제 그래프와 일치함을 0728 리빌드 직후 대조 확인**(라벨 8종·노드 속성·
+> 관계 7종·관계 속성 전부 일치). 낡았던 것은 아래 "예시 인스턴스"의 실측 수치뿐이었다.
 > 구현: `5_build_kg_from_chunks.py`(추출·검증), `4_ingest_chunks_to_neo4j.py`(시딩), `6_ask_graphrag.py`(순회),
 > `backend/graph_client/`(런타임 라이브 조회 — live_kg_client / morphology_rank / semantic_entry).
 > 관측 입력 계약: `kg_rca/VLM_output - KG 연결.md`, 데이터 모델: `kg_rca/데이터 모델 설계_v3.0.md`.
 
 ## 변경 이력
+
+**(2026-07-28) 산출 언어 규약 — 스키마 자체는 불변, 값의 언어가 바뀜**
+
+- KG의 자연어 값은 **영어로 생성한다.** `FailureMode`/`Cause`/`Maintenance`/`Recipe`의
+  `description`, 관계의 `description`이 전부 영어다(5번 추출 프롬프트·Pydantic 스키마 영어화).
+- 한국어는 **별도 번역 패스**가 만든다. 6번이 영어 가설 문장을 합성한 뒤 `KG_TRANSLATE_MODEL`로
+  일괄 번역해 `hypotheses.json`의 `sentence`(한국어)와 `sentence_en`(영어 원문)에 함께 굽는다.
+  생성과 번역을 한 LLM에 섞지 않는다(③ VLM에서 같은 이유로 분리한 경계를 KG에도 적용).
+- `meta.language = {synthesis: "en", display: "ko"}`로 산출물에 기록된다.
+- ⚠️ **`tier`와 evidence 센티넬(`근거없음`/`문헌 서술`)은 영어화 대상이 아니다** — backend가
+  직접 비교하는 제어값이다(`backend/state.py` `Tier` Literal, `hypothesis.py`·`critic.py` 분기).
 
 **v2.4 → v2.5 (2026-07-22, 형상 진입 실전화 + 모폴로지 레이어)**
 
@@ -244,16 +262,32 @@ SpatialSignature ──FORMS_IN─────────────┘       
 
 ---
 
-## 예시 인스턴스 (v2.5 재빌드 실측)
+## 예시 인스턴스 (2026-07-28 재빌드 실측)
 
-재빌드(2026-07-22, 문헌 15편·154청크): 가설 772건(Center 375 / Scratch 107 / Edge-Ring 290),
-`SpatialSignature` 8종, `FORMS_IN` 10엣지 전부 모폴로지 적재.
+> 수치는 **재빌드마다 바뀐다 — 코드에 하드코딩 금지.** 아래는 0728 빌드
+> (추출 `gpt-5.4`, 문헌 15편·154청크) 기준 스냅샷이다.
 
-**같은 `ring@edge`가 모폴로지로 갈라지는 실측 예 (판별자의 근거):**
+| | |
+|---|---|
+| 가설 | **911건** (Center 372 / Scratch 160 / Edge-Ring 379) |
+| 백본 노드 | Cause 381 · FailureMode 169 · Maintenance 167 · Recipe 8 · SpatialSignature 8 (+시드 DefectPattern 3 · ProcessStep 6 · Parameter 21) |
+| 진입점 엣지 | ARISES_IN 9 · HAS_SIGNATURE 6 · FORMS_IN 14 · ATTRIBUTED_TO 48 |
+| 본체 엣지 | CAUSED_BY 400 · VERIFIED_BY 289 · OCCURS_IN 155 |
+
+**`FORMS_IN` 모폴로지 적재율 (14엣지):** `density` 12 · `continuity` 13 · `angular_coverage` 5
+
+`angular_coverage`가 5건뿐인 것은 누락이 아니라 **의미상 정상**이다 — 채워진 5건은 전부
+`ring@edge`/`ring@mid`이고, 비어 있는 9건은 `blob`·`cluster`·`global`·`line`·`random`으로
+**원주 방향이라는 개념 자체가 성립하지 않는 형상**이다. ring 계열 6엣지 중 5건이 채워졌고,
+실제 공백은 `ring@edge→CLEAN` 하나다(문헌이 그 조합의 모폴로지를 서술하지 않음).
+
+**같은 `ring@edge`가 모폴로지로 갈라지는 실측 예 (판별자의 근거 — 0728 빌드에서도 유지됨):**
 
 - `ring@edge` `-FORMS_IN->` **ETCH** `{angular: full, density: high, continuity: continuous}`
   — "가장자리 전체를 두른 조밀한 연속 링" → 식각 불균일
 - `ring@edge` `-FORMS_IN->` **CMP** `{angular: partial, clock: [5,6,7], density: low, continuity: discontinuous}`
   — "하부 5~7시에만 걸린 성긴 끊긴 호" → 비대칭 엣지 연마
 
-관측이 partial arc면 ETCH 후보(-10 이하)가 가라앉고 CMP 후보가 떠오른다 — 라이브 검증 완료.
+관측이 partial arc면 ETCH 후보(−10)가 가라앉고 CMP 후보가 떠오른다.
+(0728 빌드에서 `ring@edge→DEPO`도 ETCH와 같은 `{full, high, continuous}`로 추가됐다 —
+full 관측에서는 두 후보가 함께 올라오고, 그 뒤 순위는 문헌 근거 빈도가 가른다.)

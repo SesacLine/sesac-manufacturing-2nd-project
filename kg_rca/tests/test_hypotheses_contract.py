@@ -12,7 +12,7 @@ kg_rca는 LLM 추출 파이프라인이라 **출력값 동등성**을 테스트�
 가설 **건수·내용**은 절대 assert하지 않는다(재생성마다 바뀜). 하한(>0)과 구조만 본다.
 fab.db 불필요 — 커밋된 산출물 파일만 읽으므로 CI(-m "not data")에서 그대로 돈다.
 
-정본: docs/KG_schema_v1.4.md · kg_rca/KG_output_명세.md
+정본: docs/KG_schema_v1.3.md · kg_rca/KG_output_명세.md
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ _HYPOTHESES = _KG_ROOT / "outputs" / "hypotheses.json"
 _CHUNKS = _KG_ROOT / "outputs" / "chunks.jsonl"
 _SEEDS = _KG_ROOT / "data" / "seeds"
 
-# --- 고정 vocabulary (정본: docs/KG_schema_v1.4.md "고정 vocabulary") ---
+# --- 고정 vocabulary (정본: docs/KG_schema_v1.3.md "고정 vocabulary") ---
 PATTERNS = {"Center", "Scratch", "Edge-Ring"}
 PROCESS_STEPS = {"LITHO", "ETCH", "DEPO", "CMP", "CLEAN", "EDS"}
 TIERS = {"자동", "반자동", "근거없음"}

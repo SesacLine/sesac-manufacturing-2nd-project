@@ -167,15 +167,26 @@ cd frontend && npm run dev            # 터미널 2 → :5173
 실행만 확인하려면 건너뛴다. 상세 절차는 `kg_rca/README.md` "준비"·"실행" 절이 정본이다 —
 요약하면:
 
-```powershell
-# Neo4j 준비 — Desktop(https://neo4j.com/download/)에서 DBMS 하나 만들고 Start,
-# 또는 Docker:
-docker run -d -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/password neo4j:5
+Neo4j는 **0728부터 AuraDB(관리형 클라우드)** 다 — 로컬 설치·Docker 기동 절차는 없어졌다.
+[console.neo4j.io](https://console.neo4j.io)에서 받은 값을 `.env`에 넣는다(스킴이 `bolt://`가
+아니라 **`neo4j+s://`**):
+
+```ini
+NEO4J_URI=neo4j+s://xxxxxxxx.databases.neo4j.io
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=<콘솔 발급값>
+NEO4J_DATABASE=neo4j
 ```
 
-`.env`에 접속정보 추가 후(`NEO4J_URI`/`NEO4J_USERNAME`/`NEO4J_PASSWORD`/`NEO4J_DATABASE`),
-`kg_rca/` 안에서 `1_test_connection.py`부터 `6_ask_graphrag.py`(여기서 `hypotheses.json`
-재생성)까지 번호 순서로 실행한다. `7_build_signature_index.py`는 의미 진입용 선택 단계.
+⚠️ **루트 `.env`와 `kg_rca/.env` 둘 다** 같은 값으로 맞춰야 한다 — kg_rca 스크립트는 인자 없는
+`load_dotenv()`라 실행 위치에 따라 읽는 파일이 갈린다.
+
+접속 확인(`python kg_rca/1_test_connection.py`) 후, `kg_rca/` 안에서 `1_test_connection.py`부터
+`6_ask_graphrag.py`(여기서 `hypotheses.json` 재생성)까지 번호 순서로 실행한다.
+`7_build_signature_index.py`는 의미 진입용 선택 단계.
+
+> 리빌드 중에는 `.env`의 `KG_LIVE`를 0으로 내려둘 것 — `0_reset.py`가 DB를 비우고 시작하므로
+> 반쯤 적재된 그래프가 그대로 라이브 조회에 노출된다.
 
 ### C. CNN 학습할 때만 (선택)
 

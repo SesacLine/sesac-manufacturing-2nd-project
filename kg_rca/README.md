@@ -61,7 +61,7 @@ SpatialSignature ──FORMS_IN─────┘                        Cause
 | `[반자동]` | `Maintenance` / `Recipe` | fab 조회는 되지만 조인 키·기대값이 없어 판정은 사람 몫 |
 | `[근거없음]` | 없음 | 문헌 서술로만 존재 (예: RTP 원인 — fab 6스텝 밖) |
 
-전체 명세는 [`KG_schema_v1.4.md`](../docs/KG_schema_v1.4.md) (정본), fab.db 테이블 스키마는
+전체 명세는 [`KG_schema_v1.3.md`](../docs/KG_schema_v1.3.md) (정본), fab.db 테이블 스키마는
 [`secsgem-mcp/README.md` §3](../secsgem-mcp/README.md) (정본 — 7테이블 전체).
 [`backup/schema.md`](backup/schema.md)는 v1 기록용.
 
@@ -82,23 +82,31 @@ SpatialSignature ──FORMS_IN─────┘                        Cause
 
 ## 준비
 
-### 1. Neo4j 설치 (로컬 DB가 있어야 파이프라인이 돈다)
+### 1. Neo4j 접속 (DB가 있어야 파이프라인이 돈다)
 
-가장 간단한 건 **Neo4j Desktop** ([다운로드](https://neo4j.com/download/)).
-설치 후 DBMS를 하나 만들고 비밀번호를 정한 뒤 **Start**로 띄운다.
-기본 Bolt 포트는 `7687`, 브라우저 콘솔은 `http://localhost:7474`.
+**0728부터 AuraDB(관리형 클라우드)를 쓴다 — 로컬 설치는 하지 않는다.**
+[console.neo4j.io](https://console.neo4j.io)에서 인스턴스를 만들면 자격증명 파일이 1회
+내려온다. **비밀번호는 생성 직후 한 번만 표시되므로 반드시 저장할 것.**
 
-Docker를 쓴다면:
+접속값은 아래 형태이고, 로컬 시절과 달리 스킴이 `bolt://`가 아니라 **`neo4j+s://`**(TLS)다:
+
+```ini
+NEO4J_URI=neo4j+s://xxxxxxxx.databases.neo4j.io
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=<콘솔에서 받은 값>
+NEO4J_DATABASE=neo4j
+```
+
+붙는지부터 확인하고 넘어간다 — 안 붙으면 이후 스크립트가 전부 같은 지점에서 죽는다:
 
 ```bash
-docker run -d --name neo4j-rca \
-  -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/password \
-  neo4j:5
+python 1_test_connection.py
 ```
 
 > APOC·GDS 같은 플러그인은 필요 없다. 순회는 순수 Cypher다.
-> DB 이름은 Community Edition 기준 `neo4j` 하나로 고정된다 (`NEO4J_DATABASE`).
+> DB 이름은 Aura에서 `neo4j` 하나로 고정된다 (`NEO4J_DATABASE`, 별도 DB 생성 불가).
+> 무료 티어는 장기간 미사용 시 인스턴스가 일시정지된다 — 콘솔에서 재개하면 된다.
+> **데모/발표 당일 아침에 인스턴스가 깨어 있는지 반드시 확인할 것.**
 
 ### 2. 파이썬 환경
 
@@ -127,10 +135,14 @@ cp .env_example .env
 | `KG_EXTRACT_MODEL` | `gpt-5.4-mini` | 5번(추출). **미설정이 기본** — 코드 기본값이 곧 정본 |
 | `KG_SYNTH_MODEL` | `gpt-5.4-mini` | 6번(합성). 동상 |
 | `ANCHOR_MODEL` | (미설정) | 앵커 보강 패스만 상위 모델. 미설정이면 `KG_EXTRACT_MODEL`과 동일 |
-| `NEO4J_URI` | `bolt://localhost:7687` | Neo4j Bolt 주소 |
+| `NEO4J_URI` | `neo4j+s://xxxx.databases.neo4j.io` | Aura 접속 주소(TLS). 구 로컬값은 `bolt://localhost:7687` |
 | `NEO4J_USERNAME` | `neo4j` | 기본 계정명 |
-| `NEO4J_PASSWORD` | `password` | **Neo4j 설치 시 정한 비밀번호로 바꿀 것** |
-| `NEO4J_DATABASE` | `neo4j` | Community Edition은 `neo4j` 고정 |
+| `NEO4J_PASSWORD` | (콘솔 발급값) | **Aura 인스턴스 생성 시 1회만 표시된다 — 저장 필수** |
+| `NEO4J_DATABASE` | `neo4j` | Aura는 `neo4j` 고정 |
+
+> ⚠️ 이 스크립트들은 인자 없는 `load_dotenv()`를 쓴다 — 실행 위치에 따라 저장소 루트의
+> `.env`를 읽을 수도, `kg_rca/.env`를 읽을 수도 있다. **두 파일의 `NEO4J_*` 4줄을 같게
+> 유지할 것.** 한쪽만 고치면 실행 위치에 따라 다른 DB에 붙는다.
 
 선택 변수: `TOP_K` — `6_ask_graphrag.py`의 패턴별 가설 출력 상한 (미설정 시 전건 출력).
 

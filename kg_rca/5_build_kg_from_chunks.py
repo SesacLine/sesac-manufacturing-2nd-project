@@ -43,7 +43,7 @@ OPENAI_MODEL = os.getenv("KG_EXTRACT_MODEL", "gpt-5.4-mini")
 
 
 # =========================
-# 2. KG 스키마 정의 (../docs/KG_schema_v1.4.md)
+# 2. KG 스키마 정의 (../docs/KG_schema_v1.3.md)
 # -------------------------
 # 문헌에서 자유롭게 만드는 노드는 FailureMode / Cause / Maintenance / Recipe.
 # DefectPattern / ProcessStep / Parameter 는 고정 vocabulary(앵커)이며
@@ -307,53 +307,61 @@ def step_is_grounded_in(step_id: str, chunk_text: str) -> bool:
     )
 
 
+## 언어 규약(0728): 아래 스키마 문자열은 Pydantic이 JSON schema로 만들어 **LLM에 그대로
+## 전달**되므로 프롬프트의 일부다 — 클래스 docstring도 모델 description으로 실린다.
+## KG 산출물은 전부 영어로 뽑고 한국어 전환은 6번 번역 패스에서 한 번만 한다.
+## (⑦ VLM description과 같은 경계 규약 — 생성과 번역을 한 LLM에 섞지 않는다.)
+
+
 class FailureModeNode(BaseModel):
-    """공정 내부의 고장 모드. 예: post-etch residue, metal corrosion."""
-    id: str = Field(description="유일 키. 소문자 snake_case. 예: post_etch_residue")
-    name: str = Field(description="문헌에 쓰인 그대로의 고장 모드 이름. 예: excessive post-etch residue")
-    description: str = Field(description="완결된 한국어 한 문장")
-    aliases: list[str] = Field(default_factory=list, description="문헌 속 별칭들")
+    """A failure mode occurring inside a process step. e.g. post-etch residue, metal corrosion."""
+    id: str = Field(description="Unique key. lowercase snake_case. e.g. post_etch_residue")
+    name: str = Field(description="Failure mode name exactly as written in the source document. e.g. excessive post-etch residue")
+    description: str = Field(description="One complete sentence in English.")
+    aliases: list[str] = Field(default_factory=list, description="Alternative names used in the source document")
 
 
 class CauseNode(BaseModel):
-    """고장 모드의 근본 원인. 예: high etch rate, nonuniform etch process."""
-    id: str = Field(description="유일 키. 소문자 snake_case. 예: high_etch_rate")
-    name: str = Field(description="문헌에 쓰인 그대로의 원인 이름. 예: incorrect process parameter (high etch rate)")
-    description: str = Field(description="완결된 한국어 한 문장. 나중에 가설 문장의 부품으로 이어 붙인다.")
-    aliases: list[str] = Field(default_factory=list, description="문헌 속 별칭들")
+    """A root cause behind a failure mode. e.g. high etch rate, nonuniform etch process."""
+    id: str = Field(description="Unique key. lowercase snake_case. e.g. high_etch_rate")
+    name: str = Field(description="Cause name exactly as written in the source document. e.g. incorrect process parameter (high etch rate)")
+    description: str = Field(description="One complete sentence in English. It is later reused as a building block of the hypothesis sentence.")
+    aliases: list[str] = Field(default_factory=list, description="Alternative names used in the source document")
 
 
 class MaintenanceNode(BaseModel):
     """
-    정비 행위. 문헌의 '조치(Corrective Action)' 열에서 뽑는다.
-    원인 열에는 'Improper maintenance'라는 뭉뚱그린 표현만 있고,
-    구체적 정비 행위(chamber wet clean 등)는 조치 열에 적혀 있다.
+    A maintenance action, taken from the 'Corrective Action' column of the source document.
+    The cause column only carries a vague expression such as 'Improper maintenance',
+    while the concrete action (e.g. chamber wet clean) is written in the action column.
     """
-    id: str = Field(description="유일 키. 소문자 snake_case. 예: chamber_wet_clean")
-    name: str = Field(description="문헌 표기 그대로. 예: chamber wet clean")
-    description: str = Field(description="완결된 한국어 한 문장")
+    id: str = Field(description="Unique key. lowercase snake_case. e.g. chamber_wet_clean")
+    name: str = Field(description="Exactly as written in the source document. e.g. chamber wet clean")
+    description: str = Field(description="One complete sentence in English.")
     consumable: bool = Field(
-        description="소모품(패드·브러시·슬러리·필터·컨디셔너 등)의 교체/마모/수명 계열이면 true, "
-                    "일반 정비·세정·점검·교정이면 false. "
-                    "예: replace polishing pad -> true, chamber wet clean -> false"
+        description="true if this is about replacement/wear/lifetime of a consumable "
+                    "(pad, brush, slurry, filter, conditioner, ...); "
+                    "false for general maintenance, cleaning, inspection or calibration. "
+                    "e.g. replace polishing pad -> true, chamber wet clean -> false"
     )
 
 
 class RecipeNode(BaseModel):
-    """레시피 검증 대상. 예: process recipe."""
-    id: str = Field(description="유일 키. 소문자 snake_case. 예: process_recipe")
-    name: str = Field(description="문헌 표기 그대로. 예: process recipe")
-    description: str = Field(description="완결된 한국어 한 문장")
+    """A recipe to be checked as a verification signal. e.g. process recipe."""
+    id: str = Field(description="Unique key. lowercase snake_case. e.g. process_recipe")
+    name: str = Field(description="Exactly as written in the source document. e.g. process recipe")
+    description: str = Field(description="One complete sentence in English.")
 
 
 class SignatureNode(BaseModel):
     """
-    웨이퍼맵 공간 시그니처 = (형상, 구역) 쌍. 문서의 형상 서술에서 추출한다.
-    id는 코드가 "{shape}@{zone}"으로 조합하므로 LLM은 두 enum만 고르면 된다.
+    A wafer-map spatial signature = (shape, zone) pair, extracted from morphology
+    descriptions in the document. The code composes the id as "{shape}@{zone}",
+    so the model only has to pick the two enums.
     """
-    shape: ShapeId = Field(description="형상. 예: ring-shaped -> ring, linear streaks -> line")
-    zone: ZoneId = Field(description="구역. 예: outer edge -> edge, geometric center -> center, 전체/불특정 -> any")
-    description: str = Field(default="", description="문헌의 형상 서술 원문 요약(짧게)")
+    shape: ShapeId = Field(description="Shape. e.g. ring-shaped -> ring, linear streaks -> line")
+    zone: ZoneId = Field(description="Zone. e.g. outer edge -> edge, geometric center -> center, whole wafer/unspecified -> any")
+    description: str = Field(default="", description="Short summary of the morphology description in the source text")
 
     @property
     def id(self) -> str:
@@ -370,40 +378,43 @@ class Relationship(BaseModel):
                       (target_label 로 어느 라벨인지 반드시 지목)
     """
     kind: RelationshipKind
-    source: str = Field(description="출발 노드의 id")
-    target: str = Field(description="도착 노드의 id")
+    source: str = Field(description="id of the source node")
+    target: str = Field(description="id of the target node")
 
     target_label: Optional[EvidenceLabel] = Field(
         default=None,
-        description="VERIFIED_BY 전용: 도착 노드의 라벨. 나머지 kind에서는 비워둔다.",
+        description="VERIFIED_BY only: label of the target node. Leave empty for every other kind.",
     )
     direction: Optional[Literal["high", "low"]] = Field(
         default=None,
-        description="VERIFIED_BY + target_label=Parameter 전용: 변수 이상 방향",
+        description="VERIFIED_BY + target_label=Parameter only: direction of the parameter deviation",
     )
     occurrence_prior: Optional[Literal["high", "mid", "low"]] = Field(
-        default=None, description="ARISES_IN/FORMS_IN 전용: 문헌상 흔한 정도(commonly/rare)"
+        default=None, description="ARISES_IN/FORMS_IN only: how common the source document says this is (commonly/rare)"
     )
     density: Optional[Density] = Field(
         default=None,
-        description="FORMS_IN 전용: 결함 밀도. dense→high, moderate→medium, sparse→low. 언급 없으면 null.",
+        description="FORMS_IN only: defect density. dense->high, moderate->medium, sparse->low. null if not mentioned.",
     )
     continuity: Optional[Continuity] = Field(
         default=None,
-        description="FORMS_IN 전용: 형상 연속성. continuous→continuous, broken/intermittent→intermittent, "
-                    "fragmented→discontinuous. 형상에 연속성 개념이 없으면(예: 중심 blob) not_applicable. 언급 없으면 null.",
+        description="FORMS_IN only: continuity of the shape. continuous->continuous, broken/intermittent->intermittent, "
+                    "fragmented->discontinuous. Use not_applicable when continuity does not apply to the shape "
+                    "(e.g. a blob at the center). null if not mentioned.",
     )
     angular_coverage: Optional[AngularCoverage] = Field(
         default=None,
-        description="FORMS_IN 전용: 원주 방향 커버리지. 전방위/full circumference→full, 일부/한쪽/arc→partial. 언급 없으면 null.",
+        description="FORMS_IN only: angular coverage. all around/full circumference->full, "
+                    "one side/partial/arc->partial. null if not mentioned.",
     )
     clock_positions: list[int] = Field(
         default_factory=list,
-        description="FORMS_IN 전용: 시계 위치 1~12(중복 허용). angular_coverage=partial일 때만 채우고 full이면 빈 리스트.",
+        description="FORMS_IN only: clock positions 1-12 (duplicates allowed). Fill only when "
+                    "angular_coverage=partial; leave the list empty when it is full.",
     )
-    extraction_confidence: float = Field(description="추출 신뢰도 1~5. 애매하면 낮게.")
-    description: str = Field(description="이 관계를 뒷받침하는 완결된 한 문장")
-    quotes: list[str] = Field(default_factory=list, description="근거 원문 스니펫(짧게)")
+    extraction_confidence: float = Field(description="Extraction confidence 1-5. Score low when uncertain.")
+    description: str = Field(description="One complete sentence in English supporting this relationship")
+    quotes: list[str] = Field(default_factory=list, description="Short verbatim snippets from the source text as evidence")
 
 
 class RcaGraph(BaseModel):
@@ -421,75 +432,81 @@ class RcaGraph(BaseModel):
 
 def build_prompt(chunk: dict) -> str:
     return f"""
-다음은 반도체 웨이퍼 불량 원인분석(RCA) 문헌의 한 조각입니다.
-이 조각에서 고장 모드(FailureMode), 원인(Cause), 검증 신호(Evidence)와 그 관계를 지식그래프로 추출하세요.
+The following is an excerpt from the literature on root cause analysis (RCA) of
+semiconductor wafer defects.
+Extract failure modes (FailureMode), causes (Cause), verification signals (Evidence)
+and the relationships between them from this excerpt as a knowledge graph.
 
-청크 메타데이터:
+Chunk metadata:
 - chunk_id: {chunk['chunk_id']}
 - doc_id: {chunk.get('doc_id')}
 
-추출 규칙:
-- 원문에 명시된 내용만 추출하고, 추측하지 마세요.
-- 의미 있는 내용이 없으면 모든 리스트를 빈 리스트로 반환하세요.
-- 노드 id는 소문자 snake_case. 예: post_etch_residue, high_etch_rate
-- description은 완결된 한국어 한 문장으로 쓰세요.
-- 공정 변수 자체(rf_power, etch_rate 등)를 Cause로 만들지 마세요.
-  변수는 VERIFIED_BY의 target으로만 씁니다.
-  "etch rate too high"처럼 이상 방향이 붙은 서술만 Cause입니다.
-- FailureMode(증상/고장 모드)와 Cause(그 배후 원인)를 섞지 마세요.
-  예: "excessive post-etch residue"는 FailureMode, "nonuniform etch process"는 Cause.
-- 조치/처방(“~를 교정하라”, “~를 점검하라”)은 Cause가 아닙니다.
-  조치 문장에 등장하는 정비 행위는 Maintenance 노드로만 만드세요.
+Extraction rules:
+- Extract only what is explicitly stated in the source text. Do not speculate.
+- If there is nothing meaningful, return every list empty.
+- Node ids are lowercase snake_case. e.g. post_etch_residue, high_etch_rate
+- Write every description as one complete sentence in English.
+- Do not turn a process parameter itself (rf_power, etch_rate, ...) into a Cause.
+  Parameters are used only as the target of VERIFIED_BY.
+  Only a statement carrying a deviation direction, such as "etch rate too high", is a Cause.
+- Do not mix up FailureMode (the symptom) and Cause (the reason behind it).
+  e.g. "excessive post-etch residue" is a FailureMode, "nonuniform etch process" is a Cause.
+- A corrective action or prescription ("correct the ...", "inspect the ...") is NOT a Cause.
+  A maintenance action appearing in an action sentence becomes a Maintenance node only.
 
-이 청크가 트러블슈팅 표의 한 행이면 아래 이름표가 붙어 있습니다. 열의 역할이 다릅니다.
+If this chunk is one row of a troubleshooting table, the labels below are attached.
+The columns play different roles.
 
-  공정: <ProcessStep>        <- 이 행의 OCCURS_IN 대상. 이 공정을 그대로 쓰세요.
-  표 유형: troubleshooting
-  [고장모드]  -> FailureMode 하나
-  [원인]      -> Cause 후보. "A." "B." 처럼 항목이 나뉘어 있으면 **항목마다 Cause 하나**
-  [조치]      -> 조치 문장. **절대 Cause로 만들지 마세요.**
-                 여기 나오는 구체적 정비 행위(chamber wet clean, replace thermocouple 등)만
-                 Maintenance 노드로 만들고, 대응하는 Cause에서 VERIFIED_BY로 연결하세요.
+  Process: <ProcessStep>     <- the OCCURS_IN target of this row. Use this process as given.
+  Table type: troubleshooting
+  [failure mode]  -> exactly one FailureMode
+  [cause]         -> Cause candidates. If the entries are split as "A." "B.", make **one Cause per entry**
+  [action]        -> the corrective action sentence. **Never turn this into a Cause.**
+                     Only the concrete maintenance actions here (chamber wet clean,
+                     replace thermocouple, ...) become Maintenance nodes, connected from the
+                     corresponding Cause with VERIFIED_BY.
 
-  표 유형: quality
-  [품질항목]  -> 측정 항목. 노드로 만들지 마세요.
-  [결함유형]  -> FailureMode
-  [비고]      -> 원인이 서술돼 있으면 Cause. 조치성 문장("~를 확인하라")은 제외.
+  Table type: quality
+  [quality item]  -> a measured item. Do not make a node out of it.
+  [defect type]   -> FailureMode
+  [remarks]       -> a Cause if a cause is described. Exclude action-like sentences ("check the ...").
 
-  표 유형: pattern_cause     (웨이퍼맵 패턴 -> 원인 직결. 공정 줄이 없습니다)
-  [불량패턴]  -> DefectPattern. 고정 3종에 없으면 이 행은 전부 건너뛰세요.
-  [패턴설명]  -> 노드로 만들지 마세요.
-  [원인]      -> Cause. 쉼표/or 로 나뉜 원인이 여럿이면 **각각 별도 Cause**로 만들고,
-                 DefectPattern에서 ATTRIBUTED_TO로 잇습니다. FailureMode는 만들지 마세요.
-                 원인 문장이 공정을 명시하면(예: "during chemical-mechanical polishing (CMP)")
-                 ARISES_IN도 함께 만드세요.
+  Table type: pattern_cause  (wafer-map pattern -> cause directly; there is no process row)
+  [defect pattern] -> DefectPattern. If it is not one of the fixed 3, skip this row entirely.
+  [pattern description] -> Do not make a node out of it.
+  [cause]         -> Cause. If several causes are separated by commas or "or", make
+                     **a separate Cause for each** and link them from the DefectPattern with
+                     ATTRIBUTED_TO. Do not create a FailureMode.
+                     If the cause sentence names a process (e.g. "during chemical-mechanical
+                     polishing (CMP)"), also create ARISES_IN.
 
-원인 열의 뭉뚱그린 표현은 이렇게 처리하세요.
-  "Improper maintenance"      -> Cause로 만들고, VERIFIED_BY -> Maintenance (조치 열의 구체 행위)
-  "Incorrect process recipe"  -> Cause로 만들고, VERIFIED_BY -> Recipe ("process recipe")
+Handle vague expressions in the cause column like this:
+  "Improper maintenance"      -> make it a Cause, VERIFIED_BY -> Maintenance (the concrete action in the action column)
+  "Incorrect process recipe"  -> make it a Cause, VERIFIED_BY -> Recipe ("process recipe")
 
-아래 세 목록은 고정입니다. 새로 만들지 말고 목록 안에서만 고르세요.
-해당하는 항목이 목록에 없으면 그 관계는 추출하지 마세요.
+The three lists below are fixed. Do not invent new entries; choose only from the lists.
+If no entry applies, do not extract that relationship at all.
 
-공정 단계(ProcessStep) 6종:
+Process steps (ProcessStep), 6 of them:
   LITHO, ETCH, DEPO, CMP, CLEAN, EDS
 
-불량 패턴(DefectPattern) 3종:
+Defect patterns (DefectPattern), 3 of them:
   Center, Scratch, Edge-Ring
-  (웨이퍼맵 상의 공간 패턴만 해당. "circular ring"→Edge-Ring, "bulls eye"→Center,
-   "linear defect"/"scuff mark"→Scratch)
+  (only spatial patterns on the wafer map. "circular ring"->Edge-Ring, "bulls eye"->Center,
+   "linear defect"/"scuff mark"->Scratch)
 
-공간 시그니처(SpatialSignature) — 문헌의 형상 서술에서 추출하는 노드:
-  signatures 리스트에 shape와 zone을 enum으로 골라 넣으세요.
-    shape 6종: ring, cluster, line, blob, global, random
-    zone 4종: center, mid, edge, any (불특정이면 any)
-  관계에서 이 노드를 가리킬 때는 "{{shape}}@{{zone}}" 형식의 id를 쓰세요.
+Spatial signature (SpatialSignature) — a node extracted from morphology descriptions:
+  Put the shape and zone enums into the signatures list.
+    shape, 6 of them: ring, cluster, line, blob, global, random
+    zone, 4 of them: center, mid, edge, any (use any when unspecified)
+  When a relationship points at this node, use an id of the form "{{shape}}@{{zone}}".
     "ring-shaped pattern at the outer edge" -> shape=ring, zone=edge -> id "ring@edge"
     "concentrated cluster near the geometric center" -> cluster@center
     "linear streaks across the wafer" / "directional scratches" -> line@any
-  문헌이 형상을 서술할 때만 만드세요. 형상 언급이 없는 청크에서는 만들지 마세요.
+  Create these only when the document actually describes a morphology. Do not create any
+  in a chunk that never mentions a shape.
 
-공정 변수(Parameter) 20종:
+Process parameters (Parameter), 20 of them:
   exposure_dose, focus_offset, stage_temp, alignment_offset,
   rf_power, chamber_pressure, he_flow, temperature, etch_rate,
   gas_flow, susceptor_temp, deposition_rate,
@@ -497,89 +514,102 @@ def build_prompt(chunk: dict) -> str:
   flow_rate, megasonic_power, chemical_temp, rinse_time,
   chuck_temp, contact_resistance
 
-검증 신호(Evidence)는 세 종류이고, Parameter만 위 고정 목록에서 고릅니다.
-Maintenance와 Recipe는 문헌 표현으로 자유롭게 만드세요.
-- Parameter   : 계측 변수. 위 20종 중 하나. (예: rf_power)
-                **어느 변수인지 확실하지 않으면 문헌의 일반 표현을 그대로 쓰세요**
-                (temperature, pressure, gas flow, focus, overlay ...).
-                공정에 맞는 변수로 자동 매핑됩니다. 예: ETCH의 "Incorrect temperature"는
-                'temperature'라고 쓰세요. 'chuck_temp'처럼 다른 공정의 변수를 고르면 버려집니다.
-- Maintenance : 정비 행위. 조치 문장에서 뽑는다. (예: chamber wet clean, replace defective thermocouple)
-                consumable 필드를 채우세요: 소모품(패드/브러시/슬러리/필터/컨디셔너)의
-                교체·마모·수명 계열이면 true, 일반 정비·세정·점검·교정이면 false.
-- Recipe      : 레시피 확인 대상. (예: process recipe)
+There are three kinds of verification signal (Evidence); only Parameter is chosen from the
+fixed list above. Maintenance and Recipe are created freely from the wording of the document.
+- Parameter   : a measured variable. One of the 20 above. (e.g. rf_power)
+                **If you are not sure which variable it is, write the generic wording of the
+                document as it stands** (temperature, pressure, gas flow, focus, overlay, ...).
+                It is mapped automatically to the variable belonging to the process.
+                e.g. for "Incorrect temperature" in ETCH, write 'temperature'. If you pick a
+                variable belonging to another process, such as 'chuck_temp', it is discarded.
+- Maintenance : a maintenance action, taken from the action sentence.
+                (e.g. chamber wet clean, replace defective thermocouple)
+                Fill the consumable field: true for replacement/wear/lifetime of a consumable
+                (pad/brush/slurry/filter/conditioner), false for general maintenance,
+                cleaning, inspection or calibration.
+- Recipe      : a recipe to be checked. (e.g. process recipe)
 
-관계(kind) 7종:
-- ARISES_IN:     (DefectPattern) -> (ProcessStep)  "이 불량 패턴은 이 공정을 의심케 한다" (occurrence_prior 채우기)
-- HAS_SIGNATURE: (DefectPattern) -> (SpatialSignature)  "이 패턴은 이런 형상으로 나타난다"
-                 문헌이 패턴의 생김새를 서술할 때 씁니다. target은 "{{shape}}@{{zone}}" id.
-                 예: "The Edge-Ring defect appears as a ring-shaped pattern near the outer edge"
-                     -> signatures에 (ring, edge) 추가 + HAS_SIGNATURE: Edge-Ring -> ring@edge
-- FORMS_IN:      (SpatialSignature) -> (ProcessStep)  "이 형상은 주로 이 공정에서 생긴다" (occurrence_prior 채우기)
-                 문헌이 패턴 클래스명 없이 **형상 서술**로 공정을 지목할 때 씁니다.
-                 예: "This ring-shaped failure pattern at the outer edge reflects issues in cleaning steps"
+Relationships (kind), 7 of them:
+- ARISES_IN:     (DefectPattern) -> (ProcessStep)  "this defect pattern points at this process" (fill occurrence_prior)
+- HAS_SIGNATURE: (DefectPattern) -> (SpatialSignature)  "this pattern appears with this shape"
+                 Use it when the document describes what the pattern looks like.
+                 The target is a "{{shape}}@{{zone}}" id.
+                 e.g. "The Edge-Ring defect appears as a ring-shaped pattern near the outer edge"
+                     -> add (ring, edge) to signatures + HAS_SIGNATURE: Edge-Ring -> ring@edge
+- FORMS_IN:      (SpatialSignature) -> (ProcessStep)  "this shape mostly forms in this process" (fill occurrence_prior)
+                 Use it when the document points at a process through a **morphology
+                 description** without naming the pattern class.
+                 e.g. "This ring-shaped failure pattern at the outer edge reflects issues in cleaning steps"
                      -> FORMS_IN: ring@edge -> CLEAN
-                 문헌이 형상의 **모폴로지**를 함께 서술하면 아래 속성도 채우세요(FORMS_IN 전용):
-                   density: dense→high, moderate→medium, sparse/faint/thin→low
-                   continuity: continuous/unbroken→continuous, intermittent→intermittent,
-                               broken/fragmented→discontinuous, 중심 blob처럼 연속성 개념이 없으면 not_applicable
-                   angular_coverage: full circumference/전방위/closed all the way around→full,
-                                     arc/one side/partial/broken arc→partial
-                   clock_positions: angular_coverage=partial이고 시계 위치가 명시되면 그 숫자들(예: "5 to 7 o'clock"→[5,6,7]).
-                                    full이면 빈 리스트.
-                 서술에 없으면 비워 둡니다(density/continuity/angular_coverage=null, clock_positions=[]).
-                 같은 문장이 패턴 클래스명(Center/Scratch/Edge-Ring)도 함께 말하면
-                 ARISES_IN을 우선하고 FORMS_IN은 만들지 마세요(중복 방지).
-- ATTRIBUTED_TO: (DefectPattern) -> (Cause)        "이 불량 패턴의 원인은 저것이다"
-                 문헌이 **공정을 말하지 않고** 패턴에서 원인으로 바로 건너뛸 때 씁니다.
-- OCCURS_IN:   (FailureMode)   -> (ProcessStep)  "이 고장 모드는 이 공정에서 일어난다" (고장 모드마다 정확히 1개)
-- CAUSED_BY:   (FailureMode)   -> (Cause)        "이 고장 모드의 원인은 저것이다"
+                 If the document also describes the **morphology** of the shape, fill the
+                 attributes below as well (FORMS_IN only):
+                   density: dense->high, moderate->medium, sparse/faint/thin->low
+                   continuity: continuous/unbroken->continuous, intermittent->intermittent,
+                               broken/fragmented->discontinuous; use not_applicable when
+                               continuity does not apply, as for a blob at the center
+                   angular_coverage: full circumference/all around/closed all the way around->full,
+                                     arc/one side/partial/broken arc->partial
+                   clock_positions: when angular_coverage=partial and clock positions are stated,
+                                    those numbers (e.g. "5 to 7 o'clock"->[5,6,7]).
+                                    Empty list when it is full.
+                 Leave them empty when the description does not say
+                 (density/continuity/angular_coverage=null, clock_positions=[]).
+                 If the same sentence also names a pattern class (Center/Scratch/Edge-Ring),
+                 prefer ARISES_IN and do not create FORMS_IN (avoids duplication).
+- ATTRIBUTED_TO: (DefectPattern) -> (Cause)        "the cause of this defect pattern is that"
+                 Use it when the document jumps straight from the pattern to the cause
+                 **without naming a process**.
+- OCCURS_IN:   (FailureMode)   -> (ProcessStep)  "this failure mode happens in this process" (exactly one per failure mode)
+- CAUSED_BY:   (FailureMode)   -> (Cause)        "the cause of this failure mode is that"
 - VERIFIED_BY: (Cause)         -> (Parameter | Maintenance | Recipe)
-               "이 원인은 이 신호로 검증한다"
-               target_label에 'Parameter' / 'Maintenance' / 'Recipe' 중 하나를 반드시 적으세요.
-               target_label이 'Parameter'일 때만 direction(high/low)을 채우세요.
+               "this cause is verified with this signal"
+               You must write one of 'Parameter' / 'Maintenance' / 'Recipe' in target_label.
+               Fill direction (high/low) only when target_label is 'Parameter'.
 
-VERIFIED_BY 대상 고르는 법:
-- 원인이 계측 변수의 이상이면      -> Parameter  (예: "RF power drift" -> rf_power)
-  양의 과부족을 말하는 원인도 여기 해당합니다. direction으로 방향을 적으세요.
+How to choose the VERIFIED_BY target:
+- If the cause is a deviation of a measured variable -> Parameter (e.g. "RF power drift" -> rf_power)
+  A cause stating an excess or a shortfall belongs here too. Record the direction in `direction`.
     "insufficient rinsing"        -> Parameter rinse_time (direction=low)
     "excessive down force"        -> Parameter down_force (direction=high)
-    "localized over-pressure"     -> Parameter down_force (direction=high, CMP 문맥)
-- 원인이 정비 부족/부품 열화면      -> Maintenance (예: "improper maintenance" -> chamber wet clean)
-- 원인이 잘못된 레시피면            -> Recipe     (예: "incorrect process recipe" -> process recipe)
+    "localized over-pressure"     -> Parameter down_force (direction=high, in a CMP context)
+- If the cause is poor maintenance or part degradation -> Maintenance (e.g. "improper maintenance" -> chamber wet clean)
+- If the cause is a wrong recipe                       -> Recipe     (e.g. "incorrect process recipe" -> process recipe)
 
-중요:
-- source/target에는 반드시 노드의 id를 쓰세요.
-  고정 목록의 값은 **위에 적힌 문자열 그대로** 대소문자까지 정확히 옮기세요.
-  예: 'Edge-Ring' (O) / 'edge-ring' (X), 'ETCH' (O) / 'etching' (X)
-- ARISES_IN은 **원문에 공정 이름이 실제로 등장할 때만** 만드세요.
-  공정이 언급되지 않은 서론·요약 문단에서는 ARISES_IN을 추측해 만들지 마세요.
-- 청크 머리의 "## Center pattern", "## Scratch pattern — Cleaning" 같은 헤딩은
-  **그 단락 전체가 해당 DefectPattern에 대한 서술**임을 뜻합니다.
-  헤딩에 패턴명이 있고 본문이 공정을 지목하면, 고장 모드 추출과 **별개로**
-  그 패턴의 ARISES_IN도 반드시 만드세요.
-  예: "## Scratch pattern — Cleaning" + 본문에 cleaning 서술
-      -> ARISES_IN: Scratch -> CLEAN (+ 본문의 FailureMode/Cause 추출은 평소대로)
-- **"retaining ring"은 CMP 캐리어 부품이지 결함 패턴이 아닙니다.**
-  retaining ring 언급만으로 Edge-Ring 패턴이나 ring 형상을 만들지 마세요.
-  패턴/형상은 웨이퍼맵 상의 불량 분포를 서술할 때만 해당합니다.
-- 문서 머리의 [Metadata] 블록에 "Related Defect: Edge Ring"처럼 관련 결함이 명시돼 있고
-  Process가 지목돼 있으면, 그것은 큐레이션된 패턴-공정 연결이므로 ARISES_IN으로 추출하세요.
-- 불량 패턴(Center/Scratch/Edge-Ring)은 DefectPattern이지 FailureMode가 아닙니다.
-  'scratch_pattern' 같은 FailureMode를 만들지 마세요. 패턴은 ARISES_IN의 source로만 씁니다.
-  FailureMode는 공정 내부의 고장(post-etch residue, overlay misregistration 등)입니다.
-- 청크가 "웨이퍼맵 상의 어떤 모양이 어느 공정 탓인가"를 서술하면, 그것은 ARISES_IN입니다.
-  그 모양을 FailureMode로 만들지 말고 DefectPattern으로 매핑해 ARISES_IN을 만드세요.
+Important:
+- Always write node ids in source/target.
+  Copy values from the fixed lists **exactly as written above**, including capitalisation.
+  e.g. 'Edge-Ring' (O) / 'edge-ring' (X), 'ETCH' (O) / 'etching' (X)
+- Create ARISES_IN **only when the process name actually appears in the source text**.
+  Do not guess an ARISES_IN in an introductory or summary paragraph that never mentions a process.
+- A heading at the top of the chunk such as "## Center pattern" or "## Scratch pattern — Cleaning"
+  means **the whole paragraph is about that DefectPattern**.
+  When the heading carries a pattern name and the body points at a process, you must create
+  the ARISES_IN of that pattern as well, **separately from** the failure mode extraction.
+  e.g. "## Scratch pattern — Cleaning" + cleaning described in the body
+      -> ARISES_IN: Scratch -> CLEAN (+ extract FailureMode/Cause from the body as usual)
+- **A "retaining ring" is a CMP carrier part, not a defect pattern.**
+  Do not create an Edge-Ring pattern or a ring shape just because a retaining ring is mentioned.
+  Patterns and shapes apply only to descriptions of the defect distribution on the wafer map.
+- If a [Metadata] block at the top of the document states a related defect such as
+  "Related Defect: Edge Ring" and also names a Process, that is a curated pattern-process
+  link, so extract it as ARISES_IN.
+- Defect patterns (Center/Scratch/Edge-Ring) are DefectPattern nodes, not FailureMode nodes.
+  Do not create a FailureMode such as 'scratch_pattern'. Patterns are used only as the source
+  of ARISES_IN. A FailureMode is a failure inside a process (post-etch residue,
+  overlay misregistration, ...).
+- If the chunk describes "which shape on the wafer map is caused by which process",
+  that is an ARISES_IN. Do not turn the shape into a FailureMode; map it to a DefectPattern
+  and create ARISES_IN.
     "a center often arises due to problems in the thin film deposition"
         -> ARISES_IN: Center -> DEPO          (O)
         -> FailureMode 'thin_film_deposition_problem'   (X)
     "a ring is due to problems in the etching step"      -> ARISES_IN: Edge-Ring -> ETCH
-    "a linear scratch is a result of machine handling"   -> 공정이 명시되지 않았으므로 ARISES_IN 없음
-- 모든 FailureMode에는 OCCURS_IN 관계가 정확히 하나 있어야 합니다.
-- 장비 인스턴스(ETCH-03 등)는 추출하지 마세요. fab 데이터 영역입니다.
-- 각 관계에 extraction_confidence(1~5)와 근거 quotes를 채우세요.
+    "a linear scratch is a result of machine handling"   -> no process is named, so no ARISES_IN
+- Every FailureMode must have exactly one OCCURS_IN relationship.
+- Do not extract equipment instances (ETCH-03, ...). Those belong to the fab data domain.
+- Fill extraction_confidence (1-5) and the supporting quotes for every relationship.
 
-원문:
+Source text:
 {chunk['text']}
 """
 

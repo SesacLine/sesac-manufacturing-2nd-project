@@ -462,6 +462,26 @@ def _persist_normal_reading(
             defect_date=day or _defect_date(lots),
         )
         result_ids.append(analysis_id)
+
+        # 화면2 "결함 패턴별 분석 로그"에 안내를 남긴다.
+        # Normal 로트는 그룹을 만들지 않아 ④~⑦ 서브그래프를 타지 않으므로, 아무것도 안 하면
+        # 이 로그에 흔적이 전혀 없다 — 사용자에겐 "저수율 로트가 조용히 사라진" 것으로 보인다.
+        # run_groups 밖이라 contextvars 태그가 안 붙으므로 [Normal]을 직접 적는다
+        # (프론트 BatchLogByPattern이 이 태그로 묶는다).
+        store.append_batch_log(
+            batch_id,
+            {
+                "time": _now_hms(),
+                "tool": "normal_reading",
+                "message": (
+                    f"[Normal] 판독상 정상 {len(lots)}로트 — 웨이퍼맵에 결함 패턴이 없어 "
+                    f"원인 분석(④~⑦)을 진행하지 않았습니다. 맵에 보이지 않는 수율손실"
+                    f"(파라메트릭·EDS 계열) 의심이라 별도 조사 대상입니다"
+                    + (f" (결함일 {day})" if day else "")
+                ),
+                "status": "done",
+            },
+        )
     return result_ids
 
 
