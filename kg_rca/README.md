@@ -61,7 +61,7 @@ SpatialSignature ──FORMS_IN─────┘                        Cause
 | `[반자동]` | `Maintenance` / `Recipe` | fab 조회는 되지만 조인 키·기대값이 없어 판정은 사람 몫 |
 | `[근거없음]` | 없음 | 문헌 서술로만 존재 (예: RTP 원인 — fab 6스텝 밖) |
 
-전체 명세는 [`KG_schema_v1.4.md`](../docs/KG_schema_v1.4.md) (정본), fab.db 테이블 스키마는
+전체 명세는 [`KG_schema_v1.3.md`](../docs/KG_schema_v1.3.md) (정본), fab.db 테이블 스키마는
 [`secsgem-mcp/README.md` §3](../secsgem-mcp/README.md) (정본 — 7테이블 전체).
 [`backup/schema.md`](backup/schema.md)는 v1 기록용.
 

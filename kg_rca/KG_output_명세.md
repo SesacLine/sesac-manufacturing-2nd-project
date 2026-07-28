@@ -1,6 +1,6 @@
 # KG Output (`outputs/hypotheses.json`) 구조 명세
 
-> 생성: `6_ask_graphrag.py` · 스키마 정본: `../docs/KG_schema_v1.4.md` · hypothesis agent 입력용
+> 생성: `6_ask_graphrag.py` · 스키마 정본: `../docs/KG_schema_v1.3.md` · hypothesis agent 입력용
 
 ## 대표 키 역할
 

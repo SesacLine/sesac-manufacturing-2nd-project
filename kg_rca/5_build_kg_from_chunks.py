@@ -43,7 +43,7 @@ OPENAI_MODEL = os.getenv("KG_EXTRACT_MODEL", "gpt-5.4-mini")
 
 
 # =========================
-# 2. KG 스키마 정의 (../docs/KG_schema_v1.4.md)
+# 2. KG 스키마 정의 (../docs/KG_schema_v1.3.md)
 # -------------------------
 # 문헌에서 자유롭게 만드는 노드는 FailureMode / Cause / Maintenance / Recipe.
 # DefectPattern / ProcessStep / Parameter 는 고정 vocabulary(앵커)이며

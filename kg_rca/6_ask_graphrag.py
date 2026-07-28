@@ -10,7 +10,7 @@
   문헌 직결: DefectPattern -ATTRIBUTED_TO-> Cause
 Evidence(Parameter/Maintenance/Recipe)에 닿지 않는 Cause도 [근거없음] 가설로 낸다(버리지 않는다).
 
-스키마 정본: ../docs/KG_schema_v1.4.md · 출력 필드 명세: KG_output_명세.md
+스키마 정본: ../docs/KG_schema_v1.3.md · 출력 필드 명세: KG_output_명세.md
 """
 
 import os
